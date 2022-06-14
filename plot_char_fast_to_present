@@ -1,0 +1,167 @@
+# %%
+import os
+import pandas as pd
+from human_characterisation_functions import load_traces
+import numpy as np
+import matplotlib.pyplot as plt
+import stimulation_windows_ms
+import neo
+
+#%%
+
+human_folder = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/data_verji/'
+OP = 'OP220228/'
+work_dir = human_folder + OP
+file_list = sorted(os.listdir(work_dir))
+
+filenames = []
+for i in range(len(file_list)):
+    if file_list[i][-4:] == '.abf': 
+        filenames.append(file_list[i])
+    elif file_list[i][-5:] == '.xlsx': 
+        df_rec = pd.read_excel(work_dir + file_list[i], header = 1)
+        slice_indx = df_rec.index[df_rec['slice'].notnull()]
+        slice_names = df_rec['slice'][slice_indx].tolist()
+        index_vc = df_rec.index[df_rec['protocol'] == 'vc'].tolist()
+        index_char = df_rec.index[df_rec['protocol'] == 'freq analyse'].tolist()
+
+
+#%%
+
+## Fill in some things
+file_index = [20,69]
+rheos = [600, 600]
+active_channels = [[1,2,3,4,5,6,7], [1,2,3,5,6,7]]
+inj=[-300,-200,-150,-100,-50,0,50,100,150,200,250,300,350,400,450,500,550,600,700,800,900,1000,1100,1200,1300,1400]
+
+clrs = ["b", "g", "k", "c", "k", "y", "#FF4500", "#800080"]
+#plot D1
+fn = work_dir+filenames[file_index[0]]
+x = len(active_channels[0])
+fig, ax = plt.subplots(x,1,sharex=True, sharey=False,figsize=(6,6))
+for ch in range(x):
+    chan = active_channels[0][ch]
+    ch1, sweep_len, block = load_traces(filename = fn,cell_chan = chan)
+    ax[ch].plot(ch1[0:25000,inj.index(rheos[0])], lw=0.5, c=clrs[ch]) 
+    ax[ch].set_ylabel("Ch " + str(chan))
+    ax[ch].set_xticks([])
+    ax[ch].set_yticks([])
+    ax[ch].spines['top'].set_visible(False)
+    ax[ch].spines['right'].set_visible(False)
+    ax[ch].spines['bottom'].set_visible(False)
+    ax[ch].spines['left'].set_visible(False)
+fig.suptitle('Day ' + str(0+1) + ',' + str(rheos[0])+'pA',fontsize=15)
+fig.patch.set_facecolor('white')
+fig.tight_layout()
+plt.savefig(work_dir+'/plots/' + fn[-12:-4]+'_charactrrizaiton.png')
+#plt.close()
+
+#plot connectivity as ewll
+fn = work_dir+filenames[22]
+z1=0.5
+z2=40.5
+stim_window = stimulation_windows_ms.stim_window #what are the stim windows???
+conscreen=neo.io.AxonIO(fn) #loading the .abf = axon binary file 
+b1=conscreen.read(signal_group_mode = 'split-all')[0] #reading it; the file consists of 50 sweeps (segments), each 10 s long
+x = len(b1.groups) 
+fig, ax = plt.subplots(x,x,sharex=True, sharey=False,figsize=(6,6))
+#   clrs = ["b", "g", "r", "c", "m", "y", "#FF4500", "#800080"]
+for i in range(len(b1.groups)): #for each active channel
+    avg = np.mean(b1.groups[i].analogsignals, axis=0)
+    ch_name_i = b1.groups[i].analogsignals[0].name
+    if ch_name_i == '_Ipatch': ch_name_i = 'Ch1'
+    for j in range(0, ax.shape[1]):
+        if i == j:
+            ax[i,j].plot()
+        ch_name_j = b1.groups[j].analogsignals[0].name
+        if ch_name_j == '_Ipatch': ch_name_j = 'Ch1'
+        plotwin = avg[stim_window[ch_name_j][0]:stim_window[ch_name_j][1]] #from the average takes the signal for this stim_window
+        ax[i,j].plot(plotwin, clrs[i], lw=0.25)
+        ax[i,0].set_ylabel(str(ch_name_i))
+        ax[i,j].yaxis.label.set_color(clrs[i])
+        ax[i,j].set_xticks([])
+        ax[i,j].set_yticks([])
+        ax[i,j].spines['top'].set_visible(False)
+        ax[i,j].spines['right'].set_visible(False)
+        ax[i,j].spines['bottom'].set_visible(False)
+        ax[i,j].spines['left'].set_visible(False)
+        if plotwin.max()-plotwin.min() < 10:
+            ax[i,j].set_ylim([plotwin.min()-z1, plotwin.min()+z1])
+            v1 = ax[i,j].vlines(0,plotwin.min()+0.5, plotwin.min()+1, lw=0.2, color='k') 
+        else:
+            ax[i,j].set_ylim([plotwin.min()-0.5, plotwin.min()+z2])
+            v2 = ax[i,j].vlines(0,plotwin.min()+0.5, plotwin.min()+40.5, lw=0.2, color='k')
+fig.suptitle('Day ' + str(1),fontsize=15)
+fig.patch.set_facecolor('white')
+fig.tight_layout()
+plt.savefig('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/data_verji/Human_tissue_meetings/' 
++ fn[-12:-4]+'_connectivity.png')
+plt.close()
+
+
+#%%
+#Set the colors so that the repatched cells are in the same colors
+
+clrs2 = ["b", "k", "c","y", "#FF4500", "k"]
+fn = work_dir+filenames[file_index[1]]
+x = len(active_channels[1])
+fig, ax = plt.subplots(x,1,sharex=True, sharey=False,figsize=(6,6))
+for ch in range(x):
+    chan = active_channels[1][ch]
+    ch1, sweep_len, block = load_traces(filename = fn,cell_chan = chan)
+    ax[ch].plot(ch1[0:25000,inj.index(rheos[1])], lw=0.5, c=clrs2[ch]) 
+    ax[ch].set_ylabel("Ch " + str(chan))
+    ax[ch].set_xticks([])
+    ax[ch].set_yticks([])
+    ax[ch].spines['top'].set_visible(False)
+    ax[ch].spines['right'].set_visible(False)
+    ax[ch].spines['bottom'].set_visible(False)
+    ax[ch].spines['left'].set_visible(False)
+fig.suptitle('Day ' + str(1+1) + ',' + str(rheos[1])+'pA',fontsize=15)
+fig.patch.set_facecolor('white')
+fig.tight_layout()
+plt.savefig(work_dir+'/plots/' + fn[-12:-4]+'_charactrrizaiton.png')
+
+fn = work_dir+filenames[71]
+stim_window = stimulation_windows_ms.stim_window #what are the stim windows???
+conscreen=neo.io.AxonIO(fn) #loading the .abf = axon binary file 
+b1=conscreen.read(signal_group_mode = 'split-all')[0] #reading it; the file consists of 50 sweeps (segments), each 10 s long
+x = len(b1.groups) 
+fig, ax = plt.subplots(x,x,sharex=True, sharey=False,figsize=(6,6))
+clrs3 = ["b", "k", "c","W","y", "#FF4500", "k","w"] #w for non active channels, "b" for non-repatches
+for i in range(len(b1.groups)): #for each active channel
+    avg = np.mean(b1.groups[i].analogsignals, axis=0)
+    ch_name_i = b1.groups[i].analogsignals[0].name
+    if ch_name_i == '_Ipatch': ch_name_i = 'Ch1'
+    for j in range(0, ax.shape[1]):
+        if i == j:
+            ax[i,j].plot()
+        ch_name_j = b1.groups[j].analogsignals[0].name
+        if ch_name_j == '_Ipatch': ch_name_j = 'Ch1'
+        plotwin = avg[stim_window[ch_name_j][0]:stim_window[ch_name_j][1]] #from the average takes the signal for this stim_window
+        ax[i,j].plot(plotwin, clrs2[i], lw=0.25)
+        ax[i,0].set_ylabel(str(ch_name_i))
+        ax[i,j].yaxis.label.set_color(clrs2[i])
+        ax[i,j].set_xticks([])
+        ax[i,j].set_yticks([])
+        ax[i,j].spines['top'].set_visible(False)
+        ax[i,j].spines['right'].set_visible(False)
+        ax[i,j].spines['bottom'].set_visible(False)
+        ax[i,j].spines['left'].set_visible(False)
+        if plotwin.max()-plotwin.min() < 10:
+            ax[i,j].set_ylim([plotwin.min()-z1, plotwin.min()+z1])
+            v1 = ax[i,j].vlines(0,plotwin.min()+0.5, plotwin.min()+1, lw=0.2, color='k') 
+        else:
+            ax[i,j].set_ylim([plotwin.min()-0.5, plotwin.min()+z2])
+            v2 = ax[i,j].vlines(0,plotwin.min()+0.5, plotwin.min()+40.5, lw=0.2, color='k')
+fig.suptitle('Day ' + str(2),fontsize=15)
+fig.patch.set_facecolor('white')
+fig.tight_layout()
+plt.savefig('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/data_verji/Human_tissue_meetings/' 
++ fn[-12:-4]+'_connectivity.png')
+
+# results = work_dir + 'data_tables/' + OP[:-1] + '_Intrinsic_and_synaptic_properties.xlsx'
+# df = pd.read_excel(results)
+# df.to_csv(work_dir + 'data_tables/' + OP[:-1] + '_Intrinsic_and_synaptic_properties.csv')
+
+# %%
