@@ -23,11 +23,11 @@ def update_op_list(op_folder, patcher):
 
     not_added_df = pd.DataFrame({"OP": not_added, "patcher":[patcher]*len(not_added)})
 
-    exp_view = pd.concat([exp_view, not_added_df],ignore_index=True, index = False)
+    exp_view_new = pd.concat([exp_view, not_added_df],ignore_index=True).reset_index(drop=True) #maybe need to remove ignore_index = T
 
-    #for i in range(len(not_added)):
-     #   exp_view = exp_view.append({'OP': not_added[i], 'patcher': patcher}, ignore_index=True)
-    exp_view.to_excel(human_folder + 'experiemnts_overview.xlsx') 
+    exp_view_new.to_excel(human_folder + 'experiemnts_overview.xlsx', index = False) 
+    date = str(datetime.date.today())
+    exp_view.to_excel(human_folder + 'summary_data_tables/old_data/experiemnts_overview_before_'+date + '.xlsx', index = False)
 
     return print("Adding OPs:" + str(not_added) + " for " + patcher)
 
@@ -54,3 +54,7 @@ def add_cortex_out_time():
 
     
 # %%
+#sort out minis/ spontaneous activity 
+#create a metadata file to be passed to Barbara's analysis tool
+
+
