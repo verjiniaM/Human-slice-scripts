@@ -49,7 +49,6 @@ def load_traces(filename,cell_chan):
     ch1 = np.ndarray([sweep_len, sweeps])                
     for i in range(0,len(block.segments)):
         ch1[:,i] = block.segments[i].analogsignals[cell].view(np.recarray).reshape(sweep_len)
-  
 
     return ch1, sweep_len, block
 
@@ -313,7 +312,7 @@ def restingmembrane(vmfile,cell_channel):
     return restingmem
 
 
-#quality control step, deciding whether spontaneous. minis recording is going to be analyzed
+#quality control step, deciding whether spontaneous or mini recording is going to be analyzed
 #checking on which sweeps the dynamic range (max - min signal, disregarding minis) is smaller than a value
 def rec_stability (filename, cell_chan, max_range):
     ch1, sweep_len, block = load_traces(filename, cell_chan) #ch1: each sweep is a column

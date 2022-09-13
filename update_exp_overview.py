@@ -8,6 +8,7 @@ import datetime
 
 #this function opens the alerady existing experiments_overview file and adds the latest OP info
 #patcher and op_folder have to be strings; so with " "
+# the op folder is the folder where all op folders are stored - *data_rosie or data_verji*
 def update_op_list(op_folder, patcher):
     human_folder = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'
     exp_view = pd.read_excel(human_folder + 'experiemnts_overview.xlsx') 
@@ -56,5 +57,11 @@ def add_cortex_out_time():
 # %%
 #sort out minis/ spontaneous activity 
 #create a metadata file to be passed to Barbara's analysis tool
+
+op_folder = 'data_verji/'
+patcher = 'Verjinia'
+
+update_op_list(op_folder, patcher)
+add_cortex_out_time()
 
 

@@ -36,11 +36,13 @@ def plot_traces(filename):
     if os.path.isdir(path) == False: os.mkdir(path)
 
     plt.style.use(['fast'])
+
     x = math.ceil(np.sqrt(channels))
-    fig, ax = plt.subplots(x,x,sharex=True, sharey=True,figsize=(6,6))
+    fig = plt.figure(figsize=(6,6))
+    plt.subplots_adjust(hspace=0.5)
 
     for i in range(1,channels+1):
-        ax = fig.add_subplot(x,x, i)
+        ax = plt.subplot(x,x, i)
         cell_chan = i
         #ch1 = np.ndarray([1, sweeps])  #empty matrix
         # for key, val in channel_dict.items():

@@ -10,7 +10,7 @@ import neo
 #%%
 
 human_folder = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/data_verji/'
-OP = 'OP220228/'
+OP = 'OP/'
 work_dir = human_folder + OP
 file_list = sorted(os.listdir(work_dir))
 

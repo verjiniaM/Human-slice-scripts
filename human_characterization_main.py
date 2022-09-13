@@ -68,7 +68,7 @@ for i in range(len(op_to_analyse)):
                 new_slice_names.append([slice_names[i]]*(slice_indx[i+1]-slice_indx[i]))
             else :
                 new_slice_names.append([slice_names[i]]*(15))
-        slice_names = flat_list = [x for xs in new_slice_names for x in xs]
+        slice_names  = [x for xs in new_slice_names for x in xs]
 
         #creating a dir to save plots (if not existing)
         dir_plots = "plots"
