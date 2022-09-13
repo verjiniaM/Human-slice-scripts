@@ -6,6 +6,7 @@ import human_synaptic_functions1 as hsf
 import trace_names_check as tn
 import pandas as pd
 import glob
+import sorting_funcs as sort
 
 #loading the updated experiments_overview and the old summary_data_table
 human_folder = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'
@@ -39,36 +40,13 @@ for i in range(len(op_to_analyse)):
         
         if patcher == 'Verji': work_dir = human_folder + 'data_verji/'+ OP_folder 
         if patcher == 'Rosie': work_dir = human_folder + 'data_rosie/'+ OP_folder 
-        file_list = sorted(os.listdir(work_dir))
-
-        filenames = []
-        for file in range(len(file_list)):
-            #pclamp files
-            if file_list[file][-4:] == '.abf': 
-                filenames.append(file_list[file])
-            #sorting the labbook entries and number of sweeps
-            elif (file_list[file][-5:] == '.xlsx' and file_list[file][:2] == '~$'):
-                print('Close the excel file')
-                input()
-            elif (file_list[file][-5:] == '.xlsx' and file_list[file][:2] != '~$'): 
-                df_rec = pd.read_excel(work_dir + file_list[file], header = 1)
-                slice_indx = df_rec.index[df_rec['slice'].notnull()]
-                slice_names = df_rec['slice'][slice_indx].tolist()
-                index_vc = df_rec.index[df_rec['protocol'] == 'vc'].tolist()
-                index_vm = df_rec.index[df_rec['protocol'] == 'vm_mouse'].tolist()
-                index_char = df_rec.index[df_rec['protocol'] == 'freq analyse'].tolist()
-                index_vc_end = df_rec.index[df_rec['protocol'] == 'vc_end'].tolist()
-                index_spontan = df_rec.index[df_rec['protocol'] == 'vm'].tolist()
-                index_mini = df_rec.index[df_rec['protocol'] == 'minis'].tolist()
+        
+        df_rec, file_list = sort.get_lab_book(work_dir)
+        filenames = sort.get_abf_files(file_list)
+        slice_indx, def_slice_names, index_vc, index_vm, index_char, index_vc_end, index_spontan, index_mini = sort.sort_protocol_names (file_list, df_rec)
         
         #adjusting the slice names 
-        new_slice_names = []
-        for i in range(len(slice_names)):
-            if i < len(slice_names)-1:
-                new_slice_names.append([slice_names[i]]*(slice_indx[i+1]-slice_indx[i]))
-            else :
-                new_slice_names.append([slice_names[i]]*(15))
-        slice_names  = [x for xs in new_slice_names for x in xs]
+        slice_names = sort.fix_slice_names (def_slice_names, slice_indx)
 
         #creating a dir to save plots (if not existing)
         dir_plots = "plots"
