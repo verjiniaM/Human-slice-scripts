@@ -56,13 +56,13 @@ for i in op_to_analyse:
     slice_names = sort.fix_slice_names (def_slice_names, slice_indx)
 
     #creating a dir to save plots and data_tables (if not existing)
-    path = sort.make_dir_if_not_existing (work_dir, 'plots')
+    dir_plots = sort.make_dir_if_not_existing (work_dir, 'plots')
     sort.make_dir_if_not_existing (work_dir, 'data_tables')
 
     #check if the traces dir is empty and only then plot the mimiddle sweep for each filename
 
-    traces_folder =  os.path.join(path, "traces/")
-    if os.path.isdir(traces_folder) == 1:
+    traces_folder =  os.dir_plots.join(dir_plots, "traces/")
+    if os.dir_plots.isdir(traces_folder) == 1:
         print("skipping plotting")
     else: 
         for rec in range(len(filenames)):
@@ -103,8 +103,7 @@ for i in op_to_analyse:
         #give inputs with space between entries
         active_channels = [int(item) for item in input('Channels used in ' + filenames[vc] +'(input with spaces in between)').split()]
 
-        for j in range(len(active_channels)):
-            ch = active_channels[j]
+        for ch in active_channels:
             hsf.get_holding_measures(filename_vc, ch)
             Rs, Rin = hcf.access_resistance(filename_vc, ch) 
             cellID = filenames[vc][:-7]+slice+'c'+str(ch)
