@@ -31,11 +31,12 @@ def sort_protocol_names (file_list, df_rec):
     takes a file list (contents of a folder) and pandas data frame (lab notebook)
     returns indices for all recording types
     '''
-    
+
     slice_indx = df_rec.index[df_rec['slice'].notnull()]
     def_slice_names = df_rec['slice'][slice_indx].tolist()
     
     index_dict = {}
+    dict_keys = ['vc', 'vm_mouse', 'freq analyse', 'vc_end', 'vm', 'minis']
     for key in dict_keys:
         index = df_rec.index[df_rec['protocol'] == key].tolist()
         index_dict[key] = index
@@ -44,7 +45,7 @@ def sort_protocol_names (file_list, df_rec):
 
 def fix_slice_names (def_slice_names, slice_indx):
     new_slice_names = []
-    for i in def_slice_names:
+    for i in range(len(def_slice_names)):
         if i < len(def_slice_names)-1:
             new_slice_names.append([def_slice_names[i]]*(slice_indx[i+1]-slice_indx[i]))
         else :

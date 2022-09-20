@@ -17,37 +17,48 @@ import math
 from matplotlib import gridspec
 import os
 import sorting_functions as sort
-
+import intrinsic_props_plotting_funcs as in_props_plot
 
 #%%
 # =============================================================================
 # Basic functions for characterisation of human neurons
 # =============================================================================
 
-# loading traces
-def load_traces(filename,cell_chan): 
+def get_analog_signals (filename):
     r = neo.io.AxonIO(filename=filename)
     block=r.read(signal_group_mode = 'split-all')[0]
-    sweeps = len(block.segments) #number of sweeps
+    sweep_count = len(block.segments) #number of sweeps
     sweep_len = len(block.segments[0].analogsignals[0])
     channels = len(block.segments[0].analogsignals) # no of channels in recording
 
     #create a dictionary with channel names 
     channel_dict = {}
+    vc_data = {}
     for ch in range(0, channels):
         name = block.segments[0].analogsignals[ch].name
         if name == '_Ipatch' or name == 'IN0':
             name = 'Ch1'
             block.segments[0].analogsignals[ch].name = 'Ch1'
-        channel_dict['AnalogSig%d' % (ch)] = name
 
+        signal=[]
+        for s in range(sweep_count):
+            signal.append(block.segments[s].analogsignals[ch]) #channel signal
+
+        vcdata[name]=[signal,block.segments[s].analogsignals[ch].annotations.values()]  #channel is zero-indexed so headstage1 == channel 0 etc etc
+        channel_dict['AnalogSig%d' % (ch)] = name
+    return sweep_count, sweep_len, channels, channel_dict, vcdata
+
+# loading traces
+
+def load_traces(filename,cell_chan): 
+    sweep_count, sweep_len, channels, channel_dict, vcdata = get_analog_signals(filename)
     #fixing the indexing of channels 
     for key, val in channel_dict.items():
         if val == 'Ch'+ str(cell_chan): #-1
             cell = int(key[-1])  
 
     #create a np-array where each sweep is a column
-    ch1 = np.ndarray([sweep_len, sweeps])                
+    ch1 = np.ndarray([sweep_len, sweep_count])                
     for i in range(0,len(block.segments)):
         ch1[:,i] = block.segments[i].analogsignals[cell].view(np.recarray).reshape(sweep_len)
 
@@ -56,18 +67,7 @@ def load_traces(filename,cell_chan):
 
 #series and input resistance from vc file
 def access_resistance(vctpfile, channel):
-    data=neo.io.AxonIO(vctpfile)
-    b1o=data.read(signal_group_mode = 'split-all')[0]
-
-    #creates a dictionary with channel name and signal
-    chan={}
-    for ch in range(len(b1o.segments[0].analogsignals)):
-        signal=[]
-        for s in range(len(b1o.segments)):
-            signal.append(b1o.segments[s].analogsignals[ch])
-            numb=ch+1
-            chan['ch%d'%numb]=[signal,b1o.segments[s].analogsignals[ch].annotations.values()]    #channel is zero-indexed so headstage1 == channel 0 etc etc
-    del ch,numb,s,signal
+    sweep_count, sweep_len, channels, channel_dict, chan = get_analog_signals(filename)
 
     key = 'ch'+str(channel)
     mean = np.mean(chan[key][0], axis=0)
@@ -104,7 +104,7 @@ def read_abf_and_inj(filename, cell_chan, inj):
 def get_median(ch1):
     return np.median(ch1[:,5]) #when the inj = 0mV
 
-def get_hyperpolar_param(ch1, filename, cell_chan, onset = 2624, offset = 22624, mc = np.ndarray([5,3])):
+def get_hyperpolar_param(filename, cell_chan, ch1, onset = 2624, offset = 22624, mc = np.ndarray([5,3])):
     for i in range(0,5):
         I = inj[i]*1e-12 #check step size
         bl = np.median(ch1[0:onset-20,i])
@@ -136,7 +136,7 @@ def get_max_spikes(ch1):
             max_spikes = len(pks) #find the max number of spikes (peaks)
     return max_spikes 
 
-def get_spike_param (ch1, max_spikes):
+def get_spike_param (inj, ch1, max_spikes):
     '''
     returns a nd.array with inj, peak loc, sweep num
     spike_counts for each inj
@@ -157,6 +157,7 @@ def get_spike_param (ch1, max_spikes):
     
     spikes = np.where(np.isfinite(peaks)) 
     first_spike = spikes[0][0]
+    Rheobase = inj[first_spike]  
     
     if np.max(spike_counts[:,1]) == 1:
         print('MAX number of AP = 1 for ' + filename[end_fn:-4] + ' Ch ' + str(cell_chan))
@@ -164,78 +165,42 @@ def get_spike_param (ch1, max_spikes):
     else:
         first_spiking_sweep=np.where(spike_counts[:,1]>1)[0][0] #where there is more than 1 AP
     
-    return spike_counts, spikes, first_spike, peaks
-    
+    return spike_counts, spikes, first_spike, first_spiking_sweep, peaks, Rheobase
 
-#plotting functions
-def plot_hyperpolar (ch1, filename, cell_chan, V65, mc, onset = 2624, offset = 22624, 
-clrs = ["b", "g", "r", "c", "m", "y", "#FF4500", "#800080"]):
-    end_fn = filename.rfind('/') + 1
-    dir_onset = sort.make_dir_if_not_existing(dir_plots, 'Onset')
-    fig = plt.figure()
-    for i in range(0,5):
-        swp = list(ch1[:,i])
-        if list(filter(lambda ii: ii < V65, swp)) == []:
-            print("No hyperpolarization fig for " + filename[end_fn:-4] + 'ch: ' + str(cell_chan))
-        else:
-            plt.plot(ch1[:,i], c = clrs[i])
-            plt.scatter(onset + tc, V65, c=clrs[i])
-            plt.annotate('V65  ', (onset + tc, V65), horizontalalignment='right')
-            plt.scatter(onset, bl, c='r')
-    fig.patch.set_facecolor('white')    
-    plt.annotate('  Baseline', (onset, bl))
-    plt.title('Ch ' + str(cell_chan))
-    plt.savefig(dir_onset + '/Char_onset_plot_' + filename[end_fn:-4]+'_'+str(cell_chan) + '.png')
-    plt.close()
-     
-def plot_spikes (ch1, inj, filename, first_spike, peaks):
-    dir_spikes = sort.make_dir_if_not_existing(dir_plots, 'Max_Spikes')
-    win = len(inj) - first_spike
-    x = math.ceil(np.sqrt(win))
-    fig, ax = plt.subplots(x,x,sharex=True, sharey=False,figsize=(6,6))
-    for i in range(win):
-        ax = fig.add_subplot(x,x, i+1)
-        if first_spike+i-1 < np.shape(ch1)[1]:
-            ax.plot(ch1[:,first_spike+i-1], lw=0.5, c='grey')
-            ax.set_xticks([])
-            ax.set_yticks([])
-            ax.spines['top'].set_visible(False)
-            ax.spines['right'].set_visible(False)
-            ax.spines['bottom'].set_visible(False)
-            ax.spines['left'].set_visible(False)
-            ax.scatter(peaks[first_spike+i-1, :, 1], 
-                    peaks[first_spike+i-1, :, 2], marker='+', c='r')
-            ax.annotate('+'+str(inj[first_spike+i-1])+' pA', (25500,0), (25500,0), color='b', rotation=90)
-    
-    fig.patch.set_facecolor('white')
-    fig.suptitle('Ch ' +str(cell_chan), fontsize=15)
-    fig.tight_layout()
-    plt.savefig(dir_spikes + '/char_spikes_plot_' + filename[end_fn:-4]+'_'+str(cell_chan) + '.png')
-    plt.close(fig)
+def get_ap_props (filename, cell_chan, ch1, spike_counts, first_spiking_sweep, peaks):
+        #calc TH from second AP in first spiking sweep. TH at vm when dV/dt > 10 mV/ms   
+        # TH = threshold;
+    if np.max(spike_counts[:,1]) == 1:
+        ap = 0
+    else:
+        ap = 1
+        
+        peak_loc = np.where(ch1[:,first_spiking_sweep] == peaks[first_spiking_sweep, ap ,2])[0][0]
+        AP = ch1[:, first_spiking_sweep][peak_loc - 200:peak_loc+200]
+        d1_AP = np.diff(AP)*20
+        THloc_all = np.where(d1_AP[:195] > 10)
+        if THloc_all[0].size == 0:
+            print("Only 1 SLOW AP found for " + filename[end_fn:-4] + ' Ch : ' + str(cell_chan))
+            TH, THloc = math.nan, math.nan
+            max_depol = math.nan
+            max_repol = math.nan
+            APheight = math.nan
+            return AP, THloc, TH, APheight, max_depol, max_repol
+        THloc = THloc_all[0][0]
+        TH = AP[THloc-1]
+        APheight = peaks[first_spiking_sweep, ap ,2]-TH #amplitude of AP, the 2nd AP
+        max_depol = np.max(d1_AP[:200]) #how quickly is the voltage change occuring
+        max_repol = np.min(d1_AP[-200:])
+        return AP, THloc, TH, APheight, max_depol, max_repol        
 
-def plot_iv_curve (cell_chan, inj, filename, first_spike, spike_counts):
-    dir_iv_curve = sort.make_dir_if_not_existing(dir_plots, "IV_curve")
-    IOfit = np.polyfit(spike_counts[first_spike:,0], spike_counts[first_spike:,1],1)
-    IO_slope = IOfit[0]
-    fig = plt.figure()
-    plt.plot(spike_counts[:,0], spike_counts[:,1])
-    plt.gca().set_xlabel('Injection current, pA')
-    plt.gca().set_ylabel('Number of spikes')
-    Rheobase = inj[first_spike]   
-    
-    fig.suptitle('Ch ' + str(cell_chan), fontsize=15)
-    fig.patch.set_facecolor('white')
-    plt.savefig(dir_iv_curve+ '/char_IV_curve_' + filename[end_fn:-4]+'_'+str(cell_chan) + '.png')
-    plt.close()
-
-def chracterization_params (filename, cell_chan, inj, onset = 2624, offset = 22624):
+def all_chracterization_params (filename, cell_chan, inj, onset = 2624, offset = 22624):
     #creating folder to save the plots
     end_fn = filename.rfind('/') + 1
     dir_plots = sort.make_dir_if_not_existing(filename[:end_fn], 'plots')
     
     # hyperpolarization - plot and properties
     ch1, inj = read_abf_and_inj(filename, cell_chan, inj)
-    bl, V65, mc, tc, tau, capacitance = get_hyperpolar_param(ch1, filename, cell_chan)
+    bl, V65, mc, tc, tau, capacitance = get_hyperpolar_param(filename, cell_chan, ch1)
 
     #calculating resting membrane potential (RMP)
     Vm = np.median(ch1[:,5]) #when the inj = 0mV
@@ -245,82 +210,20 @@ def chracterization_params (filename, cell_chan, inj, onset = 2624, offset = 226
     if max_spikes == 0: 
         print("No spikes found for" + filename[end_fn:-4] + ' Ch: ' + str(cell_chan))
         Rheobase, APheight, max_depol, max_repol, TH = math.nan, math.nan, math.nan, math.nan, math.nan
-        return Vm, max_spikes, Rheobase,APheight, max_depol, max_repol, TH, capacitance, tau
+        return Vm, max_spikes, Rheobase, APheight, max_depol, max_repol, TH, capacitance, tau
     else:
-        spike_counts, spikes, first_spike, peaks = get_spike_param(ch1, max_spikes)
+        spike_counts, spikes, first_spike, first_spiking_sweep, peaks, Rheobase = get_spike_param(inj, ch1, max_spikes)
 
-     #plots all of the sweeps with APs, each of the detected spikes are marked with a cross
-    plot_hyperpolar(ch1, filename, cell_chan, V65, mc)
-    plot_spikes(ch1, inj, filename, first_spike, peaks)
-    plot_iv_curve(cell_chan, inj, filename, first_spike, spike_counts)
+    AP, THloc, TH, APheight, max_depol, max_repol = get_ap_props(filename, cell_chan, ch1, spike_counts, first_spiking_sweep, peaks)
+    #plots all of the sweeps with APs, each of the detected spikes are marked with a cross
+    in_props_plot.plot_hyperpolar(filename, cell_chan, ch1, dir_plots, V65, mc)
+    in_props_plot.plot_spikes(filename, inj, ch1, dir_plots, first_spike, peaks)
+    in_props_plot.plot_iv_curve(filename, cell_chan, inj, dir_plots, first_spike, spike_counts)
+    in_props_plot.plot_ap_props(filename, cell_chan, dir_plots, AP, THloc, TH, APheight, first_spiking_sweep)
+
+    return Vm, max_spikes, Rheobase, APheight, max_depol, max_repol, TH, capacitance, tau
         
         
-        dir_plots = "AP_props"
-        path = os.path.join(filename[:end_fn]+'plots/', dir_plots)
-        if os.path.isdir(path) == False: os.mkdir(path)
-        #calc TH from second AP in first spiking sweep. TH at vm when dV/dt > 10 mV/ms   
-        # TH = threshold;
-        
-        if np.max(spike_counts[:,1]) == 1:
-            peak_loc = np.where(ch1[:,first_spiking_sweep] == peaks[first_spiking_sweep,0,2])[0][0]
-            AP1 = ch1[:, first_spiking_sweep][peak_loc - 200:peak_loc+200]
-            d1_AP1 = np.diff(AP1)*20
-            THloc_all = np.where(d1_AP1[:195] > 10)
-            if THloc_all[0].size == 0:
-                print("Only 1 SLOW AP found for " + filename[end_fn:-4] + ' Ch : ' + str(cell_chan))
-                TH = math.nan
-                max_depol = math.nan
-                max_repol = math.nan
-                APheight = math.nan
-                Rheobase = math.nan
-                return Vm, max_spikes, Rheobase,APheight, max_depol, max_repol, TH, capacitance, tau
-            
-            THloc = THloc_all[0][0]
-            TH=AP1[THloc-1]
-            APheight=peaks[first_spiking_sweep,0,2]-TH #amplitude of AP, the 2nd AP
-            max_depol=np.max(d1_AP1[:200]) #how quickly is the voltage change occuring
-            max_repol=np.min(d1_AP1[-200:])
-
-            fig = plt.figure()
-            plt.plot(AP1)
-            plt.scatter(THloc,TH, color = 'red')
-            plt.scatter(200,peaks[first_spiking_sweep,0,2], color = 'green')
-            fig.suptitle('Ch: ' + str(cell_chan) + ', AP#1' +', TH = ' + str(round(TH,2)) + ', amp = ' + str(round(APheight,2)))
-            fig.patch.set_facecolor('white') 
-            plt.savefig(path + '/' + filename[end_fn:-4]+'_AP1_'+str(cell_chan) + '.png')
-            plt.close()
-        else:
-            peak_loc = np.where(ch1[:,first_spiking_sweep] == peaks[first_spiking_sweep,1,2])[0][0]
-            AP2 = ch1[:, first_spiking_sweep][peak_loc - 200:peak_loc+200]
-            d1_AP2 = np.diff(AP2)*20
-            THloc_all = np.where(d1_AP2[:195] > 10)
-            if THloc_all[0].size == 0:
-                print("No TH for SLOW AP in " + filename[end_fn:-4] + ' Ch : ' + str(cell_chan))
-                TH = math.nan
-                max_depol = math.nan
-                max_repol = math.nan
-                APheight = math.nan
-                Rheobase = math.nan
-                return Vm, max_spikes, Rheobase,APheight, max_depol, max_repol, TH, capacitance, tau
-            THloc = THloc_all[0][0]
-            TH=AP2[THloc-1]
-            APheight=peaks[first_spiking_sweep,1,2]-TH #amplitude of AP, the 2nd AP
-            max_depol=np.max(d1_AP2[:200]) #how quickly is the voltage change occuring
-            max_repol=np.min(d1_AP2[-200:])
-
-            fig = plt.figure()
-            plt.plot(AP2)
-            plt.scatter(THloc,TH, color = 'red')
-            plt.scatter(200,peaks[first_spiking_sweep,1,2], color = 'green')
-            fig.suptitle('Ch: ' + str(cell_chan) + ', AP#2' + ', TH = ' + str(round(TH,2)) + ', amp = ' + str(round(APheight,2)))
-            fig.patch.set_facecolor('white') 
-            plt.savefig(path + '/AP2_' + filename[end_fn:-4]+'_'+str(cell_chan) + '.png')
-            plt.close()
-
-
-        return Vm, max_spikes, Rheobase,APheight, max_depol, max_repol, TH, capacitance, tau
-
-
 # calculates vm from 5th sweep of characterisation protocol (ie. 0pA step)
 #lookes at membrane potential during characterization, no 
 def vm(ch1):
@@ -387,7 +290,7 @@ def rec_stability (filename, cell_chan, max_range):
 
 
 # def main():
-#     filename = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/data_verji/OP220426/22427042.abf'
+#     filename = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/data_verji/OP220426_trial/22427042.abf'
 #     cell_chan = 3
 #     inj = 'full'
 #     APproperties(filename, cell_chan, inj)

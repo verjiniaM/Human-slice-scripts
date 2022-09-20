@@ -2,8 +2,7 @@
 #%%
 import os
 import human_characterisation_functions as hcf
-import human_synaptic_functions1 as hsf
-import trace_names_check as tn
+import intrinsic_props_plotting_funcs as in_props_plot
 import pandas as pd
 import glob
 import sorting_functions as sort
@@ -21,7 +20,6 @@ print('Using summary data table from ' + latest_sum_data_table[end_path + 1 : en
 
 #%%
 # updating full OP list from latest summmary based on all OPs in exp_overview
-
 last_update_op_list = summary_data_table.OP.unique().tolist()
 newest_op_list = exp_view.OP.unique().tolist()
 all_OPs = last_update_op_list + newest_op_list
@@ -36,16 +34,20 @@ for i in op_to_analyse:
     y_or_n = input('Do you want to start analysis of ' + OP + '(y/n)?') 
     if y_or_n == "n":
         continue
-    #input some functions
-    OP_folder = OP + '/'
+
     tissue_source = input('Tissue source for ' + OP + '(Bielefeld, Mitte, Virchow): ')
     patcher = input('Patcher ' + OP + '(Verji or Rosie): ')
     age = input('Patient age ' + OP + '(if not known: A for adult, J for juvenile): ')
     
     print('starting analysis for '+ OP)
+
+def get_intrinsic_properties(OP, tissue_source, patcher, age ):
+    OP_folder = OP + '/'
     
-    if patcher == 'Verji': work_dir = human_dir + 'data_verji/'+ OP_folder 
-    if patcher == 'Rosie': work_dir = human_dir + 'data_rosie/'+ OP_folder 
+    if patcher == 'Verji': 
+        work_dir = human_dir + 'data_verji/'+ OP_folder
+    else:
+        work_dir = human_dir + 'data_rosie/'+ OP_folder 
     
     file_list = sort.get_sorted_file_list(work_dir)
     df_rec= sort.get_lab_book(work_dir)
@@ -60,19 +62,20 @@ for i in op_to_analyse:
     sort.make_dir_if_not_existing (work_dir, 'data_tables')
 
     #check if the traces dir is empty and only then plot the mimiddle sweep for each filename
-
-    traces_folder =  os.dir_plots.join(dir_plots, "traces/")
-    if os.dir_plots.isdir(traces_folder) == 1:
-        print("skipping plotting")
-    else: 
+    traces_folder =  os.path.join(dir_plots, "traces/")
+    if os.path.isdir(traces_folder) == 0 :
         for rec in range(len(filenames)):
             filename = work_dir + filenames[rec]
-            tn.plot_traces(filename)
+            in_props_plot.plot_traces(filename)
+    else:
+         print("skipping plotting")
 
+    #QC indices
     indices_dict
     if len(indices_dict['freq analyse']) != len(indices_dict['vc']): 
         print('Fix protocol names. Unequal number of VC and freq analyse protocols')
         index_vc_in = [int(item) for item in input('Vc files corresponding to characterization files for ' + OP +' (input with spaces in between)').split()]
+        #saved the original indices
         indices_dict['vc_orig'] = indices_dict['vc']
         indices_dict['vc'] = index_vc_in
         # index_char = [int(item) for item in input('corresponding characterization files for ' + OP +' (input with spaces in between)').split()]
@@ -81,7 +84,7 @@ for i in op_to_analyse:
     proceed_y_n = input("do all traces correspond to specified filenames in lab book for " + OP +  "(y/n)?")
     if proceed_y_n == 'n': 
         print('correct the lab book entries. Continuing to next OP')
-        continue
+        pass
 
     #creating the dataframe
     df = pd.DataFrame(columns=['tissue_source','OP', 'patcher', 'patient_age', 
@@ -90,27 +93,27 @@ for i in op_to_analyse:
     'capacitance', 'max_depol', 'max_repol', 'max_spikes','membra_time_constant_tau', 
     'resting_potential', 'Rs', 'Rin', 'spon_freq', 'spon_ampl', 'mini_freq', 'mini_amp'])	
 
-    for i in range(len(index_vc)):
-        vc = index_vc[i]
-        vm = index_vm[i]
-        char = index_char[i]
+    for i in range(len(indices_dict['vc'])):
+        vc = indices_dict['vc'][i]
+        vm = indices_dict['vm'][i]
+        char = indices_dict['freq analyse'][i]
         slice = slice_names[vc]
 
-        filename_vc = work_dir+filenames[vc]
-        filename_vm = work_dir+filenames[vm]
-        filename_char = work_dir+filenames[char]
+        filename_vc = work_dir + filenames[vc]
+        filename_vm = work_dir + filenames[vm]
+        filename_char = work_dir + filenames[char]
 
         #give inputs with space between entries
         active_channels = [int(item) for item in input('Channels used in ' + filenames[vc] +'(input with spaces in between)').split()]
 
         for ch in active_channels:
-            hsf.get_holding_measures(filename_vc, ch)
+            in_props_plot.plot_vc_holding(filename_vc, ch)
             Rs, Rin = hcf.access_resistance(filename_vc, ch) 
             cellID = filenames[vc][:-7]+slice+'c'+str(ch)
             
             resting_mem = hcf.restingmembrane(filename_vm, ch)
-            Vm, max_spikes, Rheobase, APheight, max_depol, max_repol, TH, capacitance, tau  = hcf.APproperties(filename_char, ch, "full")
-            cellID = filenames[char][:-7]+slice+'c'+str(ch)
+            Vm, max_spikes, Rheobase, APheight, max_depol, max_repol, TH, capacitance, tau  = hcf.all_chracterization_params(filename_char, ch, "full")
+            cellID = filenames[char][:-7] + slice + 'c' +str(ch)
             data_to_add = pd.DataFrame({'tissue_source': tissue_source, 'OP':OP[:-1], 'patcher':patcher, 'patient_age':age, 
             'filename':filenames[char],'slice':slice, 'cell_ch':ch, 'cell_ID':cellID,
             'Rs':Rs, 'Rin':Rin,'resting_potential': resting_mem,'AP_heigth':APheight,'Rheobase':Rheobase, 'TH':TH, 'Vm' :Vm, 
