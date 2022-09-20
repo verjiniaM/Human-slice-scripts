@@ -66,7 +66,7 @@ def get_intrinsic_properties(OP, tissue_source, patcher, age ):
     if os.path.isdir(traces_folder) == 0 :
         for rec in range(len(filenames)):
             filename = work_dir + filenames[rec]
-            in_props_plot.plot_traces(filename)
+            in_props_plot.plot_middle_sweep(filename)
     else:
          print("skipping plotting")
 
@@ -178,7 +178,7 @@ def get_intrinsic_properties(OP, tissue_source, patcher, age ):
 
         for l in range(len(active_channels)):
             ch = active_channels[l]
-            Rs, Rin = hcf.access_resistance(filename_vc, ch) 
+            Rs, Rin = hcf.get_access_resistance(filename_vc, ch) 
             Rs_end, Rin_end = hcf.access_resistance(filename_vc_end, ch) 
             cellID = filenames[vc][:-7]+slice+'c'+str(ch)
 

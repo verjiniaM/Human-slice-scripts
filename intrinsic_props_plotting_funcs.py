@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import math
 import os
-import human_characterisation_functions as hchf
+import human_characterisation_functions as hcf
 import sorting_functions as sort
 
 
@@ -15,39 +15,31 @@ import sorting_functions as sort
 
 # plots the middle sweep for each channel
 # check the traces to see which channels were active or if the protocol names are enetered correctly
-def plot_traces(filename): 
+def plot_middle_sweep (filename): 
     end_filename = filename.rfind('/') + 1
     dir_plots = sort.make_dir_if_not_existing(filename[:end_filename], 'plots')
     dir_traces = sort.make_dir_if_not_existing(dir_plots, 'traces')
 
-    sweep_count, sweep_len, channels, channel_dict = hchf.get_analog_signals(filename)
-
+    sweep_count, sweep_len, channels, channel_dict = hcf.get_ch_dict(filename)
+      
     plt.style.use(['fast'])
 
     x = math.ceil(np.sqrt(channels))
     fig = plt.figure(figsize=(6,6))
     plt.subplots_adjust(hspace=0.5)
 
-    for i in range(1,channels+1):
+    for i in range(1, channels+1):
         ax = plt.subplot(x,x, i)
         cell_chan = i
-        #ch1 = np.ndarray([1, sweeps])  #empty matrix
-        # for key, val in channel_dict.items():
-        #     if val == 'Ch'+ str(cell_chan): #-1
-        #         cell_chan = int(key[-1])                  
-        # for i in range(0,lens(block.segments)):
+
         middle_swp_num = int(sweep_count/2)
-        ch1 = block.segments[middle_swp_num].analogsignals[cell_chan-1].view(np.recarray).reshape(sweep_len).tolist()
-        # plot_swp_num = int(ch1.shape[1]/2+1)
-        ch_name = block.segments[0].analogsignals[cell_chan-1].name
-        sampl_rate = block.segments[middle_swp_num].analogsignals[cell_chan-1].sampling_rate
-        units = block.segments[middle_swp_num].analogsignals[cell_chan-1].units
-        times = np.linspace(0,sweep_len,sweep_len)/sampl_rate
-        ax.plot(times,ch1, lw=0.5)
+        #ch_name = channel_dict
+        signal, ch_name, sampl_rate, units, times = hcf.get_abf_info(filename, cell_chan, middle_swp_num, sweep_len)
+        ax.plot(times,signal, lw=0.5)
         ax.set_xlabel('sec')
         ax.set_ylabel(str(units)[-2:])
         ax.title.set_text(ch_name)
-        del ch1
+        del signal
 
     fig.tight_layout() 
     fig.patch.set_facecolor('white')
@@ -58,7 +50,7 @@ def plot_traces(filename):
 def plot_vc_holding (filename, cell_chan):
     end_filename = filename.rfind('/') + 1
 
-    sweep_count, sweep_len, channels, channel_dict, vcdata = hchf.get_analog_signals(filename)
+    vcdata = hcf.get_analog_signals(filename)
     dir_vc_plots = sor.make_dir_if_not_existing(filename[:end_filename]+'plots/', "vc_plots")
 
     plt.style.use(['fast'])   
