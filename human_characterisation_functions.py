@@ -27,12 +27,9 @@ import intrinsic_props_plotting_funcs as in_props_plot
 def get_analog_signals (filename):
     r = neo.io.AxonIO(filename=filename)
     block=r.read(signal_group_mode = 'split-all')[0]
-    sweep_count = len(block.segments) #number of sweeps
-    sweep_len = len(block.segments[0].analogsignals[0])
     channels = len(block.segments[0].analogsignals) # no of channels in recording
 
     #create a dictionary with channel names 
-    channel_dict = {}
     vc_data = {}
     for ch in range(0, channels):
         name = block.segments[0].analogsignals[ch].name
@@ -45,13 +42,40 @@ def get_analog_signals (filename):
             signal.append(block.segments[s].analogsignals[ch]) #channel signal
 
         vcdata[name]=[signal,block.segments[s].analogsignals[ch].annotations.values()]  #channel is zero-indexed so headstage1 == channel 0 etc etc
+        
+    return  vcdata
+
+def get_ch_dict (filename):
+    r = neo.io.AxonIO(filename=filename)
+    block=r.read(signal_group_mode = 'split-all')[0]
+    sweep_count = len(block.segments) #number of sweeps
+    sweep_len = len(block.segments[0].analogsignals[0])
+    channels = len(block.segments[0].analogsignals) # no of channels in recording
+
+    #create a dictionary with channel names 
+    channel_dict = {}
+    for ch in range(0, channels):
+        name = block.segments[0].analogsignals[ch].name
+        if name == '_Ipatch' or name == 'IN0':
+            name = 'Ch1'
+            block.segments[0].analogsignals[ch].name = 'Ch1'
         channel_dict['AnalogSig%d' % (ch)] = name
-    return sweep_count, sweep_len, channels, channel_dict, vcdata
+    return sweep_count, sweep_len, channels, channel_dict
+
+def get_abf_info (filename):
+    r = neo.io.AxonIO(filename=filename)
+    block=r.read(signal_group_mode = 'split-all')[0]
+    ch1 = block.segments[middle_swp_num].analogsignals[cell_chan-1].view(np.recarray).reshape(sweep_len).tolist()
+    # plot_swp_num = int(ch1.shape[1]/2+1)
+    ch_name = block.segments[0].analogsignals[cell_chan-1].name
+    sampl_rate = block.segments[middle_swp_num].analogsignals[cell_chan-1].sampling_rate
+    units = block.segments[middle_swp_num].analogsignals[cell_chan-1].units
+    times = np.linspace(0,sweep_len,sweep_len)/sampl_rate
+    return ch1, ch_name, sampl_rate, units, times
 
 # loading traces
-
 def load_traces(filename,cell_chan): 
-    sweep_count, sweep_len, channels, channel_dict, vcdata = get_analog_signals(filename)
+    sweep_count, sweep_len, channels, channel_dict = get_ch_dict(filename)
     #fixing the indexing of channels 
     for key, val in channel_dict.items():
         if val == 'Ch'+ str(cell_chan): #-1
@@ -66,8 +90,8 @@ def load_traces(filename,cell_chan):
 
 
 #series and input resistance from vc file
-def access_resistance(vctpfile, channel):
-    sweep_count, sweep_len, channels, channel_dict, chan = get_analog_signals(filename)
+def get_access_resistance(vctpfile, channel):
+    chan = get_analog_signals(filename)
 
     key = 'ch'+str(channel)
     mean = np.mean(chan[key][0], axis=0)
