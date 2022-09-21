@@ -29,19 +29,25 @@ op_to_analyse = [i for i in all_OPs if all_OPs.count(i)==1]
 #%%
 #Decide which OPs need to be analyzed 
 
-for i in op_to_analyse:
-    OP = op_to_analyse[i]
-    y_or_n = input('Do you want to start analysis of ' + OP + '(y/n)?') 
-    if y_or_n == "n":
-        continue
 
-    tissue_source = input('Tissue source for ' + OP + '(Bielefeld, Mitte, Virchow): ')
-    patcher = input('Patcher ' + OP + '(Verji or Rosie): ')
-    age = input('Patient age ' + OP + '(if not known: A for adult, J for juvenile): ')
+tissue_source = "Bielefeld"
+patcher = "Verji"
+age = "A"
     
-    print('starting analysis for '+ OP)
 
-def get_intrinsic_properties(OP, tissue_source, patcher, age ):
+# for i in op_to_analyse:
+#     OP = op_to_analyse[i]
+#     y_or_n = input('Do you want to start analysis of ' + OP + '(y/n)?') 
+#     if y_or_n == "n":
+#         continue
+
+#     tissue_source = input('Tissue source for ' + OP + '(Bielefeld, Mitte, Virchow): ')
+#     patcher = input('Patcher ' + OP + '(Verji or Rosie): ')
+#     age = input('Patient age ' + OP + '(if not known: A for adult, J for juvenile): ')
+    
+#     print('starting analysis for '+ OP)
+
+def get_intrinsic_properties(OP, tissue_source, patcher, age):
     OP_folder = OP + '/'
     
     if patcher == 'Verji': 
@@ -71,7 +77,7 @@ def get_intrinsic_properties(OP, tissue_source, patcher, age ):
          print("skipping plotting")
 
     #QC indices
-    indices_dict
+    [print(key,':',value) for key, value in indices_dict.items()]
     if len(indices_dict['freq analyse']) != len(indices_dict['vc']): 
         print('Fix protocol names. Unequal number of VC and freq analyse protocols')
         index_vc_in = [int(item) for item in input('Vc files corresponding to characterization files for ' + OP +' (input with spaces in between)').split()]
@@ -87,33 +93,45 @@ def get_intrinsic_properties(OP, tissue_source, patcher, age ):
         pass
 
     #creating the dataframe
-    df = pd.DataFrame(columns=['tissue_source','OP', 'patcher', 'patient_age', 
-    'filename','slice', 'cell_ch', 'day', 'treatment', 'hrs_incubation','cell_ID', 
-    'repatch', 'hrs_after_op','AP_heigth','Rheobase', 'TH', 'Vm', 
-    'capacitance', 'max_depol', 'max_repol', 'max_spikes','membra_time_constant_tau', 
-    'resting_potential', 'Rs', 'Rin', 'spon_freq', 'spon_ampl', 'mini_freq', 'mini_amp'])	
+    df_OP = pd.DataFrame(columns=['cell_ID','Rs', 'Rin', 'resting_potential', 'max_spikes', 'Rheobase', 'AP_heigth', 'TH', 'max_depol', 
+    'max_repol', 'membra_time_constant_tau', 'capacitance'])
 
     for i in range(len(indices_dict['vc'])):
         vc = indices_dict['vc'][i]
         vm = indices_dict['vm'][i]
         char = indices_dict['freq analyse'][i]
-        slice = slice_names[vc]
+        slic = slice_names[vc]
 
         filename_vc = work_dir + filenames[vc]
         filename_vm = work_dir + filenames[vm]
         filename_char = work_dir + filenames[char]
 
-        #give inputs with space between entries
         active_channels = [int(item) for item in input('Channels used in ' + filenames[vc] +'(input with spaces in between)').split()]
-
+        cell_IDs = []
         for ch in active_channels:
-            in_props_plot.plot_vc_holding(filename_vc, ch)
-            Rs, Rin = hcf.access_resistance(filename_vc, ch) 
-            cellID = filenames[vc][:-7]+slice+'c'+str(ch)
-            
-            resting_mem = hcf.restingmembrane(filename_vm, ch)
-            Vm, max_spikes, Rheobase, APheight, max_depol, max_repol, TH, capacitance, tau  = hcf.all_chracterization_params(filename_char, ch, "full")
-            cellID = filenames[char][:-7] + slice + 'c' +str(ch)
+            cellID = filenames[char][:-7] + slic + 'c' + str(ch)
+            cell_IDs.append(cellID)
+        Rs, Rin = hcf.get_access_resistance(filename_vc, active_channels) 
+        RMPs = hcf.get_RMP(filename_vm, active_channels)
+        params1_df = pd.DataFrame({'cell_ID': cell_IDs, 'Rs' : Rs, 'Rin': Rin, 'resting_potential': RMPs })
+
+        charact_params  = hcf.all_chracterization_params(filename_char, ch, "full")
+        df_char = pd.DataFrame.from_dict(charact_params)
+
+        df_to_add = pd.concat([params1_df, df_char], axis = 1)
+        df_OP = pd.concat([df.loc[:], data_to_add]).reset_index(drop=True)
+
+        
+
+        
+    tissue = tissue_source * len(indices_dict['vc'])
+    OPs = OP * len(indices_dict['vc'])
+    researcher = patcher * len(indices_dict['vc'])
+    patient_age = repeat(age, len(indices_dict['vc']))
+    slice_names
+        #in_props_plot.plot_vc_holding(filename_vc, ch)
+       
+
             data_to_add = pd.DataFrame({'tissue_source': tissue_source, 'OP':OP[:-1], 'patcher':patcher, 'patient_age':age, 
             'filename':filenames[char],'slice':slice, 'cell_ch':ch, 'cell_ID':cellID,
             'Rs':Rs, 'Rin':Rin,'resting_potential': resting_mem,'AP_heigth':APheight,'Rheobase':Rheobase, 'TH':TH, 'Vm' :Vm, 

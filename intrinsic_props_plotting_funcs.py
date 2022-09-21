@@ -33,8 +33,8 @@ def plot_middle_sweep (filename):
         cell_chan = i
 
         middle_swp_num = int(sweep_count/2)
-        #ch_name = channel_dict
-        signal, ch_name, sampl_rate, units, times = hcf.get_abf_info(filename, cell_chan, middle_swp_num, sweep_len)
+        ch_name = list(channel_dict.values())[i - 1]
+        signal, sampl_rate, units, times = hcf.get_abf_info(filename, cell_chan, middle_swp_num, sweep_len)
         ax.plot(times,signal, lw=0.5)
         ax.set_xlabel('sec')
         ax.set_ylabel(str(units)[-2:])
@@ -51,7 +51,7 @@ def plot_vc_holding (filename, cell_chan):
     end_filename = filename.rfind('/') + 1
 
     vcdata = hcf.get_analog_signals(filename)
-    dir_vc_plots = sor.make_dir_if_not_existing(filename[:end_filename]+'plots/', "vc_plots")
+    dir_vc_plots = sort.make_dir_if_not_existing(filename[:end_filename]+'plots/', "vc_plots")
 
     plt.style.use(['fast'])   
     
@@ -63,10 +63,13 @@ def plot_vc_holding (filename, cell_chan):
         # avgBL=np.median(trace[2500:3000].view(np.recarray))
         # minP=np.min(trace[3000:3500].view(np.recarray))
         # ss=np.median(trace[3700:4000].view(np.recarray))
-        HC = np.median(trace[4000:].view(np.recarray)) 
-        avgBL = np.median(trace[10:990].view(np.recarray))
-        minP = np.min(trace[990:1300].view(np.recarray))
-        ss = np.median(trace[1400:1900].view(np.recarray))
+      
+        trace = data_dict1['Ch7'][0].flatten('F') #F - flatten in column-major style
+        HC1 = np.median(trace[4000:]) #crate a data type we can work with, 
+        avgBL1 = np.median(trace[10:990])
+        minP1 = np.min(trace[990:1300])
+        ss1 = np.median(trace[1400:1900])
+
         RaI = avgBL-minP
         RiI = avgBL-ss
         if RaI==0 or RiI == 0: 
