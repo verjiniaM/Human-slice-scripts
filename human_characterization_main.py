@@ -6,6 +6,8 @@ import intrinsic_props_plotting_funcs as in_props_plot
 import pandas as pd
 import glob
 import sorting_functions as sort
+import itertools as it
+import funcs_for_results_tables as get_results
 
 #loading the updated experiments_overview and the old summary_data_table
 human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'
@@ -33,6 +35,7 @@ op_to_analyse = [i for i in all_OPs if all_OPs.count(i)==1]
 tissue_source = "Bielefeld"
 patcher = "Verji"
 age = "A"
+OP = op_to_analyse[-1]
     
 
 # for i in op_to_analyse:
@@ -44,106 +47,10 @@ age = "A"
 #     tissue_source = input('Tissue source for ' + OP + '(Bielefeld, Mitte, Virchow): ')
 #     patcher = input('Patcher ' + OP + '(Verji or Rosie): ')
 #     age = input('Patient age ' + OP + '(if not known: A for adult, J for juvenile): ')
+#     inj = "full"
     
 #     print('starting analysis for '+ OP)
-
-def get_intrinsic_properties(OP, tissue_source, patcher, age):
-    OP_folder = OP + '/'
-    
-    if patcher == 'Verji': 
-        work_dir = human_dir + 'data_verji/'+ OP_folder
-    else:
-        work_dir = human_dir + 'data_rosie/'+ OP_folder 
-    
-    file_list = sort.get_sorted_file_list(work_dir)
-    df_rec= sort.get_lab_book(work_dir)
-    filenames = sort.get_abf_files(file_list)
-    slice_indx, def_slice_names, indices_dict = sort.sort_protocol_names (file_list, df_rec)
-
-    #adjusting the slice names 
-    slice_names = sort.fix_slice_names (def_slice_names, slice_indx)
-
-    #creating a dir to save plots and data_tables (if not existing)
-    dir_plots = sort.make_dir_if_not_existing (work_dir, 'plots')
-    sort.make_dir_if_not_existing (work_dir, 'data_tables')
-
-    #check if the traces dir is empty and only then plot the mimiddle sweep for each filename
-    traces_folder =  os.path.join(dir_plots, "traces/")
-    if os.path.isdir(traces_folder) == 0 :
-        for rec in range(len(filenames)):
-            filename = work_dir + filenames[rec]
-            in_props_plot.plot_middle_sweep(filename)
-    else:
-         print("skipping plotting")
-
-    #QC indices
-    [print(key,':',value) for key, value in indices_dict.items()]
-    if len(indices_dict['freq analyse']) != len(indices_dict['vc']): 
-        print('Fix protocol names. Unequal number of VC and freq analyse protocols')
-        index_vc_in = [int(item) for item in input('Vc files corresponding to characterization files for ' + OP +' (input with spaces in between)').split()]
-        #saved the original indices
-        indices_dict['vc_orig'] = indices_dict['vc']
-        indices_dict['vc'] = index_vc_in
-        # index_char = [int(item) for item in input('corresponding characterization files for ' + OP +' (input with spaces in between)').split()]
-        # indices_dict['freq analyse'] = index_char
- 
-    proceed_y_n = input("do all traces correspond to specified filenames in lab book for " + OP +  "(y/n)?")
-    if proceed_y_n == 'n': 
-        print('correct the lab book entries. Continuing to next OP')
-        pass
-
-    #creating the dataframe
-    df_OP = pd.DataFrame(columns=['cell_ID','Rs', 'Rin', 'resting_potential', 'max_spikes', 'Rheobase', 'AP_heigth', 'TH', 'max_depol', 
-    'max_repol', 'membra_time_constant_tau', 'capacitance'])
-
-    for i in range(len(indices_dict['vc'])):
-        vc = indices_dict['vc'][i]
-        vm = indices_dict['vm'][i]
-        char = indices_dict['freq analyse'][i]
-        slic = slice_names[vc]
-
-        filename_vc = work_dir + filenames[vc]
-        filename_vm = work_dir + filenames[vm]
-        filename_char = work_dir + filenames[char]
-
-        active_channels = [int(item) for item in input('Channels used in ' + filenames[vc] +'(input with spaces in between)').split()]
-        cell_IDs = []
-        for ch in active_channels:
-            cellID = filenames[char][:-7] + slic + 'c' + str(ch)
-            cell_IDs.append(cellID)
-        Rs, Rin = hcf.get_access_resistance(filename_vc, active_channels) 
-        RMPs = hcf.get_RMP(filename_vm, active_channels)
-        params1_df = pd.DataFrame({'cell_ID': cell_IDs, 'Rs' : Rs, 'Rin': Rin, 'resting_potential': RMPs })
-
-        charact_params  = hcf.all_chracterization_params(filename_char, ch, "full")
-        df_char = pd.DataFrame.from_dict(charact_params)
-
-        df_to_add = pd.concat([params1_df, df_char], axis = 1)
-        df_OP = pd.concat([df.loc[:], data_to_add]).reset_index(drop=True)
-
-        
-
-        
-    tissue = tissue_source * len(indices_dict['vc'])
-    OPs = OP * len(indices_dict['vc'])
-    researcher = patcher * len(indices_dict['vc'])
-    patient_age = repeat(age, len(indices_dict['vc']))
-    slice_names
-        #in_props_plot.plot_vc_holding(filename_vc, ch)
-       
-
-            data_to_add = pd.DataFrame({'tissue_source': tissue_source, 'OP':OP[:-1], 'patcher':patcher, 'patient_age':age, 
-            'filename':filenames[char],'slice':slice, 'cell_ch':ch, 'cell_ID':cellID,
-            'Rs':Rs, 'Rin':Rin,'resting_potential': resting_mem,'AP_heigth':APheight,'Rheobase':Rheobase, 'TH':TH, 'Vm' :Vm, 
-            'capacitance':capacitance, 'max_depol':max_depol, 'max_repol':max_repol, 
-            'max_spikes':max_spikes, 'membra_time_constant_tau':tau}, index=[0])
-            df = pd.concat([df.loc[:], data_to_add]).reset_index(drop=True)
-
-
-    df.to_excel(work_dir + 'data_tables/' + OP[:-1] + '_Intrinsic_and_synaptic_properties.xlsx') 
-    df.to_csv(work_dir + 'data_tables/' + OP[:-1] + '_Intrinsic_and_synaptic_properties.csv')
-
-    print("Analysis for " + OP + 'is complete. Double check the excel table and exclude recordings if necessary.')
+#     get_results.get_intrinsic_properties_df(OP, tissue_source, patcher, age, inj)
 
     for file in range(len(file_list)):
         #pclamp files

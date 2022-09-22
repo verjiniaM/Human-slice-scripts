@@ -1,21 +1,9 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Mon Nov  1 14:33:18 2021
 
-@author: rosie
-"""
 #%%
-from cmath import sin
-from tokenize import single_quoted
 import neo
 import numpy as np
-import matplotlib.pyplot as plt
 from detect_peaks import detect_peaks
-#import grid_strategy as grds
 import math
-from matplotlib import gridspec
-import os
 import sorting_functions as sort
 import intrinsic_props_plotting_funcs as in_props_plot
 
@@ -30,6 +18,14 @@ def read_abf(filename):
     r = neo.io.AxonIO(filename=filename)
     block = r.read(signal_group_mode = 'split-all')[0] 
     return block
+
+def get_cell_IDs (filename_char, slic, active_channels):
+    end_fn = filename_char.rfind('/') + 1
+    cell_IDs = []
+    for ch in active_channels:
+        cellID = filename_char[end_fn:-7] + slic + 'c' + str(ch)
+        cell_IDs.append(cellID)
+    return cell_IDs
 
 def read_inj(inj):
     if inj == "full":
@@ -72,11 +68,11 @@ def get_abf_info (filename, cell_chan, sweep_count, sweep_len):
     '''
     block = read_abf(filename)
     middle_swp_num = int(sweep_count/2)
-    signal = block.segments[middle_swp_num].analogsignals[cell_chan-1].view(np.recarray).reshape(sweep_len).tolist()
+    #signal = block.segments[middle_swp_num].analogsignals[cell_chan-1].view(np.recarray).reshape(sweep_len).tolist()
     sampl_rate = block.segments[middle_swp_num].analogsignals[cell_chan-1].sampling_rate
     units = block.segments[middle_swp_num].analogsignals[cell_chan-1].units
     times = np.linspace(0,sweep_len,sweep_len)/sampl_rate
-    return signal, sampl_rate, units, times
+    return sampl_rate, units, times
 
 #series and input resistance from vc file
 def get_access_resistance(vctpfile, channels):
@@ -104,6 +100,16 @@ def get_access_resistance(vctpfile, channels):
         ResRi_all.append(ResRi)
     return ResRa_all, ResRi_all
 
+# Vm sweep before holding current is added to hold cells at -60mV
+def get_RMP (vmfile, channels):
+    vm_dict = load_traces(vmfile)
+    resting_mems = []
+    for ch in channels:
+        key = 'Ch' + str(ch)
+        ch1 = vm_dict[key][0]
+        resting_mems.append(np.median(ch1[:,0]))
+    return resting_mems
+
 def get_hyperpolar_param(charact_data, channels, inj, onset = 2624, offset = 22624, mc = np.ndarray([5,3])):
     '''
     returns 4 lists with length channels
@@ -112,6 +118,7 @@ def get_hyperpolar_param(charact_data, channels, inj, onset = 2624, offset = 226
     for ch in channels:
         key = 'Ch' + str(ch)
         ch1 = charact_data[key][0]
+        V65s = []
         for i in range(0,5):
             I = inj[i]*1e-12 #check step size
             bl = np.median(ch1[0:onset-20,i])
@@ -120,8 +127,9 @@ def get_hyperpolar_param(charact_data, channels, inj, onset = 2624, offset = 226
             Vdiff = bl-ss #voltage deflection size
             v65 = Vdiff * 0.63
             V65 = bl - v65
+            V65s.append(V65)
             if list(filter(lambda ii: ii < V65, swp)) == []:
-                print("No hyperpolarization fig for " + filename[end_fn:-4] + key)
+                continue
             else:
                 res = list(filter(lambda ii: ii < V65, swp))[0] #takes the first value in swp < V65
                 tau65 = swp.index(res) #index of res
@@ -133,7 +141,7 @@ def get_hyperpolar_param(charact_data, channels, inj, onset = 2624, offset = 226
         mc[:,2] = mc[:,2]/1e-12  
         tau = mc[1,0]
         capacitance = mc[1,2]
-        ch_params = [tau, capacitance, mc, V65]
+        ch_params = [tau, capacitance, mc, V65s]
 
         for i, param in enumerate(params):
             param.append(ch_params[i])
@@ -209,9 +217,9 @@ def get_ap_param (charact_data, channels, inj, max_spikes):
         peak_loc = np.where(ch1[:,first_spiking_sweep] == peaks[first_spiking_sweep, ap ,2])[0][0]
         AP = ch1[:, first_spiking_sweep][peak_loc - 200:peak_loc+200]
         d1_AP = np.diff(AP)*20
-        THloc_all = np.where(d1_AP[:195] > 10)
-        if THloc_all[0].size != 0:
-            THloc = THloc_all[0][0]
+        THlocs = np.where(d1_AP[:195] > 10)
+        if THlocs[0].size != 0:
+            THloc = THlocs[0][0]
             TH = AP[THloc-1]
             APheight = peaks[first_spiking_sweep, ap ,2]-TH #amplitude of AP, the 2nd AP
             max_depol = np.max(d1_AP[:200]) #how quickly is the voltage change occuring
@@ -235,10 +243,6 @@ def get_ap_param (charact_data, channels, inj, max_spikes):
 
 
 def all_chracterization_params (filename, channels, inj, onset = 2624, offset = 22624):
-    #creating folder to save the plots
-    end_fn = filename.rfind('/') + 1
-    dir_plots = sort.make_dir_if_not_existing(filename[:end_fn], 'plots')
-    
     charact_dict = load_traces(filename)
     inj = read_inj(inj)
 
@@ -249,32 +253,53 @@ def all_chracterization_params (filename, channels, inj, onset = 2624, offset = 
     keys = ['max_spikes', 'Rheobase', 'AP_heigth', 'TH', 'max_depol', 'max_repol', 'membra_time_constant_tau', 'capacitance']
     vals = [max_spikes_all, Rheobase_all, APheight_all, TH_all, max_depol_all, max_repol_all, tau_all, capacitance_all]
     params_dict = {}
-    for i, param in enumerate(params):
+    for i, param in enumerate(vals):
         key = keys[i]
         params_dict[key] = param
     
     return params_dict
 
-    #plots all of the sweeps with APs, each of the detected spikes are marked with a cross
-    in_props_plot.plot_hyperpolar(filename, cell_chan, ch1, dir_plots, V65, mc)
-    in_props_plot.plot_spikes(filename, inj, ch1, dir_plots, first_spike, peaks)
-    in_props_plot.plot_iv_curve(filename, cell_chan, inj, dir_plots, first_spike, spike_counts)
-    in_props_plot.plot_ap_props(filename, cell_chan, dir_plots, AP, THloc, TH, APheight, first_spiking_sweep)
-
-    return max_spikes, Rheobase, APheight, max_depol, max_repol, TH, capacitance, tau
-        
-
-# alternative to above for calculating Vm - now often a vm sweep is taken
-# before holding current is added to hold cells at -60mV
-# sweep where there is no holding
-def get_RMP (vmfile, channels):
-    vm_dict = load_traces(vmfile)
-    resting_mems = []
-    for ch in channels:
+def get_ap_param_for_plotting (charact_data, channels, inj, max_spikes):
+    '''
+    '''
+    params = [first_spike_all, peaks_all, spike_counts_all, first_spiking_sweep_all] = [[], [], [], []]
+    for i, ch in enumerate(channels):
         key = 'Ch' + str(ch)
-        ch1 = vm_dict[key][0]
-        resting_mems.append(np.median(ch1[:,0]))
-    return resting_mems
+        ch1 = charact_data[key][0]
+        
+        if max_spikes[i] == 0:
+            peaks = []
+            first_spike = float('nan')
+            ch_params = [first_spike, peaks]
+            for i, param in enumerate(params):
+                param.append(ch_params[i])
+            continue
+        peaks = np.empty([len(inj), max_spikes[i], 3])
+        peaks.fill(np.nan)
+        for i, j in enumerate(range(0, len(ch1[0]))): #for all swps
+            pks = detect_peaks(ch1[:,j], mph=0,mpd=50) 
+            peaks[i,0:len(pks), 0] = inj[i] #injected current
+            peaks[i,0:len(pks), 1] = pks #
+            peaks[i,0:len(pks), 2] = ch1[pks,j] #sweep number
+        # number of spikes in each step
+        spike_counts = np.ndarray([len(inj),2])
+        for i, j in enumerate(inj):
+            spike_counts[i,0] = j
+            spike_counts[i,1] = (np.sum(np.isfinite(peaks[i,:,:])))/3
+        
+        spikes = np.where(np.isfinite(peaks)) 
+        first_spike = spikes[0][0]
+
+        if np.max(spike_counts[:,1]) == 1:
+            print('MAX number of AP = 1 for ' + filename[end_fn:-4] + key)
+            first_spiking_sweep = np.where(spike_counts[:,1]==1)[0][0]
+        else:
+            first_spiking_sweep=np.where(spike_counts[:,1]>1)[0][0] 
+
+        ch_params = [first_spike, peaks, spike_counts, first_spiking_sweep]
+        for i, param in enumerate(params):
+            param.append(ch_params[i])
+    return first_spike_all, peaks_all, spike_counts_all, first_spiking_sweep_all
 
 
 #quality control step, deciding whether spontaneous or mini recording is going to be analyzed
@@ -326,11 +351,3 @@ def rec_stability (filename, cell_chan, max_range):
 
     return min_vals, max_vals, good_swps, bad_swps, dyn_range
 
-
-# def main():
-#     filename = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/data_verji/OP220426_trial/22427042.abf'
-#     cell_chan = 3
-#     inj = 'full'
-#     APproperties(filename, cell_chan, inj)
-
-# main()

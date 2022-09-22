@@ -9,10 +9,6 @@ import sorting_functions as sort
 
 
 #%%
-# =============================================================================
-# some fast plotting functions
-# =============================================================================
-
 # plots the middle sweep for each channel
 # check the traces to see which channels were active or if the protocol names are enetered correctly
 def plot_middle_sweep (filename): 
@@ -20,26 +16,30 @@ def plot_middle_sweep (filename):
     dir_plots = sort.make_dir_if_not_existing(filename[:end_filename], 'plots')
     dir_traces = sort.make_dir_if_not_existing(dir_plots, 'traces')
 
-    sweep_count, sweep_len, channels, channel_dict = hcf.get_ch_dict(filename)
-      
-    plt.style.use(['fast'])
+    data_dict = hcf.load_traces(filename)
+    all_chans = list(data_dict.keys())
+    any_chan = int((all_chans[0])[2])
+    sweep_len = np.shape(data_dict[all_chans[0]][0])[0]
+    sweep_count = np.shape(data_dict[all_chans[0]][0])[1]
+    sampl_rate, units, times = hcf.get_abf_info(filename, any_chan, sweep_count, sweep_len)
+    middle_swp_num = int(sweep_count/2)
 
-    x = math.ceil(np.sqrt(channels))
+    plt.style.use(['fast'])
+    x = math.ceil(np.sqrt(len(all_chans)))
     fig = plt.figure(figsize=(6,6))
     plt.subplots_adjust(hspace=0.5)
 
-    for i in range(1, channels+1):
-        ax = plt.subplot(x,x, i)
-        cell_chan = i
+    for i in range(1, len(all_chans)+1):
+        key = all_chans[i-1]
+        ch_data = data_dict[key][0]
 
-        middle_swp_num = int(sweep_count/2)
-        ch_name = list(channel_dict.values())[i - 1]
-        signal, sampl_rate, units, times = hcf.get_abf_info(filename, cell_chan, middle_swp_num, sweep_len)
+        ax = plt.subplot(x, x, i)
+
+        signal = ch_data[:,middle_swp_num]
         ax.plot(times,signal, lw=0.5)
         ax.set_xlabel('sec')
         ax.set_ylabel(str(units)[-2:])
-        ax.title.set_text(ch_name)
-        del signal
+        ax.title.set_text(key)
 
     fig.tight_layout() 
     fig.patch.set_facecolor('white')
@@ -47,162 +47,219 @@ def plot_middle_sweep (filename):
     plt.close(fig)
     return 'Trace plots saved in' + dir_traces
 
-def plot_vc_holding (filename, cell_chan):
+def plot_vc_holding (filename, channels):
+    plt.style.use(['fast']) 
     end_filename = filename.rfind('/') + 1
+    dir_vc_plots = sort.make_dir_if_not_existing(filename[:end_filename] + 'plots/', "vc_plots")
 
-    vcdata = hcf.get_analog_signals(filename)
-    dir_vc_plots = sort.make_dir_if_not_existing(filename[:end_filename]+'plots/', "vc_plots")
+    vc_data = hcf.load_traces(filename)
+    all_chans = list(data_dict.keys())
+    sweep_count = np.shape(vc_data[all_chans[0]][0])[1]
+    Res = np.ndarray([sweep_count,3])  
 
-    plt.style.use(['fast'])   
-    
-    channel = 'Ch'+ str(cell_chan)
-    swps=len(vcdata[channel][0])
-    Res= np.ndarray([swps,3])
-    for n, trace in enumerate(vcdata[channel][0]):
-        # HC=np.median(trace[5000:].view(np.recarray)) 
-        # avgBL=np.median(trace[2500:3000].view(np.recarray))
-        # minP=np.min(trace[3000:3500].view(np.recarray))
-        # ss=np.median(trace[3700:4000].view(np.recarray))
-      
-        trace = data_dict1['Ch7'][0].flatten('F') #F - flatten in column-major style
-        HC1 = np.median(trace[4000:]) #crate a data type we can work with, 
-        avgBL1 = np.median(trace[10:990])
-        minP1 = np.min(trace[990:1300])
-        ss1 = np.median(trace[1400:1900])
+    for ch in channels:
+        key = 'Ch' + str(ch)
+        ch_data = vc_data[key][0]
 
-        RaI = avgBL-minP
-        RiI = avgBL-ss
-        if RaI==0 or RiI == 0: 
-            THholding=Res[0,0]*0.1
-            Res[n,0]=HC
-            Res[n,1]= math.nan
-            Res[n,2]= math.nan
-            fig,ax=plt.subplots(1,1,sharex=True)
-            ax.scatter(range(swps),Res[:,0], color='b')
-            ax.set_title('Holding current')
-            ax.fill_between(range(swps),Res[0,0]-THholding, Res[0,0]+THholding, color='b', alpha=0.1)
-            ax.set_xlabel('Sweep num')
-            fig.suptitle(channel, fontsize=15)
-            fig.tight_layout()
+        for n, trace in enumerate(ch_data.T):
+            HC = np.median(trace[4000:]) #holding current
+            avgBL = np.median(trace[10:990])
+            minP = np.min(trace[990:1300])
+            ss = np.median(trace[1400:1900])
+            RaI = avgBL - minP
+            RiI = avgBL - ss
 
-            plt.savefig(dir_vc_plots + '/' + filename[end_filename:-4]+'_'+channel + '_VC_plot.png')
-            plt.close(fig)
-        else:
-            ResRa = (0.004/(RaI*1e-12))/1000000
-            ResRi = (0.004/(RiI*1e-12))/1000000
-            Res[n,0]=HC
-            Res[n,1]=ResRa
-            Res[n,2]=ResRi
-    
-            THholding=Res[0,0]*0.1
-            THRs=Res[0,1]*0.1 #10 %
-            THRi=Res[0,2]*0.1
-    
-            fig,ax=plt.subplots(3,1,sharex=True)
-            ax[0].scatter(range(swps),Res[:,0], color='b')
-            ax[1].scatter(range(swps),Res[:,1], color='r')
-            ax[2].scatter(range(swps),Res[:,2], color='g')
-            ax[0].set_title('Holding current')
-            ax[1].set_title('Series resistance')
-            ax[2].set_title('Input resistance')
-            ax[0].fill_between(range(swps),Res[0,0]-THholding, Res[0,0]+THholding, color='b', alpha=0.1)
-            ax[1].fill_between(range(swps),Res[0,1]-THRs, Res[0,1]+THRs, color='r', alpha=0.1)
-            ax[2].fill_between(range(swps),Res[0,2]-THRi, Res[0,2]+THRi, color='g', alpha=0.1)
-            ax[2].set_xlabel('Sweep num')
+            if RaI == 0 or RiI == 0: 
+                THholding = Res[0,0]*0.1
+                Res[n,0] = HC
+                Res[n,1]= math.nan
+                Res[n,2]= math.nan
+                fig,ax = plt.subplots(1,1,sharex=True)
+                ax.scatter(range(sweep_count),Res[:,0], color='b')
+                ax.set_title('Holding current')
+                ax.fill_between(range(sweep_count),Res[0,0]-THholding, Res[0,0]+THholding, color='b', alpha=0.1)
+                ax.set_xlabel('Sweep num')
+            else:
+                ResRa = (0.004/(RaI*1e-12))/1000000
+                ResRi = (0.004/(RiI*1e-12))/1000000
+                Res[n,0] = HC
+                Res[n,1] = ResRa
+                Res[n,2] = ResRi
+        
+                THholding = Res[0,0] * 0.1
+                THRs = Res[0,1] * 0.1 #10 %
+                THRi = Res[0,2] * 0.1
+        
+                fig,ax = plt.subplots(3,1,sharex=True)
+                ax[0].scatter(range(sweep_count), Res[:,0], color='b', label = 'Holding current (median)')
+                #ax[0].set_title('Holding current')
+                ax[0].fill_between(range(sweep_count), Res[0,0] - THholding, Res[0,0] + THholding, color='b', alpha=0.1, label = '20% window')
+                ax[0].set_ylim([np.min(Res[0,0] - 1.5 * THholding), np.max(Res[0,0] + 1.5 * THholding)])
+                ax[0].set_yticks([np.min(Res[0,0] - 1.5 * THholding), Res[0,0], np.max(Res[0,0] + 1.5 * THholding)])
+                #ax[0].legend(loc = 'upper right')
 
+                ax[1].scatter(range(sweep_count), Res[:,1], color='r', label = 'Series resistance (median)')
+                #ax[1].set_title('Series resistance')
+                ax[1].fill_between(range(sweep_count), Res[0,1] - THRs, Res[0,1] + THRs, color='r', alpha=0.1, label = '20% window')
+                ax[1].set_ylim([np.min(Res[0,1] - 1.5 * THRs), np.max(Res[0,1] + 1.5 * THRs)])
+                ax[1].set_yticks([np.min(Res[0,1] - 1.3 * THRs), Res[0,1], np.max(Res[0,1] + 1.3 * THRs)])
+                #ax[1].legend(loc = 'upper right')
+
+                ax[2].scatter(range(sweep_count), Res[:,2], color='g', label = 'Input resistance (median)')
+                #ax[2].set_title('Input resistance')
+                ax[2].fill_between(range(sweep_count), Res[0,2] - THRi, Res[0,2] + THRi, color='g', alpha=0.1, label = '20% window')
+                ax[2].set_ylim([np.min(Res[0,2] - 1.5 * THRi), np.max(Res[0,2] + 1.5 * THRi)])
+                ax[2].set_yticks([np.min(Res[0,2] - 1.3 * THRi), Res[0,2], np.max(Res[0,2] + 1.3 * THRi)])
+                ax[2].set_xlabel('Sweep num')
+                #ax[2].legend(loc = 'upper right')
+
+            plt.figlegend(loc = 'center right', bbox_to_anchor=(1.4, 0.5))
             fig.patch.set_facecolor('white') 
-            fig.suptitle(channel, fontsize=15)
+            fig.suptitle(key, fontsize = 15)
             fig.tight_layout()
 
-            plt.savefig(dir_vc_plots + '/' + filename[end_filename:-4]+'_'+channel + '_VC_plot.png')
+            plt.savefig(dir_vc_plots + '/' + filename[end_filename:-4] + '_'+ key + '_VC_plot.png')
             plt.close(fig)
 
 
-def plot_hyperpolar (filename, cell_chan, ch1, dir_plots, V65, mc, onset = 2624, offset = 22624, 
+def plot_hyperpolar (filename, channels, inj, onset = 2624, offset = 22624, 
 clrs = ["b", "g", "r", "c", "m", "y", "#FF4500", "#800080"]):
     end_fn = filename.rfind('/') + 1
-    dir_onset = sort.make_dir_if_not_existing(dir_plots, 'Onset')
-    fig = plt.figure()
-    for i in range(0,5):
-        swp = list(ch1[:,i])
-        if list(filter(lambda ii: ii < V65, swp)) == []:
-            print("No hyperpolarization fig for " + filename[end_fn:-4] + 'ch: ' + str(cell_chan))
-        else:
-            plt.plot(ch1[:,i], c = clrs[i])
-            plt.scatter(onset + tc, V65, c=clrs[i])
-            plt.annotate('V65  ', (onset + tc, V65), horizontalalignment='right')
-            plt.scatter(onset, bl, c='r')
-    fig.patch.set_facecolor('white')    
-    plt.annotate('  Baseline', (onset, bl))
-    plt.title('Ch ' + str(cell_chan))
-    plt.savefig(dir_onset + '/Char_onset_plot_' + filename[end_fn:-4]+'_'+str(cell_chan) + '.png')
-    plt.close()
+    dir_onset = sort.make_dir_if_not_existing(filename[:end_filename] + 'plots/', 'Onset')
+
+    charact_data = hcf.load_traces(filename)
+    inj = hcf.read_inj(inj)
+    tau_all, capacitance_all, mcs, V65s = hcf.get_hyperpolar_param(charact_data, channels, inj)
+
+    for n, ch in enumerate(channels):
+        key = 'Ch' + str(ch)
+        ch_data = charact_data[key][0]
+
+        fig = plt.figure()
+        for i in range(0,5):
+            swp = list(ch_data[:,i])
+            bl = np.median(ch_data[0:onset-20,i])
+            if list(filter(lambda ii: ii < V65s[n][i], swp)) == []:
+                print("No hyperpolarization fig for " + filename[end_fn:-4] + key)
+            else:
+                res = list(filter(lambda ii: ii < V65s[n][i], swp))[0] #takes the first value in swp < V65
+                tau65 = swp.index(res) #index of res    
+                tc = tau65 - onset
+                plt.plot(ch_data[:,i], c = clrs[i])
+                plt.scatter(onset + tc, V65s[n][i], c=clrs[i])
+                plt.annotate('V65  ', (onset + tc, V65s[n][i]), horizontalalignment='right')
+                plt.scatter(onset, bl, c='r')
+                plt.ylabel('mV')
+        plt.annotate('  Baseline', (onset, bl))
+        fig.patch.set_facecolor('white')    
+        plt.title(key)
+        plt.savefig(dir_onset + '/Char_onset_plot_' + filename[end_fn:-4]+'_'+ key + '.png')
+        plt.close()
+        
+def plot_spikes (filename, channels, inj):
+    end_fn = filename.rfind('/') + 1
+    dir_spikes = sort.make_dir_if_not_existing(filename[:end_filename] + 'plots/',  'Max_Spikes')
+
+    charact_data = hcf.load_traces(filename)
+    inj = hcf.read_inj(inj)
+    max_spikes = hcf.get_max_spikes(charact_data, channels)
+    first_spikes, peaks_all, spike_counts_all, fs = hcf.get_ap_param_for_plotting(charact_data, channels, inj, max_spikes)
+
+    for n, ch in enumerate(channels):
+        key = 'Ch' + str(ch)
+        ch_data = charact_data[key][0]
+
+        win = len(inj) - first_spikes[n]
+        x = math.ceil(np.sqrt(win))
+        fig, ax = plt.subplots(x,x,sharex=True, sharey=False,figsize=(22,9))
+        for i in range(win):
+            ax = fig.add_subplot(x,x, i+1)
+            if first_spikes[n] + i-1 < np.shape(ch_data)[1]: #plotting for last sweep with no spikes and all following sweeps
+                ax.plot(ch_data[:,first_spikes[n] + i-1], lw=0.5, c='grey')
+                ax.set_xticks([])
+                ax.set_yticks([])
+                ax.spines['top'].set_visible(False)
+                ax.spines['right'].set_visible(False)
+                ax.spines['bottom'].set_visible(False)
+                ax.spines['left'].set_visible(False)
+                ax.scatter(peaks_all[0][first_spikes[n] +i-1, :, 1], 
+                        peaks_all[0][first_spikes[n] + i-1, :, 2], marker='+', c='r')
+                ax.annotate('+'+str(inj[first_spikes[n]+ i - 1])+' pA', (25500,0), (25500,0), color='b', rotation=90)
+        
+        fig.patch.set_facecolor('white')
+        fig.suptitle(key, fontsize=15)
+        fig.tight_layout()
+        plt.savefig(dir_spikes + '/char_spikes_plot_' + filename[end_fn:-4]+'_'+ key + '.png')
+        plt.close(fig)
+
+def plot_iv_curve (filename, channels, inj):
+    end_fn = filename.rfind('/') + 1
+    dir_iv_curve = sort.make_dir_if_not_existing(filename[:end_filename] + 'plots/',  'IV_curve')
      
-def plot_spikes (filename, inj, ch1, dir_plots, first_spike, peaks):
-    dir_spikes = sort.make_dir_if_not_existing(dir_plots, 'Max_Spikes')
-    win = len(inj) - first_spike
-    x = math.ceil(np.sqrt(win))
-    fig, ax = plt.subplots(x,x,sharex=True, sharey=False,figsize=(6,6))
-    for i in range(win):
-        ax = fig.add_subplot(x,x, i+1)
-        if first_spike+i-1 < np.shape(ch1)[1]:
-            ax.plot(ch1[:,first_spike+i-1], lw=0.5, c='grey')
-            ax.set_xticks([])
-            ax.set_yticks([])
-            ax.spines['top'].set_visible(False)
-            ax.spines['right'].set_visible(False)
-            ax.spines['bottom'].set_visible(False)
-            ax.spines['left'].set_visible(False)
-            ax.scatter(peaks[first_spike+i-1, :, 1], 
-                    peaks[first_spike+i-1, :, 2], marker='+', c='r')
-            ax.annotate('+'+str(inj[first_spike+i-1])+' pA', (25500,0), (25500,0), color='b', rotation=90)
-    
-    fig.patch.set_facecolor('white')
-    fig.suptitle('Ch ' +str(cell_chan), fontsize=15)
-    fig.tight_layout()
-    plt.savefig(dir_spikes + '/char_spikes_plot_' + filename[end_fn:-4]+'_'+str(cell_chan) + '.png')
-    plt.close(fig)
+    charact_data = hcf.load_traces(filename)
+    inj = hcf.read_inj(inj)
+    max_spikes = hcf.get_max_spikes(charact_data, channels)
+    first_spikes, peaks_all, spike_counts_all, fs = hcf.get_ap_param_for_plotting(charact_data, channels, inj, max_spikes)
 
-def plot_iv_curve (filename, cell_chan, inj, dir_plots, first_spike, spike_counts):
-    dir_iv_curve = sort.make_dir_if_not_existing(dir_plots, "IV_curve")
-    IOfit = np.polyfit(spike_counts[first_spike:,0], spike_counts[first_spike:,1],1)
-    IO_slope = IOfit[0]
-    fig = plt.figure()
-    plt.plot(spike_counts[:,0], spike_counts[:,1])
-    plt.gca().set_xlabel('Injection current, pA')
-    plt.gca().set_ylabel('Number of spikes')
-    Rheobase = inj[first_spike]   
-    
-    fig.suptitle('Ch ' + str(cell_chan), fontsize=15)
-    fig.patch.set_facecolor('white')
-    plt.savefig(dir_iv_curve+ '/char_IV_curve_' + filename[end_fn:-4]+'_'+str(cell_chan) + '.png')
-    plt.close()
+    for n, ch in enumerate(channels):
+        key = 'Ch' + str(ch)
+        ch_data = charact_data[key][0]
 
-def plot_ap_props(filename, cell_chan, dir_plots, AP, THloc, TH, APheight, first_spiking_sweep):
-    dir_plots = sort.make_dir_if_not_existing(dir_plots, "AP_props")
+        IOfit = np.polyfit(spike_counts_all[n][first_spikes[n]:,0], spike_counts_all[n][first_spikes[n]:,1],1)
+        IO_slope = IOfit[0]
+        fig = plt.figure()
+        plt.plot(spike_counts_all[n][:,0], spike_counts_all[n][:,1])
+        plt.gca().set_xlabel('Injection current, pA')
+        plt.gca().set_ylabel('Number of spikes')
+        Rheobase = inj[first_spikes[n]]   
+        
+        fig.suptitle(key, fontsize=15)
+        fig.patch.set_facecolor('white')
+        plt.savefig(dir_iv_curve+ '/char_IV_curve_' + filename[end_fn:-4]+'_'+ key + '.png')
+        plt.close()
 
-    #if more than 1 AP fired, characterize the 2nd
-    if np.max(spike_counts[:,1]) == 1:
-        ap = 0
-    else:
-        ap = 1
+def plot_ap_props(filename, channels, inj):
+    end_fn = filename.rfind('/') + 1
+    dir_ap_props = sort.make_dir_if_not_existing(filename[:end_filename] + 'plots/',  'AP_props')
+     
+    charact_data = hcf.load_traces(filename)
+    inj = hcf.read_inj(inj)
+    max_spikes = hcf.get_max_spikes(charact_data, channels)
+    first_spikes, peaks_all, spike_counts_all, first_spiking_sweeps_all = hcf.get_ap_param_for_plotting(charact_data, channels, inj, max_spikes)
+    Rheobase_all, AP_all, THloc_all, TH_all, APheight_all, max_depol_all, max_repol_all = hcf.get_ap_param(charact_data, channels, inj, max_spikes)
 
-    fig = plt.figure()
-    plt.plot(AP)
-    plt.scatter(THloc,TH, color = 'red')
-    plt.scatter(200,peaks[first_spiking_sweep, ap, 2], color = 'green')
-    fig.suptitle('Ch: ' + str(cell_chan) + ', AP#' + str(ap+1) + ', TH = ' + str(round(TH,2)) + ', amp = ' + str(round(APheight,2)))
-    fig.patch.set_facecolor('white') 
-    plt.savefig(dir_plots + '/' + filename[end_fn:-4] + '_AP#' + str(ap+1) + '_' + str(cell_chan) + '.png')
-    plt.close()
+    for n, ch in enumerate(channels):
+        key = 'Ch' + str(ch)
+        ch_data = charact_data[key][0]
+
+        if np.max(spike_counts_all[n][:,1]) == 1:
+            ap = 0
+        else:
+            ap = 1
+
+        fig = plt.figure()
+        plt.plot(AP_all[n])
+        plt.scatter(THloc_all[n] ,TH_all[n], color = 'red')
+        plt.scatter(200,peaks_all[n][first_spiking_sweeps_all[n], ap, 2], color = 'green')
+        fig.suptitle('Ch: ' + key + ', AP#' + str(ap+1) + ', TH = ' + str(round(TH_all[n],2)) + ', amp = ' + str(round(APheight_all[n],2)))
+        fig.patch.set_facecolor('white') 
+        plt.savefig(dir_ap_props + '/' + filename[end_fn:-4] + '_AP#' + str(ap+1) + '_' + key + '.png')
+        plt.close()
+
+def plots_for_charact_file(filename, channels, inj):
+
+    plot_hyperpolar(filename, channels, inj)
+    plot_spikes(filename, channels, inj)
+    plot_iv_curve(filename, channels, inj)
+    plot_ap_props(filename, channels, inj)
 
 #plots the sweeps with the min value and the 
 def plot_mini_sweeps (filename, cell_chan, sweep):
     sweep = sweep - 1
-    ch1, sweep_len, block = hchf.load_traces(filename, cell_chan) #ch1: each sweep is a column
+    ch_data, sweep_len, block = hchf.load_traces(filename, cell_chan) #ch_data: each sweep is a column
     #no test pulse
 
-    signal_no_test_pulse = ch1[4250:,sweep]
+    signal_no_test_pulse = ch_data[4250:,sweep]
     
     min_val = np.amin(signal_no_test_pulse)
     max_val = np.amax(signal_no_test_pulse)
