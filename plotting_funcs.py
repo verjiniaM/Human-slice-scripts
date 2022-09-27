@@ -1,14 +1,13 @@
 
-import neo
 import numpy as np
 import matplotlib.pyplot as plt
 import math
 import os
 import human_characterisation_functions as hcf
 import sorting_functions as sort
+import stimulation_windows_ms as stim_win
+import connection_parameters as con_param
 
-
-#%%
 # plots the middle sweep for each channel
 # check the traces to see which channels were active or if the protocol names are enetered correctly
 def plot_middle_sweep (filename): 
@@ -298,3 +297,136 @@ def plot_mini_sweeps (filename, cell_chan, sweep):
     plt.xlabel('sec')
     plt.ylabel('pA')
     plt.show()
+
+
+## Connectivity plotting functions 
+
+def plot_connect(fn, active_channels, z1=0.5, z2=40.5,
+ clrs = ["b", "g", "k", "c", "k", "y", "#FF4500", "#800080"]):
+    end_fn = fn.rfind('/') + 1
+    dir_connect = sort.make_dir_if_not_existing(fn[:end_fn] + 'plots/',  'connectivity_plots')
+    
+    con_screen_data = hcf.load_traces(fn)
+    x = len(con_screen_data) 
+    stim_window = stim_win.stim_window_con_screen
+
+    fig, ax = plt.subplots(x, x, sharex = True, sharey = False, figsize = (6,6))
+    for i, ch1 in enumerate(active_channels):
+        ch_name_i = 'Ch' + str(ch1)
+        ch_data_i = con_screen_data[ch_name_i][0]
+        avg = np.mean(ch_data_i, axis = 1)
+
+        for j, ch2 in enumerate(active_channels):
+            # if i == j:
+            #     ax[i,j].plot()
+            ch_name_j = 'Ch' + str(ch2)
+            plotwin = avg[stim_window[ch_name_j][0]:stim_window[ch_name_j][1]] #from the average takes the signal for this stim_window
+            ax[i,j].plot(plotwin, clrs[i], lw=0.25)
+            ax[i,0].set_ylabel(str(ch_name_i))
+            ax[i,j].yaxis.label.set_color(clrs[i])
+            ax[i,j].set_xticks([])
+            ax[i,j].set_yticks([])
+            ax[i,j].spines['top'].set_visible(False)
+            ax[i,j].spines['right'].set_visible(False)
+            ax[i,j].spines['bottom'].set_visible(False)
+            ax[i,j].spines['left'].set_visible(False)
+            if plotwin.max()-plotwin.min() < 10:
+                ax[i,j].set_ylim([plotwin.min()-z1, plotwin.min()+z1])
+                v1 = ax[i,j].vlines(0,plotwin.min()+0.5, plotwin.min()+1, lw=0.2, color='k') 
+            else:
+                ax[i,j].set_ylim([plotwin.min()-0.5, plotwin.min()+z2])
+                v2 = ax[i,j].vlines(0,plotwin.min()+0.5, plotwin.min()+40.5, lw=0.2, color='k')
+    
+    
+    fig.suptitle('connections in ' + fn[end_fn:],fontsize=15)
+    fig.patch.set_facecolor('white')
+    fig.tight_layout()
+
+    plt.savefig(dir_connect + '/' + fn[end_fn:-4] + 'con_screen_plot.png')
+    plt.close(fig)
+
+def plot_connection_window(con_screen_file, preC, postC, pre_window, post_window, preAPs_shifted, postsig,\
+                           onsets, preAPs, PSPs, bl):
+
+    sampl_rate, units, times = hcf.get_abf_info(con_screen_file, preC, np.shape(postsig)[1], np.shape(postsig)[0])
+    end_fn = con_screen_file.rfind('/') + 1
+    dir_connect = sort.make_dir_if_not_existing(con_screen_file[:end_fn] + 'plots/',  'connectivity_plots')
+    
+    fig,axarr = plt.subplots(2,1, sharex=True, figsize=(12,12))
+    fig.patch.set_facecolor('white')
+
+    my_labels = {'l1' : 'peak pre_AP', 'l2' : 'baseline', 'l3': 'onset', 'l4': 'post synnaptic peak'}
+    axarr[0].plot(times[:len(pre_window)], pre_window, color='k')   #plost pre APs 0 shifted
+    for i in range(0,4):
+        axarr[0].scatter(preAPs_shifted[0][i]/sampl_rate,\
+             pre_window[preAPs_shifted[0][i]], marker='o', color='r', label = my_labels['l1'])
+        my_labels['l1'] = "_nolegend_"
+
+    for i in range(np.shape(postsig)[1]):
+        y = postsig[:,i][preAPs[0][0]-750:preAPs[0][3]+750]
+        axarr[1].plot(times[0:len(y)], y, lw=0.2, color='grey', alpha=0.4, zorder=0 )
+        #axarr[1].plot(y, lw=0.2, color='grey', alpha=0.4)
+    
+    axarr[1].plot(times[0:len(y)], post_window, color='k', lw=0.5, zorder=10) #post_window is the averaged 0 shifter post signal 
+
+    for i in range(0,4):
+        sample_rate = sampl_rate.item()
+        axarr[1].hlines(bl[i,0], (preAPs_shifted[0][i]-170)/sample_rate, (preAPs_shifted[0][i]-30)/sample_rate, 
+        linestyles = 'solid', lw = 3, color='b', label = my_labels['l2'],zorder=10, alpha = 0.6)
+        my_labels['l2'] = "_nolegend_"
+
+    axarr[1].scatter(onsets/sampl_rate, bl, marker='^', color='r', label = my_labels['l3'],zorder=10)
+
+    for i in range(0,4):
+        axarr[1].scatter(PSPs[i][1]/sampl_rate, PSPs[i][0], marker='+',\
+             color='g', s=30, linewidth=10, label = my_labels['l4'],zorder=10)
+        my_labels['l4'] = "_nolegend_"
+
+    axarr[0].set_title('Pre APs')
+    axarr[0].set_ylabel(str(units)[-2:])
+    axarr[1].set_title('Post cell responsees')
+    axarr[1].set_xlabel('sec')
+    axarr[1].set_ylabel(str(units)[-2:])
+    plt.figlegend(loc = 'center right',  bbox_to_anchor=(0.92, 0.5))
+
+    plt.savefig(dir_connect + '/pre_post_events_' + con_screen_file[end_fn:-4] + '_Ch' + str(preC) + '#Ch' + str(postC) + '.png')
+    plt.close()
+    return fig, axarr
+
+def plot_post_cell(con_screen_file, pre_cell_chan, post_cell_chan):
+    end_fn = con_screen_file.rfind('/') + 1
+    dir_connect = sort.make_dir_if_not_existing(con_screen_file[:end_fn] + 'plots/',  'connectivity_plots')
+
+    stim_window = stim_win.stim_window_con_screen
+
+    pre_sig, es, vm0_pre = con_param.presynaptic_screen(con_screen_file, pre_cell_chan)
+    post_sig, vm0_post = con_param.postsynaptic_screen(con_screen_file, post_cell_chan, es)
+    mean_pre, mean_post, pre_window, post_window, preAPs_shifted, preAPs = con_param.get_analysis_window(pre_sig, post_sig)
+    sampl_rate = 200_000
+
+    fig = plt.figure(figsize=(20,12))
+    plt.subplots(1,1,sharex=True)
+
+    my_labels = {'l1' : 'peak pre_AP'}
+    xvals = preAPs[0][0]-100
+    for i in range(len(post_sig[0])):   
+        plt.plot(post_sig[xvals:xvals+4000] - i * 4, color ='grey', lw = 0.5)
+        plt.vlines(preAPs[0]-xvals,-50, -210, lw=0.25, color = 'r', label = my_labels['l1'])
+        my_labels['l1'] = "_nolegend_"
+
+    fig.patch.set_facecolor('white')
+    plt.figlegend(loc = 'upper right')
+    plt.savefig(dir_connect + '/post_swps_all_' + con_screen_file[end_fn:-4] + '_' + 
+    'Ch' + str(pre_cell_chan) + '_to_' + 'Ch' + str(post_cell_chan) + '.png')
+    plt.close()
+
+    fig = plt.figure(figsize=(6,6))
+    fig.patch.set_facecolor('white')
+    y = mean_post[xvals:xvals+4000]+10
+    times = np.linspace(0,len(y), len(y))/(sampl_rate*1000) #foe ms
+    plt.plot(times, y, lw=1.5, color='k')
+    plt.xlabel('ms')
+    plt.ylabel('mV')
+    plt.savefig(dir_connect + '/post_swps_mean_' + con_screen_file[end_fn:-4] + '_' + 
+    'Ch' + str(pre_cell_chan) + '_to_' + 'Ch' + str(post_cell_chan) + '.png')
+    plt.close()

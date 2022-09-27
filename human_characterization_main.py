@@ -2,7 +2,6 @@
 #%%
 import os
 import human_characterisation_functions as hcf
-import intrinsic_props_plotting_funcs as in_props_plot
 import pandas as pd
 import glob
 import sorting_functions as sort
@@ -50,76 +49,20 @@ OP = op_to_analyse[-1]
 #     inj = "full"
     
 #     print('starting analysis for '+ OP)
-#     get_results.get_intrinsic_properties_df(OP, tissue_source, patcher, age, inj)
-
-    for file in range(len(file_list)):
-        #pclamp files
-        if  (file_list[file][-5:] == '.xlsx' and file_list[file][:2] != '~$'): 
-            df_rec = pd.read_excel(work_dir + file_list[file], header = 1)
-            index_vc = df_rec.index[df_rec['protocol'] == 'vc'].tolist()
-            index_vc_end = df_rec.index[df_rec['protocol'] == 'vc_end'].tolist()
-            index_spontan = df_rec.index[df_rec['protocol'] == 'vm'].tolist()
-            index_min = df_rec.index[df_rec['protocol'] == 'minis'].tolist()
-
-    print('VC files:     ' + ' '.join(str(h) for h in index_vc))
-    print('VC_end files: ' + ' '.join(str(h) for h in index_vc_end))
-    print('Spontaneous files: ' + str(index_spontan))
-    print('Mini files: ' + str(index_mini))
-
-    proceed = input('Proceeding with QC steps? All mvc, vc_end, mini, and spontaneous files detected? (y/n)')
-
-    if proceed == 'n': 
-        
-        input('waiting to continue. Do not forget to close the excel file, if you change something')
-        print('updating the excel file')
-
-        print('Fix protocol names. Unequal number of VC and freq analyse protocols')
-        index_vc = [int(item) for item in input('Vc files with appropriate vc_end files for ' + OP +' (input with spaces in between)').split()]
-        index_vc_end = [int(item) for item in input('Vc_end files corresponding to characterization files for ' + OP +' (input with spaces in between)').split()]
-
-        print('VC files:     ' + ' '.join(str(h) for h in index_vc))
-        print('VC_end files: ' + ' '.join(str(h) for h in index_vc_end))
-        print('Spontaneous files: ' + str(index_spontan))
-        print('Mini files: ' + str(index_mini))
-
-        if len(index_vc) != len(index_vc_end): 
-            print('Fix protocol names. Unequal number of VC and vc_end files')
-            index_vc = [int(item) for item in input('Vc files corresponding to vc_end files for ' + OP +' (input with spaces in between)').split()]
-            index_vc_end = [int(item) for item in input('Vc_end files ' + OP +' (input with spaces in between)').split()]
-
-    #date_frame for quality control - change in Rin, Rs 
-    df_qc = pd.DataFrame(columns=['OP','patcher', 'filename', 'slice', 'cell_ch', 'Rs_start', 'Rin_start', 'Rs_end', 'Rin_end', 
-    'chage_rs', 'change_rin'])
-
-    for k in range(len(index_vc_end)):
-        vc = index_vc[k]
-        vc_end = index_vc_end[k]
-        slice = slice_names[vc]
-
-        filename_vc = work_dir+filenames[vc]
-        filename_vc_end = work_dir+filenames[vc_end]
-
-        active_channels = [int(item) for item in input('Channels used in ' + filenames[vc] +'(input with spaces in between)').split()]
-
-        for l in range(len(active_channels)):
-            ch = active_channels[l]
-            Rs, Rin = hcf.get_access_resistance(filename_vc, ch) 
-            Rs_end, Rin_end = hcf.access_resistance(filename_vc_end, ch) 
-            cellID = filenames[vc][:-7]+slice+'c'+str(ch)
-
-            data_to_add = pd.DataFrame({'OP':OP[:-1], 'patcher':patcher, 'filename':filenames[vc],'slice':slice, 
-            'cell_ch':ch, 'Rs_start': Rs, 'Rin_start': Rin, 'Rs_end': Rs_end, 'Rin_end': Rin_end, 
-            'chage_rs': Rs-Rs_end, 'change_rin':Rin-Rin_end}, index=[0])
-            df_qc = pd.concat([df_qc.loc[:], data_to_add]).reset_index(drop=True)
-
-    df_qc.to_excel(work_dir + 'data_tables/' + OP[:-1] + '_QC_measures_rs.xlsx') 
-    df_qc.to_csv(work_dir + 'data_tables/' + OP[:-1] + '_QC_measures_rs.csv')
+#     get_results.get_intrinsic_properties_df(human_dir, OP, tissue_source, patcher, age, inj)
+#     get_results.get_QC_access_resistance_df (human_dir, OP, patcher)
+#     get_results.get_con_params_df(human_dir, OP, patcher)
 
     #quality check for minis
     #calcualted the signal drift and sorts suitable/unsuitable recordings
+def get_minis_QC():
+    work_dir, filenames, indices_dict, slice_names = get_OP_metadata(human_dir, OP, patcher)
+
+    
 
     record_sorting = pd.DataFrame(columns = ['OP','patcher', 'filename', 'mini/spontan?', 'cell_ch','swps_to_analyse', 'swps_to_discard', 
     'min_vals_each_swp', 'max_vals_each_swp', 'drift'])
+
 
     for u in range(len(index_spontan)):
         spontan = index_spontan[u]
@@ -137,7 +80,6 @@ OP = op_to_analyse[-1]
             'slice':slice, 'cell_ch':ch, 'swps_to_analyse':[good_swps], 'swps_to_discard':[bad_swps], 'min_vals_each_swp':[min_vals], 
             'max_vals_each_swp':[max_vals], 'drift':[drift]})
             record_sorting = pd.concat([record_sorting.loc[:], data_to_add]).reset_index(drop=True)
-
 
 
     for h in range(len(index_mini)):

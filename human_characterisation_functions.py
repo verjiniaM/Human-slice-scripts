@@ -5,7 +5,6 @@ import numpy as np
 from detect_peaks import detect_peaks
 import math
 import sorting_functions as sort
-import intrinsic_props_plotting_funcs as in_props_plot
 
 #%%
 # =============================================================================
@@ -87,12 +86,19 @@ def get_access_resistance(vctpfile, channels):
         key = 'Ch' + str(ch)
         mean = np.mean(data_dict[key][0], axis = 1) 
         
-        detect_peaks(mean,mpd = 999, edge='both', valley=True) #mpd - peaks separated by min peak distance
+        #detect_peaks(mean,mpd = 999, edge='both', valley=True) #mpd - peaks separated by min peak distance
         minpeak = np.min(mean)
         avgBL = np.mean(mean[0:1000]) #baseline average
         avgSS = np.mean(mean[np.argmax(mean)-500:np.argmax(mean)-50]) #argmax - the index of the max value
-        RaI = avgBL-minpeak
-        RiI = avgBL-avgSS
+        if avgBL == avgSS: 
+            ResRa = math.nan
+            ResRi = math.nan
+            print('trying to compute access resistance of a dead cell :(')
+            ResRa_all.append(ResRa)
+            ResRi_all.append(ResRi)
+            continue
+        RaI = avgBL - minpeak
+        RiI = avgBL - avgSS
         ResRa = (0.004/(RaI*1e-12))/1000000 #0.004 - size of the step, Resistance in megaOhm
         ResRi = (0.004/(RiI*1e-12))/1000000
         

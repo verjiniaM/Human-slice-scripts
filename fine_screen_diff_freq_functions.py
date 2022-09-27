@@ -1,64 +1,21 @@
 
-import interpFL
-import matplotlib.pyplot as plt
-import neo
 import numpy as np
 from scipy.signal import find_peaks
 import stimulation_windows_ms as stim_win
-import os
 
 
-def get_pre_signal(filename, cellchannel):
-    data=neo.io.AxonIO(filename)    
-    b1=data.read(signal_group_mode = 'split-all')[0]
+def get_analysis_window_diff_freqs (pre_cell_chan, post_cell_chan, hz):
+    con_screen_data = load_traces(con_screen_file)
+    pre_ch, post_ch = 'Ch' + str(pre_cell_chan), 'Ch' + str(post_cell_chan)
 
-    chan_name = 'Ch' + str(cellchannel)
-
-    #finding the correct signal for ch 
-    for i in range(len(b1.segments[1].analogsignals)):
-        if b1.segments[0].analogsignals[i].name == chan_name:
-            sig=i
-        if b1.segments[0].analogsignals[i].name == '_Ipatch' and chan_name == 'Ch1':
-            sig = i
-        if b1.segments[0].analogsignals[i].name == 'IN0' and chan_name == 'Ch1':
-            sig = i
-
-    signal=[]
-    for s in range(len(b1.segments)):
-        signal.append(b1.segments[s].analogsignals[sig])
-
-    vmO = np.mean(signal[0][0:950]) #original Vm from first sweep
-    return vmO, signal 
-
-
-def get_post_signal(filename, cellchannel):
-    data=neo.io.AxonIO(filename)
-    b1=data.read(signal_group_mode = 'split-all')[0]
-
-    chan_name = 'Ch' + str(cellchannel)
-    for i in range(len(b1.segments[1].analogsignals)):
-        if b1.segments[0].analogsignals[i].name == chan_name:
-            sig=i
-        if b1.segments[0].analogsignals[i].name == '_Ipatch' and chan_name == 'Ch1':
-            sig = i
-
-    signal=[]
-    for s in range(len(b1.segments)):
-        signal.append(b1.segments[s].analogsignals[sig])
-    pA0 = np.mean(signal[0][0:950]) #original Vm from first sweep
-    return pA0, signal
-
-def get_analysis_window(presig, postsig, hz):
-    size_pre = np.shape(presig)[1]
-    mean_pre = (np.mean(presig,axis=0)).reshape(size_pre)
-    l=len(presig[0])
+    sweep_len = np.shape(con_screen_data[pre_ch][0])[0]
 
     stims = stim_win.stim_window_diff_freq
-    win_start = stims[hz][0] #stimulation end
-    win_end = stims[hz][1] #stimulation start
+    win_start, win_end = stims[hz][0], stims[hz][1] 
 
-    mean_pre = mean_pre[win_start:win_end]
-    preAPs=find_peaks(mean_pre[win_start:win_end], height=0)
+    mean_pre = np.mean(con_screen_data[pre_ch][0], axis = 1)[win_start:win_end]
+    vm0 = np.mean(con_screen_data[pre_ch][0][:,0][0:950]) #from column 0, 0:950
+    preAPs = find_peaks(mean_pre, height=0)
     j = 0
     while len(preAPs[0]) == 0:
         j = j-5
@@ -67,14 +24,11 @@ def get_analysis_window(presig, postsig, hz):
     num_aps = len(preAPs[0])
 
     pre_window = mean_pre[preAPs[0][0]-30:preAPs[0][num_aps-1]+300]
-    
-    size_post = np.shape(postsig)[1]
-    mean_post = (np.mean(postsig, axis=0)).reshape(size_post)
-  
+
+    mean_post = np.mean(con_screen_data[post_ch][0], axis = 1)
     post_window = mean_post[preAPs[0][0]-30:preAPs[0][num_aps-1]+3000] 
     preAPs_shifted = find_peaks(pre_window, height=j)
+    pA0 = np.mean(con_screen_data[post_ch][0][:,0][0:950]) #from column 0, 0:950
 
-    return mean_pre, mean_post, pre_window, post_window, preAPs_shifted, preAPs
-
-
+    return vm0, pA0, mean_pre, mean_post, pre_window, post_window, preAPs_shifted, preAPs
 

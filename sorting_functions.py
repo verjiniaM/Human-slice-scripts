@@ -1,6 +1,8 @@
 import os
 import pandas as pd
 import glob
+import numpy as np
+import json
 
 def get_sorted_file_list (dir):
     '''
@@ -26,6 +28,14 @@ def get_abf_files (file_list):
             filenames.append(file_list[file])
     return filenames
 
+def get_json_files (file_list):
+    jsons = []
+    for file in range(len(file_list)):
+        #pclamp files
+        if file_list[file][-5:] == '.json': 
+            jsons.append(file_list[file])
+    return jsons
+
 def sort_protocol_names (file_list, df_rec):
     '''
     takes a file list (contents of a folder) and pandas data frame (lab notebook)
@@ -36,13 +46,15 @@ def sort_protocol_names (file_list, df_rec):
     def_slice_names = df_rec['slice'][slice_indx].tolist()
     
     index_dict = {}
-    dict_keys = ['vc', 'vm_mouse', 'freq analyse', 'vc_end', 'vm', 'minis']
+    dict_keys = ['vc', 'vm_mouse', 'freq analyse', 'vc_end', 'vm', 'minis', 'con_screen', 'resting',]
     for key in dict_keys:
         index = df_rec.index[df_rec['protocol'] == key].tolist()
+        #df_rec['protocol'][index] = np.nan
         index_dict[key] = index
 
+    #other_indices = df_rec.index[df_rec['protocol'].isnull() == 0].tolist()
     return slice_indx, def_slice_names, index_dict
-
+#df_rec['protocol'][other_indices]
 def fix_slice_names (def_slice_names, slice_indx):
     new_slice_names = []
     for i in range(len(def_slice_names)):
@@ -60,3 +72,24 @@ def make_dir_if_not_existing(working_dir, new_dir):
     path = os.path.join(working_dir, new_dir)
     if os.path.isdir(path) == False: os.mkdir(path)
     return path
+
+
+def to_json (work_dir, OP, fn, file_indices, pre_chans, post_chans, slices, active_chans):
+    fname = work_dir + OP + fn
+    dict1 = {
+        'file_indices' : file_indices,
+        'pre_chans' : pre_chans,
+        'post_chans' : post_chans
+    }
+    dict2 = {
+        'slices' : slices,
+        'active_chans': active_chans
+    }
+    with open(fname, "w") as outfile:
+        json.dump([dict1, dict2] , outfile)
+
+def from_json (work_dir, OP, fn):
+    fname = work_dir + OP + fn
+    f = open(fname)
+    return json.load(f)
+
