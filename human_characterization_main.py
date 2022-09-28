@@ -57,7 +57,6 @@ OP = op_to_analyse[-1]
     #calcualted the signal drift and sorts suitable/unsuitable recordings
 def get_minis_QC():
     work_dir, filenames, indices_dict, slice_names = get_OP_metadata(human_dir, OP, patcher)
-
     
 
     record_sorting = pd.DataFrame(columns = ['OP','patcher', 'filename', 'mini/spontan?', 'cell_ch','swps_to_analyse', 'swps_to_discard', 
@@ -65,7 +64,7 @@ def get_minis_QC():
 
 
     for u in range(len(index_spontan)):
-        spontan = index_spontan[u]
+        filename_spontan = index_spontan[u]
         slice = slice_names[spontan]
 
         filename_spontan = work_dir+filenames[spontan]

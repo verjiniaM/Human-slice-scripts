@@ -46,7 +46,7 @@ def sort_protocol_names (file_list, df_rec):
     def_slice_names = df_rec['slice'][slice_indx].tolist()
     
     index_dict = {}
-    dict_keys = ['vc', 'vm_mouse', 'freq analyse', 'vc_end', 'vm', 'minis', 'con_screen', 'resting',]
+    dict_keys = ['vc', 'resting', 'freq analyse','con_screen', 'spontan','vc_end', 'vc_mini', 'minis', 'vc_mini_end']
     for key in dict_keys:
         index = df_rec.index[df_rec['protocol'] == key].tolist()
         #df_rec['protocol'][index] = np.nan
@@ -74,19 +74,27 @@ def make_dir_if_not_existing(working_dir, new_dir):
     return path
 
 
-def to_json (work_dir, OP, fn, file_indices, pre_chans, post_chans, slices, active_chans):
-    fname = work_dir + OP + fn
-    dict1 = {
-        'file_indices' : file_indices,
+def to_json (work_dir, OP, file_out, con_screen_files_indices, pre_chans, post_chans, slices, vc_file_indices,active_chans):
+    '''
+    returns a list with 2 dictionaries; 
+    [1] slice names and active channels (for characterization)
+    [0] on_screen_file indices and active channels
+    '''
+    fname = work_dir + OP + file_out
+  
+    charact_meta = {
+        'slices' : slices,
+        'vc_files' : vc_file_indices,
+        'active_chans': active_chans
+    }
+
+    con_screen_meta = {
+        'con_screen_file_indices' : con_screen_files_indices,
         'pre_chans' : pre_chans,
         'post_chans' : post_chans
     }
-    dict2 = {
-        'slices' : slices,
-        'active_chans': active_chans
-    }
     with open(fname, "w") as outfile:
-        json.dump([dict1, dict2] , outfile)
+        json.dump([charact_meta, con_screen_meta] , outfile)
 
 def from_json (work_dir, OP, fn):
     fname = work_dir + OP + fn

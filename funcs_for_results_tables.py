@@ -20,7 +20,7 @@ def get_OP_metadata (human_dir, OP, patcher):
     return work_dir, filenames, indices_dict, slice_names
 
 
-def get_json_meta (human_dir, OP, patcher, out_fn): #  out_fn = '_meta_active_channels.json'
+def get_json_meta (human_dir, OP, patcher, out_fn): #  out_fn = '_meta_active_chans.json'
     work_dir, filenames, indices_dict, slice_names = get_OP_metadata(human_dir, OP, patcher)
 
     file_list = sort.get_sorted_file_list(work_dir)
@@ -30,6 +30,15 @@ def get_json_meta (human_dir, OP, patcher, out_fn): #  out_fn = '_meta_active_ch
         json_meta = sort.from_json(work_dir, OP, out_fn)
         return json_meta
 
+    slice_names_dict = []
+    vc_indices = indices_dict['vc']
+    active_chans_all =[]
+    slice_names_dict = []
+    for i in vc_indices:
+        active_channels = [int(item) for item in input('Used channels in ' + OP + ' ' + slice_names[i]).split()]
+        active_chans_all.append(active_channels)
+        slice_names_dict.append(slice_names[i])
+
     con_screen_indices = indices_dict['con_screen']
     pre_chans_all, post_chans_all = [], []
     for indx in con_screen_indices:
@@ -38,13 +47,7 @@ def get_json_meta (human_dir, OP, patcher, out_fn): #  out_fn = '_meta_active_ch
         pre_chans_all.append(pre_chans)
         post_chans_all.append(post_chans)
 
-    slice_names_unique = sorted(list(set(slice_names)))
-    active_chans_all =[]
-    for i in range(len(slice_names_unique)):
-        active_channels = [int(item) for item in input('Used channels in ' + slice_names_unique[i] + filenames[indx]).split()]
-        active_chans_all.append(active_channels)
-
-    sort.to_json (work_dir, OP, out_fn, con_screen_indices, pre_chans_all, post_chans_all, slice_names_unique, active_chans_all)
+    sort.to_json (work_dir, OP, out_fn, con_screen_indices, pre_chans_all, post_chans_all, slice_names_unique, vc_indices, active_chans_all)
     json_meta = sort.from_json(work_dir, OP, out_fn)
     return json_meta
 
@@ -71,17 +74,17 @@ def get_intrinsic_properties_df(human_dir, OP, tissue_source, patcher, age, inj)
     [print(key,':',value) for key, value in indices_dict.items()]
     if len(indices_dict['freq analyse']) != len(indices_dict['vc']): 
         print('Fix protocol names. Unequal number of VC and freq analyse protocols')
-        index_vc_in = [int(item) for item in input('Vc files corresponding to characterization files for ' + OP +' (input with spaces in between)').split()]
-        #saved the original indices
-        indices_dict['vc_orig'] = indices_dict['vc']
-        indices_dict['vc'] = index_vc_in
-        # index_char = [int(item) for item in input('corresponding characterization files for ' + OP +' (input with spaces in between)').split()]
-        # indices_dict['freq analyse'] = index_char
+        input('Press enter when indices have been fixed')
+        work_dir, filenames, indices_dict, slice_names = get_OP_metadata(human_dir, OP, patcher)
+        [print(key,':',value) for key, value in indices_dict.items()]
+        # index_vc_in = [int(item) for item in input('Vc files corresponding to characterization files for ' + OP +' (input with spaces in between)').split()]
+        # #saved the original indices
+        # indices_dict['vc_orig'] = indices_dict['vc']
+        # indices_dict['vc'] = index_vc_in
+        # # index_char = [int(item) for item in input('corresponding characterization files for ' + OP +' (input with spaces in between)').split()]
+        # # indices_dict['freq analyse'] = index_char
  
-    proceed_y_n = input("do all traces correspond to specified filenames in lab book for " + OP +  "(y/n)?")
-    if proceed_y_n == 'n': 
-        print('correct the lab book entries. Continuing to next OP')
-        pass
+    active_chans_meta = get_json_meta(human_dir, OP, patcher, '_meta_active_chans.json')
 
     #creating the dataframe
     df_OP = pd.DataFrame(columns=['slice', 'cell_ID','Rs', 'Rin', 'resting_potential', 'max_spikes', 'Rheobase', 'AP_heigth', 'TH', 'max_depol', 
@@ -98,7 +101,7 @@ def get_intrinsic_properties_df(human_dir, OP, tissue_source, patcher, age, inj)
         filename_char = work_dir + filenames[char]
         filename_con_screen = work_dir + filenames[indices_dict['con_screen'][i]]
 
-        active_channels = [int(item) for item in input('Channels used in ' + filenames[vc] +'(input with spaces in between)').split()]
+        active_channels = active_chans_meta[0]['active_chans'][i]
         
         cell_IDs = hcf.get_cell_IDs(filename_char, slic, active_channels)
         Rs, Rin = hcf.get_access_resistance(filename_vc, active_channels) 
@@ -136,14 +139,18 @@ def get_QC_access_resistance_df (human_dir, OP, patcher):
     [print(key,':',value) for key, value in indices_dict.items()]
     if len(indices_dict['vc']) != len(indices_dict['vc_end']): 
         print('Fix protocol names. Unequal number of VC and freq analyse protocols')
-        index_vc_in = [int(item) for item in input('Vc files corresponding to vc_end files for ' + OP +' (input with spaces in between)').split()]
-        index_vc_end_in = [int(item) for item in input('Vc_end files ' + OP +' (input with spaces in between)').split()]
-    #saved the original indices
-        indices_dict['vc_orig'] = indices_dict['vc']
-        indices_dict['vc_end_org'] = indices_dict['vc_end']
-        indices_dict['vc'] = index_vc_in
-        indices_dict['vc_end'] = index_vc_end_in
+    #     index_vc_in = [int(item) for item in input('Vc files corresponding to vc_end files for ' + OP +' (input with spaces in between)').split()]
+    #     index_vc_end_in = [int(item) for item in input('Vc_end files ' + OP +' (input with spaces in between)').split()]
+    # #saved the original indices
+    #     indices_dict['vc_orig'] = indices_dict['vc']
+    #     indices_dict['vc_end_org'] = indices_dict['vc_end']
+    #     indices_dict['vc'] = index_vc_in
+    #     indices_dict['vc_end'] = index_vc_end_in
+        input('Press enter when indices have been fixed')
+        work_dir, filenames, indices_dict, slice_names = get_OP_metadata(human_dir, OP, patcher)
+        [print(key,':',value) for key, value in indices_dict.items()]
 
+    active_chans_meta = get_json_meta(human_dir, OP, patcher, '_meta_active_chans.json')
     #date_frame for quality control - change in Rin, Rs 
     df_qc = pd.DataFrame(columns=['OP','patcher', 'filename', 'slice', 'cell_ch', 'Rs_start', 'Rin_start', 'Rs_end', 'Rin_end', 
     'chage_rs', 'change_rin'])
@@ -156,8 +163,7 @@ def get_QC_access_resistance_df (human_dir, OP, patcher):
         filename_vc = work_dir + filenames[vc]
         filename_vc_end = work_dir + filenames[vc_end]
        
-        active_channels = [int(item) for item in input('Channels used in ' + filenames[vc] +'(input with spaces in between)').split()]
-        
+        active_chans_meta[0]['active_chans'][i]        
         cell_IDs = hcf.get_cell_IDs(filename_vc, slic, active_channels)
         Rs, Rin = hcf.get_access_resistance(filename_vc, active_channels)
         Rs_end, Rin_end = hcf.get_access_resistance(filename_vc_end, active_channels)
@@ -176,12 +182,12 @@ def get_QC_access_resistance_df (human_dir, OP, patcher):
 def get_con_params_df (human_dir, OP, patcher):
     work_dir, filenames, indices_dict, slice_names = get_OP_metadata(human_dir, OP, patcher)
 
-    con_sccreen_connected_chans = get_json_meta(human_dir, OP, patcher, '_meta_active_channels.json')
+    con_sccreen_connected_chans = get_json_meta(human_dir, OP, patcher, '_meta_active_chans.json')[1]
 
     con_data = pd.DataFrame(columns = ['fn', 'slice', 'chan_pre', 'chan_post', 'Vm pre', 'Vm post', 
     'Amp1',	'Amp2',	'Amp3',	'Amp4',	'Lat1',	'Lat2',	'Lat3',	'Lat4', 'num excluded swps', 'comments'])
 
-    for i, indx in enumerate(con_sccreen_connected_chans['file_indices']):
+    for i, indx in enumerate(con_sccreen_connected_chans['con_screen_file_indices']):
         con_screen_file = work_dir + filenames[indx]
         
         pre_cells = con_sccreen_connected_chans['pre_chans'][i]
