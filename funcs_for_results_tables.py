@@ -30,24 +30,41 @@ def get_json_meta (human_dir, OP, patcher, out_fn): #  out_fn = '_meta_active_ch
         json_meta = sort.from_json(work_dir, OP, out_fn)
         return json_meta
 
-    slice_names_dict = []
-    vc_indices = indices_dict['vc']
-    active_chans_all =[]
-    slice_names_dict = []
-    for i in vc_indices:
+    active_chans_all, slice_names_dict = [], []
+    for i in indices_dict['vc']:
         active_channels = [int(item) for item in input('Used channels in ' + OP + ' ' + slice_names[i]).split()]
         active_chans_all.append(active_channels)
         slice_names_dict.append(slice_names[i])
+    charact_meta = {
+        'slices' : slice_names_dict,
+        'vc_files' : indices_dict['vc'],
+        'active_chans': active_chans_all
+    }
 
-    con_screen_indices = indices_dict['con_screen']
     pre_chans_all, post_chans_all = [], []
-    for indx in con_screen_indices:
+    for indx in indices_dict['con_screen']:
         pre_chans = [int(item) for item in input('Pre channels in ' + filenames[indx]).split()]
         post_chans = [int(item) for item in input('Post channels in ' + filenames[indx]).split()]
         pre_chans_all.append(pre_chans)
         post_chans_all.append(post_chans)
+    con_screen_meta = {
+        'con_screen_file_indices' : indices_dict['con_screen'],
+        'pre_chans' : pre_chans_all,
+        'post_chans' : post_chans_all
+    }
 
-    sort.to_json (work_dir, OP, out_fn, con_screen_indices, pre_chans_all, post_chans_all, slice_names_unique, vc_indices, active_chans_all)
+    chans_all, mini_slices = [],[]
+    for i in indices_dict['minis']:
+        active_channels = [int(item) for item in input('Used channels in ' + OP + ' ' + slice_names[i]).split()]
+        chans_all.append(active_channels)
+        mini_slices.append(slice_names[i])
+    mini_meta = {
+        'mini_slices' : mini_slices,
+        'mini_files' : indices_dict['minis'],
+        'mini_chans' : chans_all
+    }
+    
+    sort.to_json (work_dir, OP, file_out, charact_meta, con_screen_meta, mini_meta)
     json_meta = sort.from_json(work_dir, OP, out_fn)
     return json_meta
 
@@ -84,7 +101,7 @@ def get_intrinsic_properties_df(human_dir, OP, tissue_source, patcher, age, inj)
         # # index_char = [int(item) for item in input('corresponding characterization files for ' + OP +' (input with spaces in between)').split()]
         # # indices_dict['freq analyse'] = index_char
  
-    active_chans_meta = get_json_meta(human_dir, OP, patcher, '_meta_active_chans.json')
+    active_chans_meta = get_json_meta(human_dir, OP, patcher, '_meta_active_chans.json')[0]
 
     #creating the dataframe
     df_OP = pd.DataFrame(columns=['slice', 'cell_ID','Rs', 'Rin', 'resting_potential', 'max_spikes', 'Rheobase', 'AP_heigth', 'TH', 'max_depol', 
@@ -163,7 +180,7 @@ def get_QC_access_resistance_df (human_dir, OP, patcher):
         filename_vc = work_dir + filenames[vc]
         filename_vc_end = work_dir + filenames[vc_end]
        
-        active_chans_meta[0]['active_chans'][i]        
+        active_channels = active_chans_meta[0]['active_chans'][i]        
         cell_IDs = hcf.get_cell_IDs(filename_vc, slic, active_channels)
         Rs, Rin = hcf.get_access_resistance(filename_vc, active_channels)
         Rs_end, Rin_end = hcf.get_access_resistance(filename_vc_end, active_channels)
@@ -231,5 +248,73 @@ def get_con_params_df (human_dir, OP, patcher):
 
     con_data.to_excel(work_dir + '/data_tables/' + OP + '_connected_cell_properties.xlsx') 
 
+def get_spontan_QC(human_dir, OP, patcher):
+    work_dir, filenames, indices_dict, slice_names = get_OP_metadata(human_dir, OP, patcher)
+
+    active_chans_meta = get_json_meta(human_dir, OP, patcher, '_meta_active_chans.json')
+
+    record_sorting = pd.DataFrame(columns = ['OP','patcher', 'filename', 'cell_ch','swps_to_analyse', 'swps_to_discard', 
+    'min_vals_each_swp', 'max_vals_each_swp', 'drift'])
+    for u in indices_dict['spontan']:
+        filename_spontan = work_dir + filenames[u]
+        slic = slice_names[u]   
+
+        index_chans = active_chans_meta[0]['slices'].index(slic)
+        active_channels = active_chans_meta[0]['active_chans'][index_chans]
+
+        spontan_QC = hcf.rec_stability (filename_spontan, active_channels , 60)
+        df_QC = pd.DataFrame(spontan_QC).T
+        df_QC['cell_ch'] = df_QC.index 
+        df_QC.insert(0, 'cell_ch', df_QC.pop('cell_ch'))
+        df_QC.insert(0, 'slice', slic)
+        df_QC.insert(0, 'filename', filenames[u])
+        df_QC.insert(0, 'patcher', patcher)
+        df_QC.insert(0, 'OP', OP[:-1])
+
+        record_sorting = pd.concat([record_sorting.loc[:], df_QC]).reset_index(drop=True)
+
+    record_sorting.to_excel(work_dir + 'data_tables/' + OP + '_QC_measures_spontan.xlsx') 
+    #record_sorting.to_csv(work_dir + 'data_tables/' + OP + '_QC_measures_spontan.csv')
+
+
+def get_minis_QC(human_dir, OP, patcher):
+    work_dir, filenames, indices_dict, slice_names = get_OP_metadata(human_dir, OP, patcher)
+
+    active_chans_meta = get_json_meta(human_dir, OP, patcher, '_meta_active_chans.json')
+
+    record_sorting = pd.DataFrame(columns = ['OP','patcher', 'filename', 'cell_ch','swps_to_analyse', 'swps_to_discard', 
+    'min_vals_each_swp', 'max_vals_each_swp', 'drift', 'Rs_cahnge', 'Rin_change', 'Rs_start'])
+
+    for i, indx in enumerate(indices_dict['minis']):
+        mini_file = work_dir + filenames[indx]
+        slic = slice_names[indx]
+
+        index_chans = active_chans_meta[2]['mini_slices'].index(slic)
+        active_channels = active_chans_meta[2]['mini_chans'][index_chans]
+
+        mini_QC = hcf.rec_stability(mini_file, active_channels , 60)
+
+        if len(indices_dict['vc_mini']) == len(indices_dict['minis']):
+            vc_indx = indices_dict['vc_mini'][i]
+            Rs, Rin = hcf.get_access_resistance(work_dir + filenames[vc_indx], active_channels)
+        
+        if len(indices_dict['vc_mini_end']) == len(indices_dict['minis']):
+            vc_end_indx = indices_dict['vc_mini_end'][i]
+            Rs_end, Rin_end = hcf.get_access_resistance(work_dir + filenames[vc_end_indx], active_channels)
+        
+        Rs_diff = [x - y for x,y in zip(Rs, Rs_end)]
+        Rin_diff = [x - y for x,y in zip(Rin, Rin_end)]
+
+        df_QC = pd.DataFrame(mini_QC).T
+        df_QC['cell_ch'] = df_QC.index 
+        df_QC.insert(0, 'cell_ch', df_QC.pop('cell_ch'))
+        df_QC.insert(0, 'slice', slic)
+        df_QC.insert(0, 'filename', filenames[indx])
+        df_QC.insert(0, 'patcher', patcher)
+        df_QC.insert(0, 'OP', OP[:-1])
+        df_QC['Rs_change'], df_QC['Rin_change'], df_QC['Rs_start'] = Rs_diff, Rin_diff, Rs
+
+        record_sorting = pd.concat([record_sorting.loc[:], df_QC]).reset_index(drop=True)
+    record_sorting.to_excel(work_dir + 'data_tables/' + OP + '_QC_measures_minis.xlsx') 
 
 

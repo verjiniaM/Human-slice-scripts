@@ -74,27 +74,18 @@ def make_dir_if_not_existing(working_dir, new_dir):
     return path
 
 
-def to_json (work_dir, OP, file_out, con_screen_files_indices, pre_chans, post_chans, slices, vc_file_indices,active_chans):
+def to_json (work_dir, OP, file_out, charact_meta, con_screen_meta, mini_meta):
     '''
-    returns a list with 2 dictionaries; 
+    returns a list with 3 dictionaries; 
     [1] slice names and active channels (for characterization)
-    [0] on_screen_file indices and active channels
+    [0] con_screen_file indices and active channels
+    [2] mini_meta - mini_file_indices and active chanels
     '''
     fname = work_dir + OP + file_out
-  
-    charact_meta = {
-        'slices' : slices,
-        'vc_files' : vc_file_indices,
-        'active_chans': active_chans
-    }
+    out_data = [charact_meta, con_screen_meta, mini_meta]
 
-    con_screen_meta = {
-        'con_screen_file_indices' : con_screen_files_indices,
-        'pre_chans' : pre_chans,
-        'post_chans' : post_chans
-    }
     with open(fname, "w") as outfile:
-        json.dump([charact_meta, con_screen_meta] , outfile)
+        json.dump(out_data , outfile)
 
 def from_json (work_dir, OP, fn):
     fname = work_dir + OP + fn

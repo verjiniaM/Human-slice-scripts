@@ -310,50 +310,53 @@ def get_ap_param_for_plotting (charact_data, channels, inj, max_spikes):
 
 #quality control step, deciding whether spontaneous or mini recording is going to be analyzed
 #checking on which sweeps the dynamic range (max - min signal, disregarding minis) is smaller than a value
-def rec_stability (filename, cell_chan, max_range):
-    ch1, sweep_len, block = load_traces(filename, cell_chan) #ch1: each sweep is a column
+def rec_stability (mini_filename, active_chans, max_drift, min_holding = -800):
+    mini_dict = load_traces(mini_filename)
 
-    min_vals = []
-    max_vals = []
-    good_swps = []
-    bad_swps = []
-    #finding the max/min value for each sweep (along each column axis = 0)
-    for swp in range(len(ch1[0])):
-        signal_no_test_pulse = ch1[4250:,swp]
+    rec_stability = {}
+    for ch in active_chans:
+        key = 'Ch' + str(ch)
+        ch1 = mini_dict[key][0]
 
-        max_val = np.amax(signal_no_test_pulse)
-        loc_max = np.where(signal_no_test_pulse == max_val)
+        all_swps = np.arange(0, len(ch1[0]), 1).tolist()
+        vm_1st_swp = np.mean(ch1[4250:,0][0:2000])
+        vm_last_swp = np.mean(ch1[4250:, len(ch1[0])-1][0:2000])
+
+        min_vals, max_vals, bad_swps, dyn_range  = [], [], [], []
+ 
+        for swp in range(len(ch1[0])):
+            signal_no_test_pulse = ch1[4250:,swp]
+            vm_start = np.mean(signal_no_test_pulse[0:2000])
+            if vm_start < min_holding :
+                bad_swps.append(swp)
+                continue
+
         #if more than 1 location have the same max, find the biggest average interval (200ms around max_val)
-        avg_max = []
+            max_val = np.amax(signal_no_test_pulse)   
+            loc_max = np.where(signal_no_test_pulse == max_val)[0][-1] #take the last loc of max
+            if loc_max <= 1000:
+                avg_max_interval = np.mean(signal_no_test_pulse[loc_max: loc_max + 2000])
+            else:
+                avg_max_interval = np.mean(signal_no_test_pulse[loc_max - 1000 : loc_max + 1000])
+            max_vals.append(avg_max_interval)
+            
+            min_val = np.amin(signal_no_test_pulse)
+            loc_min = np.where(signal_no_test_pulse == min_val)[0][-1]
+            if loc_min <= 1000:
+                avg_min_int = np.mean(signal_no_test_pulse[loc_min:loc_min + 2000])
+            else:
+                avg_min_int = np.mean(signal_no_test_pulse[loc_min - 1000 : loc_min + 1000])
+            min_vals.append(avg_min_int)
 
-        #print(len(loc_max))
-
-        for i in range(len(loc_max)):
-            max_interval = signal_no_test_pulse[int(loc_max[0][i])-2000:int(loc_max[0][i])+2000]
-            avg_max_interval = np.mean(max_interval)
-            avg_max.append(avg_max_interval)
-
-        max_val = np.amax(np.array(avg_max))
-        max_vals.append(max_val)
-        
-        min_val = np.amin(signal_no_test_pulse)
-        loc_min = np.where(signal_no_test_pulse == min_val)
-        #do the same for min val
-        avg_min = []
-        for j in range(len(loc_min)):
-            min_interval = signal_no_test_pulse[int(loc_min[0][i])-2000:int(loc_min[0][i])+2000]
-            avg_min_int = np.mean(min_interval)
-            avg_min.append(avg_min_int)
-
-        min_val = np.amin(np.array(avg_min))
-        min_vals.append(min_val)
-
-        dyn_range = max_val - min_val
-        #sweep nums that can be analysed
-        if dyn_range < max_range:
-            good_swps.append(swp+1)
-        else:
-            bad_swps.append(swp+1)
-
-    return min_vals, max_vals, good_swps, bad_swps, dyn_range
+            dyn_range = abs(avg_max_interval - avg_min_int)
+            if dyn_range > max_drift :
+                bad_swps.append(swp)
+            # else:
+            #    good_swps.append(swp)
+        good_swps = [x for x in all_swps if x not in bad_swps]
+            
+        rec_stability[str(ch)] = {'holding_sweep1': vm_1st_swp, 'holding_last_sweep' : vm_last_swp, 
+        'swps_to_analyse':good_swps, 'swps_to_discard':bad_swps, 'min_vals_each_swp':min_vals, 
+        'max_vals_each_swp':max_vals, 'drift':dyn_range}
+    return rec_stability
 
