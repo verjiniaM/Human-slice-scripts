@@ -120,10 +120,12 @@ def get_hyperpolar_param(charact_data, channels, inj, onset = 2624, offset = 226
     '''
     returns 4 lists with length channels
     '''
-    params = tau_all, capacitance_all, mc_all, V65_all = [], [], [], []
+    params = tau_all, capacitance_all, mc_all, V65_all, RMPs_char = [], [], [], [], []
+    #RMPs_char = []
     for ch in channels:
         key = 'Ch' + str(ch)
         ch1 = charact_data[key][0]
+        resting_char = np.median(ch1[:,5]) #when the inj = 0mV
         V65s = []
         for i in range(0,5):
             I = inj[i]*1e-12 #check step size
@@ -147,11 +149,11 @@ def get_hyperpolar_param(charact_data, channels, inj, onset = 2624, offset = 226
         mc[:,2] = mc[:,2]/1e-12  
         tau = mc[1,0]
         capacitance = mc[1,2]
-        ch_params = [tau, capacitance, mc, V65s]
+        ch_params = [tau, capacitance, mc, V65s, resting_char]
 
         for i, param in enumerate(params):
             param.append(ch_params[i])
-    return tau_all, capacitance_all, mc_all, V65_all
+    return tau_all, capacitance_all, mc_all, V65_all, RMPs_char
 
 def get_max_spikes(charact_data, channels):
     '''
@@ -210,7 +212,7 @@ def get_ap_param (charact_data, channels, inj, max_spikes):
         Rheobase = inj[first_spike]  
         
         if np.max(spike_counts[:,1]) == 1:
-            print('MAX number of AP = 1 for ' + filename[end_fn:-4] + key)
+            print('MAX number of AP = 1 for ' + key)
             first_spiking_sweep = np.where(spike_counts[:,1]==1)[0][0]
         else:
             first_spiking_sweep=np.where(spike_counts[:,1]>1)[0][0] #where there is more than 1 AP
@@ -236,7 +238,7 @@ def get_ap_param (charact_data, channels, inj, max_spikes):
                 param.append(ch_params[i])
             continue
         else:
-            print("Only 1 SLOW AP found for " + filename[end_fn:-4] + key)
+            print("Only 1 SLOW AP found for " + key)
             TH, THloc = math.nan, math.nan
             max_depol = math.nan
             max_repol = math.nan
@@ -252,7 +254,7 @@ def all_chracterization_params (filename, channels, inj, onset = 2624, offset = 
     charact_dict = load_traces(filename)
     inj = read_inj(inj)
 
-    tau_all, capacitance_all, mc_all, V65_all = get_hyperpolar_param(charact_dict, channels, inj)
+    tau_all, capacitance_all, mc_all, V65_all, RMPs_char = get_hyperpolar_param(charact_dict, channels, inj)
     max_spikes_all = get_max_spikes(charact_dict, channels)
     Rheobase_all, AP_all, THloc_all, TH_all, APheight_all, max_depol_all, max_repol_all = get_ap_param (charact_dict, channels, inj, max_spikes_all)
 
@@ -297,7 +299,7 @@ def get_ap_param_for_plotting (charact_data, channels, inj, max_spikes):
         first_spike = spikes[0][0]
 
         if np.max(spike_counts[:,1]) == 1:
-            print('MAX number of AP = 1 for ' + filename[end_fn:-4] + key)
+            print('MAX number of AP = 1 for ' + key)
             first_spiking_sweep = np.where(spike_counts[:,1]==1)[0][0]
         else:
             first_spiking_sweep=np.where(spike_counts[:,1]>1)[0][0] 

@@ -11,8 +11,8 @@ import connection_parameters as con_param
 # plots the middle sweep for each channel
 # check the traces to see which channels were active or if the protocol names are enetered correctly
 def plot_middle_sweep (filename): 
-    end_filename = filename.rfind('/') + 1
-    dir_plots = sort.make_dir_if_not_existing(filename[:end_filename], 'plots')
+    end_fn = filename.rfind('/') + 1
+    dir_plots = sort.make_dir_if_not_existing(filename[:end_fn], 'plots')
     dir_traces = sort.make_dir_if_not_existing(dir_plots, 'traces')
 
     data_dict = hcf.load_traces(filename)
@@ -42,17 +42,17 @@ def plot_middle_sweep (filename):
 
     fig.tight_layout() 
     fig.patch.set_facecolor('white')
-    plt.savefig(dir_traces + '/trace_plot_' + filename[end_filename:-4] + '.png')
+    plt.savefig(dir_traces + '/trace_plot_' + filename[end_fn:-4] + '.png')
     plt.close(fig)
     return 'Trace plots saved in' + dir_traces
 
 def plot_vc_holding (filename, channels):
     plt.style.use(['fast']) 
-    end_filename = filename.rfind('/') + 1
-    dir_vc_plots = sort.make_dir_if_not_existing(filename[:end_filename] + 'plots/', "vc_plots")
+    end_fn = filename.rfind('/') + 1
+    dir_vc_plots = sort.make_dir_if_not_existing(filename[:end_fn] + 'plots/', "vc_plots")
 
     vc_data = hcf.load_traces(filename)
-    all_chans = list(data_dict.keys())
+    all_chans = list(vc_data.keys())
     sweep_count = np.shape(vc_data[all_chans[0]][0])[1]
     Res = np.ndarray([sweep_count,3])  
 
@@ -117,18 +117,18 @@ def plot_vc_holding (filename, channels):
             fig.suptitle(key, fontsize = 15)
             fig.tight_layout()
 
-            plt.savefig(dir_vc_plots + '/' + filename[end_filename:-4] + '_'+ key + '_VC_plot.png')
+            plt.savefig(dir_vc_plots + '/' + filename[end_fn:-4] + '_'+ key + '_VC_plot.png')
             plt.close(fig)
 
 
 def plot_hyperpolar (filename, channels, inj, onset = 2624, offset = 22624, 
 clrs = ["b", "g", "r", "c", "m", "y", "#FF4500", "#800080"]):
     end_fn = filename.rfind('/') + 1
-    dir_onset = sort.make_dir_if_not_existing(filename[:end_filename] + 'plots/', 'Onset')
+    dir_onset = sort.make_dir_if_not_existing(filename[:end_fn] + 'plots/', 'Onset')
 
     charact_data = hcf.load_traces(filename)
     inj = hcf.read_inj(inj)
-    tau_all, capacitance_all, mcs, V65s = hcf.get_hyperpolar_param(charact_data, channels, inj)
+    tau_all, capacitance_all, mcs, V65s, RMPs_char = hcf.get_hyperpolar_param(charact_data, channels, inj)
 
     for n, ch in enumerate(channels):
         key = 'Ch' + str(ch)
@@ -157,7 +157,7 @@ clrs = ["b", "g", "r", "c", "m", "y", "#FF4500", "#800080"]):
         
 def plot_spikes (filename, channels, inj):
     end_fn = filename.rfind('/') + 1
-    dir_spikes = sort.make_dir_if_not_existing(filename[:end_filename] + 'plots/',  'Max_Spikes')
+    dir_spikes = sort.make_dir_if_not_existing(filename[:end_fn] + 'plots/',  'Max_Spikes')
 
     charact_data = hcf.load_traces(filename)
     inj = hcf.read_inj(inj)
@@ -180,9 +180,9 @@ def plot_spikes (filename, channels, inj):
                 ax.spines['top'].set_visible(False)
                 ax.spines['right'].set_visible(False)
                 ax.spines['bottom'].set_visible(False)
-                ax.spines['left'].set_visible(False)
-                ax.scatter(peaks_all[0][first_spikes[n] +i-1, :, 1], 
-                        peaks_all[0][first_spikes[n] + i-1, :, 2], marker='+', c='r')
+                #ax.spines['left'].set_visible(False)
+                ax.scatter(peaks_all[n][first_spikes[n] + i-1, :, 1], 
+                        peaks_all[n][first_spikes[n] + i-1, :, 2], marker='+', c='r')
                 ax.annotate('+'+str(inj[first_spikes[n]+ i - 1])+' pA', (25500,0), (25500,0), color='b', rotation=90)
         
         fig.patch.set_facecolor('white')
@@ -193,7 +193,7 @@ def plot_spikes (filename, channels, inj):
 
 def plot_iv_curve (filename, channels, inj):
     end_fn = filename.rfind('/') + 1
-    dir_iv_curve = sort.make_dir_if_not_existing(filename[:end_filename] + 'plots/',  'IV_curve')
+    dir_iv_curve = sort.make_dir_if_not_existing(filename[:end_fn] + 'plots/',  'IV_curve')
      
     charact_data = hcf.load_traces(filename)
     inj = hcf.read_inj(inj)
@@ -219,7 +219,7 @@ def plot_iv_curve (filename, channels, inj):
 
 def plot_ap_props(filename, channels, inj):
     end_fn = filename.rfind('/') + 1
-    dir_ap_props = sort.make_dir_if_not_existing(filename[:end_filename] + 'plots/',  'AP_props')
+    dir_ap_props = sort.make_dir_if_not_existing(filename[:end_fn] + 'plots/',  'AP_props')
      
     charact_data = hcf.load_traces(filename)
     inj = hcf.read_inj(inj)
@@ -301,13 +301,13 @@ def plot_mini_sweeps (filename, cell_chan, sweep):
 
 ## Connectivity plotting functions 
 
-def plot_connect(fn, active_channels, z1=0.5, z2=40.5,
+def plot_connect(fn, active_channels, z1=0.5, z2=35.5,
  clrs = ["b", "g", "k", "c", "k", "y", "#FF4500", "#800080"]):
     end_fn = fn.rfind('/') + 1
     dir_connect = sort.make_dir_if_not_existing(fn[:end_fn] + 'plots/',  'connectivity_plots')
     
     con_screen_data = hcf.load_traces(fn)
-    x = len(con_screen_data) 
+    x = len(active_channels) 
     stim_window = stim_win.stim_window_con_screen
 
     fig, ax = plt.subplots(x, x, sharex = True, sharey = False, figsize = (6,6))
@@ -330,13 +330,12 @@ def plot_connect(fn, active_channels, z1=0.5, z2=40.5,
             ax[i,j].spines['right'].set_visible(False)
             ax[i,j].spines['bottom'].set_visible(False)
             ax[i,j].spines['left'].set_visible(False)
-            if plotwin.max()-plotwin.min() < 10:
-                ax[i,j].set_ylim([plotwin.min()-z1, plotwin.min()+z1])
-                v1 = ax[i,j].vlines(0,plotwin.min()+0.5, plotwin.min()+1, lw=0.2, color='k') 
+            if plotwin.max()-plotwin.min() < 10: 
+                ax[i,j].set_ylim([plotwin.min() - z1, plotwin.max() + z1])
+                v1 = ax[i,j].vlines(0,plotwin.min() + z1, plotwin.max() + z1, lw=0.2, color='k') 
             else:
-                ax[i,j].set_ylim([plotwin.min()-0.5, plotwin.min()+z2])
-                v2 = ax[i,j].vlines(0,plotwin.min()+0.5, plotwin.min()+40.5, lw=0.2, color='k')
-    
+                ax[i,j].set_ylim([plotwin.min() - z1, plotwin.max() + z2])
+                v2 = ax[i,j].vlines(0,plotwin.min() + z1, plotwin.max() + z2, lw=0.2, color='k')
     
     fig.suptitle('connections in ' + fn[end_fn:],fontsize=15)
     fig.patch.set_facecolor('white')
@@ -398,6 +397,88 @@ def plot_post_cell(con_screen_file, pre_cell_chan, post_cell_chan):
     dir_connect = sort.make_dir_if_not_existing(con_screen_file[:end_fn] + 'plots/',  'connectivity_plots')
 
     stim_window = stim_win.stim_window_con_screen
+
+    pre_sig, es, vm0_pre = con_param.presynaptic_screen(con_screen_file, pre_cell_chan)
+    post_sig, vm0_post = con_param.postsynaptic_screen(con_screen_file, post_cell_chan, es)
+    mean_pre, mean_post, pre_window, post_window, preAPs_shifted, preAPs = con_param.get_analysis_window(pre_sig, post_sig)
+    sampl_rate = 200_000
+
+    fig = plt.figure(figsize=(20,12))
+    plt.subplots(1,1,sharex=True)
+
+    my_labels = {'l1' : 'peak pre_AP'}
+    xvals = preAPs[0][0]-100
+    for i in range(len(post_sig[0])):   
+        plt.plot(post_sig[xvals:xvals+4000] - i * 4, color ='grey', lw = 0.5)
+        plt.vlines(preAPs[0]-xvals,-50, -210, lw=0.25, color = 'r', label = my_labels['l1'])
+        my_labels['l1'] = "_nolegend_"
+
+    fig.patch.set_facecolor('white')
+    plt.figlegend(loc = 'upper right')
+    plt.savefig(dir_connect + '/post_swps_all_' + con_screen_file[end_fn:-4] + '_' + 
+    'Ch' + str(pre_cell_chan) + '_to_' + 'Ch' + str(post_cell_chan) + '.png')
+    plt.close()
+
+    fig = plt.figure(figsize=(6,6))
+    fig.patch.set_facecolor('white')
+    y = mean_post[xvals:xvals+4000]+10
+    times = np.linspace(0,len(y), len(y))/(sampl_rate*1000) #foe ms
+    plt.plot(times, y, lw=1.5, color='k')
+    plt.xlabel('ms')
+    plt.ylabel('mV')
+    plt.savefig(dir_connect + '/post_swps_mean_' + con_screen_file[end_fn:-4] + '_' + 
+    'Ch' + str(pre_cell_chan) + '_to_' + 'Ch' + str(post_cell_chan) + '.png')
+    plt.close()
+
+
+def plot_connect_old_win(fn, active_channels, z1=0.5, z2=40.5,
+ clrs = ["b", "g", "k", "c", "k", "y", "#FF4500", "#800080"]):
+    end_fn = fn.rfind('/') + 1
+    dir_connect = sort.make_dir_if_not_existing(fn[:end_fn] + 'plots/',  'connectivity_plots')
+    
+    con_screen_data = hcf.load_traces(fn)
+    x = len(active_channels) 
+    stim_window = stim_win.stim_window_con_screen_old
+
+    fig, ax = plt.subplots(x, x, sharex = True, sharey = False, figsize = (6,6))
+    for i, ch1 in enumerate(active_channels):
+        ch_name_i = 'Ch' + str(ch1)
+        ch_data_i = con_screen_data[ch_name_i][0]
+        avg = np.mean(ch_data_i, axis = 1)
+
+        for j, ch2 in enumerate(active_channels):
+            # if i == j:
+            #     ax[i,j].plot()
+            ch_name_j = 'Ch' + str(ch2)
+            plotwin = avg[stim_window[ch_name_j][0]:stim_window[ch_name_j][1]] #from the average takes the signal for this stim_window
+            ax[i,j].plot(plotwin, clrs[i], lw=0.25)
+            ax[i,0].set_ylabel(str(ch_name_i))
+            ax[i,j].yaxis.label.set_color(clrs[i])
+            ax[i,j].set_xticks([])
+            ax[i,j].set_yticks([])
+            ax[i,j].spines['top'].set_visible(False)
+            ax[i,j].spines['right'].set_visible(False)
+            ax[i,j].spines['bottom'].set_visible(False)
+            ax[i,j].spines['left'].set_visible(False)
+            if plotwin.max()-plotwin.min() < 10: 
+                ax[i,j].set_ylim([plotwin.min() - z1, plotwin.max() + z1])
+                v1 = ax[i,j].vlines(0,plotwin.min() + z1, plotwin.max() + z1, lw=0.2, color='k') 
+            else:
+                ax[i,j].set_ylim([plotwin.min() - z1, plotwin.max() + z2])
+                v2 = ax[i,j].vlines(0,plotwin.min() + z1, plotwin.max() + z2, lw=0.2, color='k')
+    
+    fig.suptitle('connections in ' + fn[end_fn:],fontsize=15)
+    fig.patch.set_facecolor('white')
+    fig.tight_layout()
+
+    plt.savefig(dir_connect + '/' + fn[end_fn:-4] + 'con_screen_plot.png')
+    plt.close(fig)
+
+def plot_post_cell_old_win(con_screen_file, pre_cell_chan, post_cell_chan):
+    end_fn = con_screen_file.rfind('/') + 1
+    dir_connect = sort.make_dir_if_not_existing(con_screen_file[:end_fn] + 'plots/',  'connectivity_plots')
+
+    stim_window = stim_win.stim_window_con_screen_old
 
     pre_sig, es, vm0_pre = con_param.presynaptic_screen(con_screen_file, pre_cell_chan)
     post_sig, vm0_post = con_param.postsynaptic_screen(con_screen_file, post_cell_chan, es)

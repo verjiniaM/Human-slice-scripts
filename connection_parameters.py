@@ -6,6 +6,7 @@ from scipy.signal import find_peaks
 import stimulation_windows_ms as stim_win
 import os
 import human_characterisation_functions as hcf
+import math
 
 # con_screen_file = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/data_verji/OP220615/22616005.abf'
 # pre_cell_chan = 4
@@ -150,6 +151,9 @@ def get_onsets(preAPs_shifted, post_window, PSPs, bl):
         x_80 = (delta * 0.8 + bl[i][0]).item()
         fit_start = interpFL.findLevels(PSP_window, x_20, mode='rising')
         fit_end = interpFL.findLevels(PSP_window, x_80, mode='rising')
+        if fit_start[0].size == 0 or fit_end[0].size == 0:
+            onsets[i,0] = math.nan
+            continue
         x = range(155)
         x1 = x[fit_start[0][0] : fit_end[0][0]]
         fit1 = np.polyfit(x1, PSP_window[x1], 1)
@@ -174,6 +178,9 @@ def latencies(onsets, preAPs_shifted):
     latency = np.ndarray([4,1])
     num_aps = len(preAPs_shifted[0])
     for i in range(num_aps):
+        if math.isnan(onsets[i].item()):
+            latency[i,0] = math.nan
+            continue
         latency[i,0] = int(onsets[i].item()) - preAPs_shifted[0][i]
     latency = latency/20
     

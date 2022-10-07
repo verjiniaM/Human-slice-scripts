@@ -1,12 +1,18 @@
-
-#%%
 import os
 import human_characterisation_functions as hcf
 import pandas as pd
 import glob
 import sorting_functions as sort
-import itertools as it
 import funcs_for_results_tables as get_results
+
+
+#%%
+OP = 'OP201027'
+patcher = 'Rosie'
+tissue_source = 'Mitte'
+inj = 'full'
+age = 'A'
+#%%
 
 #loading the updated experiments_overview and the old summary_data_table
 human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'
@@ -37,8 +43,10 @@ for i in op_to_analyse:
     inj = "full"
     
     print('starting analysis for '+ OP)
-    get_results.get_intrinsic_properties_df(human_dir, OP, tissue_source, patcher, age, inj)
+    #get_results.get_intrinsic_properties_df(human_dir, OP, tissue_source, patcher, age, inj)
+    get_results.get_intrinsic_properties_df_no_VM_file(human_dir, OP, tissue_source, patcher, age, inj)
     get_results.get_QC_access_resistance_df (human_dir, OP, patcher)
     get_results.get_con_params_df(human_dir, OP, patcher)
     get_results.get_spontan_QC(human_dir, OP, patcher)
-    get_results.get_mini_QC(human_dir, OP, patcher)
+    get_results.get_minis_QC(human_dir, OP, patcher)
+    get_results.remove_bad_data(patcher, OP)

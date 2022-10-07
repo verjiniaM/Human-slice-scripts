@@ -3,6 +3,58 @@ import pandas as pd
 import glob
 import numpy as np
 import json
+import datetime
+
+#this function opens the alerady existing experiments_overview file and adds the latest OP info
+#patcher and op_folder have to be strings; so with " "
+# the op folder is the folder where all op folders are stored - *data_rosie or data_verji*
+def update_op_list(human_dir, exp_view):
+    '''
+    opens the existing experiments_overview file; adds the latest OP and patcher
+    '''
+    folder_list_verji = np.array(sorted(os.listdir(human_dir + 'data_verji/'))) #lists all items in the op_folder
+    folder_list_rosie = np.array(sorted(os.listdir(human_dir + 'data_rosie/')))
+    folder_list = np.concatenate((folder_list_verji, folder_list_rosie))
+
+    OP_folders_indx = [i for i in range(len(folder_list)) if folder_list[i][0:2] == "OP"] #index of all items that start with "OP"
+    OP_folders = folder_list[OP_folders_indx].tolist()
+
+    existing_OPs = exp_view['OP'].tolist()
+
+    not_added = list(set(OP_folders) - set(existing_OPs))
+
+    patchers = []
+    for x in not_added:
+        patcher = input('Patcher for ' + x + '(Verji or Rosie): ')
+        patchers.append(patcher)
+
+    not_added_df = pd.DataFrame({"OP": not_added, "patcher": patchers})
+    exp_view_new = pd.concat([exp_view, not_added_df],ignore_index=True).reset_index(drop=True) #maybe need to remove ignore_index = T
+
+    date = str(datetime.date.today())
+    exp_view_new.to_excel(human_dir + date + '_experiments_overview.xlsx', index = False) 
+    exp_view.to_excel('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/summary_data_tables/old_data/experiments_overview_before_'+ date + '.xlsx', index = False)
+
+    return exp_view_new
+
+def add_cortex_out_time(human_dir, exp_view):
+    '''
+    adds cortex_out time in experiments_overview table
+    '''
+    #check where the OP time is not filled in
+    for i in range(len(exp_view)):
+        if pd.isnull(exp_view['cortex_out'][i]):
+            #enter the data and time in %y%m%d %H:%M (e.g. 220525 = 25th May 2022);
+            # if time is unknown add "  " (double space)
+            cortex_out =  input('Cortex out for ' + exp_view['OP'][i] + '(yymmdd hh:mm)') 
+            if cortex_out == "  ":
+                exp_view.at[i,'cortex_out']= np.NaN
+            else:
+                date_time_cortex_out = datetime.datetime.strptime(cortex_out, '%y%m%d %H:%M')
+                exp_view.at[i,'cortex_out'] = date_time_cortex_out
+
+    date = str(datetime.date.today())
+    exp_view.to_excel(human_dir + date + '_experiments_overview.xlsx', index = False)
 
 def get_sorted_file_list (dir):
     '''
@@ -28,14 +80,6 @@ def get_abf_files (file_list):
             filenames.append(file_list[file])
     return filenames
 
-def get_json_files (file_list):
-    jsons = []
-    for file in range(len(file_list)):
-        #pclamp files
-        if file_list[file][-5:] == '.json': 
-            jsons.append(file_list[file])
-    return jsons
-
 def sort_protocol_names (file_list, df_rec):
     '''
     takes a file list (contents of a folder) and pandas data frame (lab notebook)
@@ -55,6 +99,7 @@ def sort_protocol_names (file_list, df_rec):
     #other_indices = df_rec.index[df_rec['protocol'].isnull() == 0].tolist()
     return slice_indx, def_slice_names, index_dict
 #df_rec['protocol'][other_indices]
+
 def fix_slice_names (def_slice_names, slice_indx):
     new_slice_names = []
     for i in range(len(def_slice_names)):
@@ -65,6 +110,20 @@ def fix_slice_names (def_slice_names, slice_indx):
     slice_names  = [x for xs in new_slice_names for x in xs]
     return slice_names
 
+def get_OP_metadata (human_dir, OP, patcher):
+    OP_folder = OP + '/'
+    if patcher == 'Verji': 
+        work_dir = human_dir + 'data_verji/'+ OP_folder
+    else:
+        work_dir = human_dir + 'data_rosie/'+ OP_folder 
+
+    file_list = get_sorted_file_list(work_dir)
+    df_rec = get_lab_book(work_dir)
+    filenames = get_abf_files(file_list)
+    slice_indx, def_slice_names, indices_dict = sort_protocol_names (file_list, df_rec)
+    slice_names = fix_slice_names (def_slice_names, slice_indx)
+    return work_dir, filenames, indices_dict, slice_names
+
 def make_dir_if_not_existing(working_dir, new_dir):
     '''
     creates a dir new_dir in working_dir, if not already existing
@@ -72,7 +131,6 @@ def make_dir_if_not_existing(working_dir, new_dir):
     path = os.path.join(working_dir, new_dir)
     if os.path.isdir(path) == False: os.mkdir(path)
     return path
-
 
 def to_json (work_dir, OP, file_out, charact_meta, con_screen_meta, mini_meta):
     '''
@@ -92,3 +150,88 @@ def from_json (work_dir, OP, fn):
     f = open(fname)
     return json.load(f)
 
+def get_json_files (file_list):
+    jsons = []
+    for file in range(len(file_list)):
+        #pclamp files
+        if file_list[file][-5:] == '.json': 
+            jsons.append(file_list[file])
+    return jsons
+
+def get_json_meta (human_dir, OP, patcher, file_out): # file_out = '_meta_active_chans.json'
+    work_dir, filenames, indices_dict, slice_names = get_OP_metadata(human_dir, OP, patcher)
+
+    file_list = get_sorted_file_list(work_dir)
+    jsons = get_json_files(file_list)
+
+    if OP + file_out in jsons:
+        json_meta = from_json(work_dir, OP, file_out)
+        return json_meta
+
+    op_time = input('Cortex out [yyyy mm dd hh mm] ' + OP).split()
+    
+    active_chans_all, slice_names_dict, treatments = [], [], []
+    for i in indices_dict['vc']:
+        treatment = input('Treatment (Ctrl, high K, or TTX) for ' + OP + ' ' + slice_names[i]).split()
+        active_channels = [int(item) for item in input('Used channels in ' + OP + ' ' + slice_names[i]).split()]
+        active_chans_all.append(active_channels)
+        slice_names_dict.append(slice_names[i])
+        treatments.append(treatment)
+    charact_meta = {
+        'OP_time' : cortex_out,
+        'slices' : slice_names_dict,
+        'treatment' : treatments,
+        'vc_files' : indices_dict['vc'],
+        'active_chans': active_chans_all
+    }
+
+    pre_chans_all, post_chans_all, treatments = [], [], []
+    for indx in indices_dict['con_screen']:
+        pre_chans = [int(item) for item in input('Pre channels in ' + filenames[indx]).split()]
+        post_chans = [int(item) for item in input('Post channels in ' + filenames[indx]).split()]
+        treatment = input('Treatment (Ctrl, high K, or TTX) for ' + OP + ' ' + slice_names[i]).split()
+        pre_chans_all.append(pre_chans)
+        post_chans_all.append(post_chans)
+        treatments.append(treatment)
+    con_screen_meta = {
+        'OP_time' : cortex_out,
+        'con_screen_file_indices' : indices_dict['con_screen'],
+        'treatment' : treatments,
+        'pre_chans' : pre_chans_all,
+        'post_chans' : post_chans_all
+    }
+
+    chans_all, mini_slices, treatments = [],[], []
+    for i in indices_dict['minis']:
+        active_channels = [int(item) for item in input('Used channels in ' + OP + ' ' + slice_names[i]).split()]
+        treatment = input('Treatment (Ctrl, high K, or TTX) for ' + OP + ' ' + slice_names[i]).split()
+        chans_all.append(active_channels)
+        mini_slices.append(slice_names[i])
+        treatments.append(treatment)
+    mini_meta = {
+        'OP_time' : cortex_out,
+        'mini_slices' : mini_slices,
+        'treatment' : treatments,
+        'mini_files' : indices_dict['minis'],
+        'mini_chans' : chans_all
+    }
+    
+    to_json (work_dir, OP, file_out, charact_meta, con_screen_meta, mini_meta)
+    json_meta = from_json(work_dir, OP, file_out)
+    return json_meta
+
+def get_datetime_from_input (op_time):
+    year, month, day, hour, minute = map(int, op_time)
+    cortex_out_time = datetime.datetime(year, month, day, hour, minute )
+    return cortex_out_time
+
+def get_time_after_OP (filename, cortex_out_time):
+    block = hcf.read_abf(filename)
+    rec_time = block.rec_datetime
+
+    dt = rec_time - cortex_out_time
+    h_after_op = dt.days*24 + dt.seconds/3600
+
+    time_after_op = datetime.time(hour = int(dt.seconds /3600), minute = int((dt.seconds / 3600 - int(dt.seconds / 3600))*60))
+
+    return h_after_op
