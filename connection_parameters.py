@@ -116,7 +116,7 @@ def remove_sweeps_with_POSTsynAPs(pre_sig, post_sig, preAPs):
 #takes differential and uses this to find psp peaks
 def find_postsynaptic_peaks(post_window, preAPs_shifted):
     post_d1 = np.diff(post_window,1)
-    post_d1_peaks = find_peaks(post_d1, distance=800) 
+    post_d1_peaks = find_peaks(post_d1 ,distance=800) 
 
     num_aps = len(preAPs_shifted[0])
     PSPs = np.ndarray([num_aps,2])

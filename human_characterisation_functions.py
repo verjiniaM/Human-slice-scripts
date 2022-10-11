@@ -67,6 +67,18 @@ def get_abf_info (filename, cell_chan, sweep_count, sweep_len):
     '''
     block = read_abf(filename)
     middle_swp_num = int(sweep_count/2)
+    if len(block.segments[middle_swp_num].analogsignals) < 8:
+        all_chans_len = len(block.segments[middle_swp_num].analogsignals)
+        active_channels = []
+        for ch in range(all_chans_len):
+            chan_name = int(block.segments[middle_swp_num].analogsignals[ch].name[-1])
+            active_channels.append(chan_name)
+        chan_index = active_channels.index(cell_chan)
+        #have to find the index of this chan in all chans
+        sampl_rate = block.segments[middle_swp_num].analogsignals[chan_index].sampling_rate
+        units = block.segments[middle_swp_num].analogsignals[chan_index].units
+        times = np.linspace(0,sweep_len,sweep_len)/sampl_rate
+        return sampl_rate, units, times
     #signal = block.segments[middle_swp_num].analogsignals[cell_chan-1].view(np.recarray).reshape(sweep_len).tolist()
     sampl_rate = block.segments[middle_swp_num].analogsignals[cell_chan-1].sampling_rate
     units = block.segments[middle_swp_num].analogsignals[cell_chan-1].units
@@ -276,11 +288,15 @@ def get_ap_param_for_plotting (charact_data, channels, inj, max_spikes):
         ch1 = charact_data[key][0]
         
         if max_spikes[i] == 0:
-            peaks = []
-            first_spike = float('nan')
-            ch_params = [first_spike, peaks]
-            for i, param in enumerate(params):
-                param.append(ch_params[i])
+            peaks_all.append([])
+            first_spike_all.append(float('nan'))
+            spike_counts_all.append(0)
+            first_spiking_sweep_all.append([])
+            # peaks = []
+            # first_spike = float('nan')
+            # ch_params = [first_spike, peaks]
+            # for i, param in enumerate(params):
+            #     param.append(ch_params[i])
             continue
         peaks = np.empty([len(inj), max_spikes[i], 3])
         peaks.fill(np.nan)

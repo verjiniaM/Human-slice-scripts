@@ -169,6 +169,13 @@ def plot_spikes (filename, channels, inj):
         ch_data = charact_data[key][0]
 
         win = len(inj) - first_spikes[n]
+        if math.isnan(first_spikes[n]):
+            x = 1
+            fig, ax = plt.subplots(x,x,sharex=True, sharey=False,figsize=(10,4))
+            fig.suptitle(key, fontsize=15)
+            plt.savefig(dir_spikes + '/char_spikes_plot_' + filename[end_fn:-4]+'_'+ key + '.png')
+            plt.close(fig)
+            continue
         x = math.ceil(np.sqrt(win))
         fig, ax = plt.subplots(x,x,sharex=True, sharey=False,figsize=(22,9))
         for i in range(win):
@@ -204,6 +211,13 @@ def plot_iv_curve (filename, channels, inj):
         key = 'Ch' + str(ch)
         ch_data = charact_data[key][0]
 
+        if math.isnan(first_spikes[n]):
+            fig, ax = plt.subplots(1,1,sharex=True, sharey=False,figsize=(10,4))
+            fig.suptitle(key, fontsize=15)
+            plt.savefig(dir_iv_curve + '/char_IV_curve_' + filename[end_fn:-4]+'_'+ key + '.png')
+            plt.close()
+            continue
+
         IOfit = np.polyfit(spike_counts_all[n][first_spikes[n]:,0], spike_counts_all[n][first_spikes[n]:,1],1)
         IO_slope = IOfit[0]
         fig = plt.figure()
@@ -214,7 +228,7 @@ def plot_iv_curve (filename, channels, inj):
         
         fig.suptitle(key, fontsize=15)
         fig.patch.set_facecolor('white')
-        plt.savefig(dir_iv_curve+ '/char_IV_curve_' + filename[end_fn:-4]+'_'+ key + '.png')
+        plt.savefig(dir_iv_curve + '/char_IV_curve_' + filename[end_fn:-4]+'_'+ key + '.png')
         plt.close()
 
 def plot_ap_props(filename, channels, inj):
@@ -230,6 +244,14 @@ def plot_ap_props(filename, channels, inj):
     for n, ch in enumerate(channels):
         key = 'Ch' + str(ch)
         ch_data = charact_data[key][0]
+
+        if math.isnan(first_spikes[n]):
+            x = 1
+            fig, ax = plt.subplots(x,x,sharex=True, sharey=False,figsize=(10,4))
+            fig.suptitle(key, fontsize=15)
+            plt.savefig(dir_ap_props + '/' + filename[end_fn:-4] + '_AP#' + str(0) + '_' + key + '.png')
+            plt.close()
+            continue
 
         if np.max(spike_counts_all[n][:,1]) == 1:
             ap = 0
@@ -366,6 +388,7 @@ def plot_connection_window(con_screen_file, preC, postC, pre_window, post_window
         axarr[1].plot(times[0:len(y)], y, lw=0.2, color='grey', alpha=0.4, zorder=0 )
         #axarr[1].plot(y, lw=0.2, color='grey', alpha=0.4)
     
+    y = post_window
     axarr[1].plot(times[0:len(y)], post_window, color='k', lw=0.5, zorder=10) #post_window is the averaged 0 shifter post signal 
 
     for i in range(0,4):

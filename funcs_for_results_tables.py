@@ -5,6 +5,7 @@ import human_characterisation_functions as hcf
 import plotting_funcs
 import connection_parameters as con_param
 
+
 def get_intrinsic_properties_df(human_dir, OP, tissue_source, patcher, age, inj):
     '''
     saves a pandas dataframe with intrinsic cell peoperties for OP
@@ -39,7 +40,7 @@ def get_intrinsic_properties_df(human_dir, OP, tissue_source, patcher, age, inj)
         # # indices_dict['freq analyse'] = index_char
  
     active_chans_meta = sort.get_json_meta(human_dir, OP, patcher, '_meta_active_chans.json')[0]  
-    cortex_out_time = sort.get_datetime_from_input(active_chans_meta['OP_time'])
+    cortex_out_time = sort.get_datetime_from_input(active_chans_meta['OP_time'][0])
 
     #creating the dataframe
     df_OP = pd.DataFrame(columns=['filename', 'slice', 'cell_ch', 'cell_ID', 'day', 'treatment', 
@@ -96,6 +97,7 @@ def get_intrinsic_properties_df(human_dir, OP, tissue_source, patcher, age, inj)
 
 def get_QC_access_resistance_df (human_dir, OP, patcher):
     work_dir, filenames, indices_dict, slice_names = sort.get_OP_metadata(human_dir, OP, patcher)
+    indices_dict = sort.from_json(work_dir, OP, '_indices_dict.json')[0]
 
     [print(key,':',value) for key, value in indices_dict.items()]
     if len(indices_dict['vc']) != len(indices_dict['vc_end']): 
@@ -144,7 +146,7 @@ def get_con_params_df (human_dir, OP, patcher):
     work_dir, filenames, indices_dict, slice_names = sort.get_OP_metadata(human_dir, OP, patcher)
 
     con_sccreen_connected_chans = sort.get_json_meta(human_dir, OP, patcher, '_meta_active_chans.json')[1]
-    cortex_out_time = sort.get_datetime_from_input(con_sccreen_connected_chans['OP_time'])
+    cortex_out_time = sort.get_datetime_from_input(con_sccreen_connected_chans['OP_time'][0])
 
     con_data = pd.DataFrame(columns = ['OP', 'fn', 'slice', 'day', 'cell_ID', 'repatch', 'treatment', 
     'hrs_after_OP', 'hrs_incubation','chan_pre', 'chan_post', 'Vm pre', 'Vm post', 
@@ -204,19 +206,22 @@ def get_con_params_df (human_dir, OP, patcher):
 
 def get_spontan_QC(human_dir, OP, patcher):
     work_dir, filenames, indices_dict, slice_names = sort.get_OP_metadata(human_dir, OP, patcher)
+    indices_dict = sort.from_json(work_dir, OP, '_indices_dict.json')[0]
 
     active_chans_meta = sort.get_json_meta(human_dir, OP, patcher, '_meta_active_chans.json')
 
     #record_sorting = pd.DataFrame(columns = ['OP', 'patcher', 'filename', 'cell_ch','swps_to_analyse', 'swps_to_discard', 
     #'min_vals_each_swp', 'max_vals_each_swp', 'drift'])
+
     record_sorting = pd.DataFrame()
-    for u in indices_dict['spontan']:
+    for i, u in enumerate(indices_dict['spontan']):
         filename_spontan = work_dir + filenames[u]
         slic = slice_names[u]   
 
-        index_chans = active_chans_meta[0]['slices'].index(slic)
-        active_channels = active_chans_meta[0]['active_chans'][index_chans]
+        #index_chans = active_chans_meta[0]['slices'].index(slic)
+        active_channels = active_chans_meta[0]['active_chans'][i]
         cell_IDs = hcf.get_cell_IDs(filename_spontan, slic, active_channels)
+        treatment = active_chans_meta[0]['treatment'][i][0]
 
         spontan_QC = hcf.rec_stability (filename_spontan, active_channels , 60)
         df_QC = pd.DataFrame(spontan_QC).T
@@ -227,6 +232,7 @@ def get_spontan_QC(human_dir, OP, patcher):
         df_QC.insert(0, 'filename', filenames[u])
         df_QC.insert(0, 'patcher', patcher)
         df_QC.insert(0, 'OP', OP[:-1])
+        df_QC.insert(len(df_QC),'treatment', treatment)
 
         record_sorting = pd.concat([record_sorting.loc[:], df_QC]).reset_index(drop=True)
 
@@ -237,21 +243,23 @@ def get_spontan_QC(human_dir, OP, patcher):
 def get_minis_QC(human_dir, OP, patcher):
     work_dir, filenames, indices_dict, slice_names = sort.get_OP_metadata(human_dir, OP, patcher)
 
+    #indices_dict = sort.from_json(work_dir, OP, '_indices_dict.json')[0]
     active_chans_meta = sort.get_json_meta(human_dir, OP, patcher, '_meta_active_chans.json')
-    cortex_out_time = sort.get_datetime_from_input(active_chans_meta['OP_time'])
+    cortex_out_time = sort.get_datetime_from_input(active_chans_meta[2]['OP_time'][0])
 
-    record_sorting = pd.DataFrame(columns = ['OP','patcher', 'filename', 'cell_ch','swps_to_analyse', 'swps_to_discard', 
+    record_sorting = pd.DataFrame(columns = ['OP','patcher', 'filename', 'cell_ch','hrs_incubation','swps_to_analyse', 'swps_to_discard', 
     'min_vals_each_swp', 'max_vals_each_swp', 'drift', 'Rs_cahnge', 'Rin_change', 'Rs_start'])
 
     for i, indx in enumerate(indices_dict['minis']):
         mini_file = work_dir + filenames[indx]
         slic = slice_names[indx]
 
-        index_chans = active_chans_meta[2]['mini_slices'].index(slic)
-        active_channels = active_chans_meta[2]['mini_chans'][index_chans]
+        #index_chans = active_chans_meta[2]['mini_slices'].index(slic)
+        active_channels = active_chans_meta[2]['mini_chans'][i]
         cell_IDs = hcf.get_cell_IDs(mini_file, slic, active_channels)
         time_after_op = sort.get_time_after_OP(mini_file, cortex_out_time)
         mini_QC = hcf.rec_stability(mini_file, active_channels , 60)
+        treatment = active_chans_meta[2]['treatment'][i][0]
 
         if len(indices_dict['vc_mini']) == len(indices_dict['minis']):
             vc_indx = indices_dict['vc_mini'][i]
@@ -272,6 +280,7 @@ def get_minis_QC(human_dir, OP, patcher):
         df_QC.insert(0, 'filename', filenames[indx])
         df_QC.insert(0, 'patcher', patcher)
         df_QC.insert(0, 'OP', OP[:-1])
+        df_QC.insert(len(df_QC),'treatment', treatment)
         df_QC['Rs_change'], df_QC['Rin_change'], df_QC['Rs_start'] = Rs_diff, Rin_diff, Rs
 
         record_sorting = pd.concat([record_sorting.loc[:], df_QC]).reset_index(drop=True)
@@ -282,6 +291,7 @@ def get_intrinsic_properties_df_no_VM_file (human_dir, OP, tissue_source, patche
     saves a pandas dataframe with intrinsic cell peoperties for OP
     '''
     work_dir, filenames, indices_dict, slice_names = sort.get_OP_metadata(human_dir, OP, patcher)
+    #indices_dict = sort.from_json(work_dir, OP, '_indices_dict.json')[0]
 
     #creating a dir to save plots and data_tables (if not existing)
     dir_plots = sort.make_dir_if_not_existing (work_dir, 'plots')
@@ -311,14 +321,14 @@ def get_intrinsic_properties_df_no_VM_file (human_dir, OP, tissue_source, patche
         # # indices_dict['freq analyse'] = index_char
  
     active_chans_meta = sort.get_json_meta(human_dir, OP, patcher, '_meta_active_chans.json')[0]
-    cortex_out_time = sort.get_datetime_from_input(active_chans_meta['OP_time'])
+    cortex_out_time = sort.get_datetime_from_input(active_chans_meta['OP_time'][0])
 
     #creating the dataframe
     df_OP = pd.DataFrame(columns=['filename', 'slice', 'cell_ch', 'cell_ID', 'day', 'treatment', 
     'hrs_incubation', 'repatch', 'hrs_after_OP', 'Rs', 'Rin', 'resting_potential', 'max_spikes', 'Rheobase', 
     'AP_heigth', 'TH', 'max_depol', 'max_repol', 'membra_time_constant_tau', 'capacitance'])
 
-    for i in range(len(indices_dict['vc'])):
+    for i in range(19,len(indices_dict['vc'])):
         vc = indices_dict['vc'][i]
         char = indices_dict['freq analyse'][i]
         slic = slice_names[vc]
@@ -368,7 +378,7 @@ def get_intrinsic_properties_df_no_VM_file (human_dir, OP, tissue_source, patche
     df_intrinsic.to_excel(work_dir + 'data_tables/' + OP + '_Intrinsic_and_synaptic_properties.xlsx') 
     #df_intrinsic.to_csv(work_dir + 'data_tables/' + OP + '_Intrinsic_and_synaptic_properties.csv')
 
-    print('Intrinsic properties DataFrame for  ' + OP + 'saved successfully. ' + '\n' + 'Exclude recordings if necessary.')
+    print('Intrinsic properties DataFrame for  ' + OP + ' saved successfully. ' + '\n' + 'Exclude recordings if necessary.')
 
 
 def remove_bad_data (OP, patcher, human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'):

@@ -4,6 +4,7 @@ import glob
 import numpy as np
 import json
 import datetime
+import human_characterisation_functions as hcf
 
 #this function opens the alerady existing experiments_overview file and adds the latest OP info
 #patcher and op_folder have to be strings; so with " "
@@ -132,7 +133,7 @@ def make_dir_if_not_existing(working_dir, new_dir):
     if os.path.isdir(path) == False: os.mkdir(path)
     return path
 
-def to_json (work_dir, OP, file_out, charact_meta, con_screen_meta, mini_meta):
+def to_json (work_dir, OP, file_out, out_data):
     '''
     returns a list with 3 dictionaries; 
     [1] slice names and active channels (for characterization)
@@ -140,8 +141,6 @@ def to_json (work_dir, OP, file_out, charact_meta, con_screen_meta, mini_meta):
     [2] mini_meta - mini_file_indices and active chanels
     '''
     fname = work_dir + OP + file_out
-    out_data = [charact_meta, con_screen_meta, mini_meta]
-
     with open(fname, "w") as outfile:
         json.dump(out_data , outfile)
 
@@ -160,6 +159,7 @@ def get_json_files (file_list):
 
 def get_json_meta (human_dir, OP, patcher, file_out): # file_out = '_meta_active_chans.json'
     work_dir, filenames, indices_dict, slice_names = get_OP_metadata(human_dir, OP, patcher)
+    exp_view = pd.read_excel(glob.glob(human_dir + '*experiments_overview.xlsx')[0]) 
 
     file_list = get_sorted_file_list(work_dir)
     jsons = get_json_files(file_list)
@@ -168,7 +168,9 @@ def get_json_meta (human_dir, OP, patcher, file_out): # file_out = '_meta_active
         json_meta = from_json(work_dir, OP, file_out)
         return json_meta
 
-    op_time = input('Cortex out [yyyy mm dd hh mm] ' + OP).split()
+    exp_view['cortex_out'] = exp_view['cortex_out'].dt.strftime('%Y-%m-%d %H:%M:%S')
+    op_time = exp_view['cortex_out'][exp_view.index[exp_view['OP'] == OP]].tolist()
+    #op_time = input('Cortex out [yyyy mm dd hh mm] ' + OP).split()
     
     active_chans_all, slice_names_dict, treatments = [], [], []
     for i in indices_dict['vc']:
@@ -178,7 +180,7 @@ def get_json_meta (human_dir, OP, patcher, file_out): # file_out = '_meta_active
         slice_names_dict.append(slice_names[i])
         treatments.append(treatment)
     charact_meta = {
-        'OP_time' : cortex_out,
+        'OP_time' : op_time,
         'slices' : slice_names_dict,
         'treatment' : treatments,
         'vc_files' : indices_dict['vc'],
@@ -189,12 +191,12 @@ def get_json_meta (human_dir, OP, patcher, file_out): # file_out = '_meta_active
     for indx in indices_dict['con_screen']:
         pre_chans = [int(item) for item in input('Pre channels in ' + filenames[indx]).split()]
         post_chans = [int(item) for item in input('Post channels in ' + filenames[indx]).split()]
-        treatment = input('Treatment (Ctrl, high K, or TTX) for ' + OP + ' ' + slice_names[i]).split()
+        treatment = input('Treatment (Ctrl, high K, or TTX) for ' + OP + ' ' + slice_names[indx]).split()
         pre_chans_all.append(pre_chans)
         post_chans_all.append(post_chans)
         treatments.append(treatment)
     con_screen_meta = {
-        'OP_time' : cortex_out,
+        'OP_time' : op_time,
         'con_screen_file_indices' : indices_dict['con_screen'],
         'treatment' : treatments,
         'pre_chans' : pre_chans_all,
@@ -209,20 +211,21 @@ def get_json_meta (human_dir, OP, patcher, file_out): # file_out = '_meta_active
         mini_slices.append(slice_names[i])
         treatments.append(treatment)
     mini_meta = {
-        'OP_time' : cortex_out,
+        'OP_time' : op_time,
         'mini_slices' : mini_slices,
         'treatment' : treatments,
         'mini_files' : indices_dict['minis'],
         'mini_chans' : chans_all
     }
     
-    to_json (work_dir, OP, file_out, charact_meta, con_screen_meta, mini_meta)
+    to_json (work_dir, OP, file_out, [charact_meta, con_screen_meta, mini_meta])
     json_meta = from_json(work_dir, OP, file_out)
     return json_meta
 
 def get_datetime_from_input (op_time):
-    year, month, day, hour, minute = map(int, op_time)
-    cortex_out_time = datetime.datetime(year, month, day, hour, minute )
+    # year, month, day, hour, minute = map(int, op_time)
+    # cortex_out_time = datetime.datetime(year, month, day, hour, minute)
+    cortex_out_time = datetime.datetime.strptime(op_time, "%Y-%m-%d %H:%M:%S")
     return cortex_out_time
 
 def get_time_after_OP (filename, cortex_out_time):
