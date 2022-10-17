@@ -339,8 +339,8 @@ def plot_connect(fn, active_channels, z1=0.5, z2=35.5,
         avg = np.mean(ch_data_i, axis = 1)
 
         for j, ch2 in enumerate(active_channels):
-            # if i == j:
-            #     ax[i,j].plot()
+            if i == j:
+                ax[i,j].plot()
             ch_name_j = 'Ch' + str(ch2)
             plotwin = avg[stim_window[ch_name_j][0]:stim_window[ch_name_j][1]] #from the average takes the signal for this stim_window
             ax[i,j].plot(plotwin, clrs[i], lw=0.25)
@@ -378,20 +378,21 @@ def plot_connection_window(con_screen_file, preC, postC, pre_window, post_window
 
     my_labels = {'l1' : 'peak pre_AP', 'l2' : 'baseline', 'l3': 'onset', 'l4': 'post synnaptic peak'}
     axarr[0].plot(times[:len(pre_window)], pre_window, color='k')   #plost pre APs 0 shifted
-    for i in range(0,4):
+    
+    for i in range(0,len(preAPs_shifted[0])):
         axarr[0].scatter(preAPs_shifted[0][i]/sampl_rate,\
              pre_window[preAPs_shifted[0][i]], marker='o', color='r', label = my_labels['l1'])
         my_labels['l1'] = "_nolegend_"
 
     for i in range(np.shape(postsig)[1]):
-        y = postsig[:,i][preAPs[0][0]-750:preAPs[0][3]+750]
+        y = postsig[:,i][preAPs[0][0]-750:preAPs[0][len(preAPs)-1]+750]
         axarr[1].plot(times[0:len(y)], y, lw=0.2, color='grey', alpha=0.4, zorder=0 )
         #axarr[1].plot(y, lw=0.2, color='grey', alpha=0.4)
     
     y = post_window
     axarr[1].plot(times[0:len(y)], post_window, color='k', lw=0.5, zorder=10) #post_window is the averaged 0 shifter post signal 
 
-    for i in range(0,4):
+    for i in range(0,len(preAPs_shifted[0])):
         sample_rate = sampl_rate.item()
         axarr[1].hlines(bl[i,0], (preAPs_shifted[0][i]-170)/sample_rate, (preAPs_shifted[0][i]-30)/sample_rate, 
         linestyles = 'solid', lw = 3, color='b', label = my_labels['l2'],zorder=10, alpha = 0.6)
@@ -399,7 +400,7 @@ def plot_connection_window(con_screen_file, preC, postC, pre_window, post_window
 
     axarr[1].scatter(onsets/sampl_rate, bl, marker='^', color='r', label = my_labels['l3'],zorder=10)
 
-    for i in range(0,4):
+    for i in range(0,len(PSPs)):
         axarr[1].scatter(PSPs[i][1]/sampl_rate, PSPs[i][0], marker='+',\
              color='g', s=30, linewidth=10, label = my_labels['l4'],zorder=10)
         my_labels['l4'] = "_nolegend_"

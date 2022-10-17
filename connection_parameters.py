@@ -154,8 +154,15 @@ def get_onsets(preAPs_shifted, post_window, PSPs, bl):
         if fit_start[0].size == 0 or fit_end[0].size == 0:
             onsets[i,0] = math.nan
             continue
+        if fit_start[0][0] == fit_end[0][0]:
+            onsets[i,0] = math.nan
+            continue
         x = range(155)
-        x1 = x[fit_start[0][0] : fit_end[0][0]]
+        if fit_end[0][0] < fit_start[0][0]:
+            end_corr = fit_end[0][fit_end[0] > fit_start[0][0]][0]
+            x1 = x[fit_start[0][0] : end_corr]
+        else:
+            x1 = x[fit_start[0][0] : fit_end[0][0]]
         fit1 = np.polyfit(x1, PSP_window[x1], 1)
         foot = (bl[i][0]-fit1[1])/fit1[0] #where the fit crosses the local baseline
         onsets[i,0] = int(foot) + preAPs_shifted[0][i]-5

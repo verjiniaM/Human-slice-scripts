@@ -7,11 +7,11 @@ import funcs_for_results_tables as get_results
 
 
 #%%
-OP = 'OP210319'
+OP = 'OP220111'
 patcher = 'Rosie'
-tissue_source = 'Virchow'
+tissue_source = 'Bielefeld'
 inj = 'full'
-age = 'J'
+age = 'A'
 #%%
 
 #loading the updated experiments_overview and the old summary_data_table
@@ -47,10 +47,10 @@ for i in op_to_analyse:
     inj = "full"
     
     print('starting analysis for '+ OP)
-    #get_results.get_intrinsic_properties_df(human_dir, OP, tissue_source, patcher, age, inj)
-    get_results.get_intrinsic_properties_df_no_VM_file(human_dir, OP, tissue_source, patcher, age, inj)
+    get_results.get_intrinsic_properties_df(human_dir, OP, tissue_source, patcher, age, inj)
     get_results.get_QC_access_resistance_df (human_dir, OP, patcher)
     get_results.get_con_params_df(human_dir, OP, patcher)
     get_results.get_spontan_QC(human_dir, OP, patcher)
     get_results.get_minis_QC(human_dir, OP, patcher)
     get_results.remove_bad_data(OP, patcher)
+    get_results.check_cell_IDs(work_dir, OP) #this could be run multiple times

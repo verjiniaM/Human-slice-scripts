@@ -16,6 +16,12 @@ def read_abf(filename):
     '''
     r = neo.io.AxonIO(filename=filename)
     block = r.read(signal_group_mode = 'split-all')[0] 
+    channels = len(block.segments[0].analogsignals)
+
+    for ch in range(0, channels):
+        name = block.segments[0].analogsignals[ch].name
+        if name == '_Ipatch' or name == 'IN0':
+            block.segments[0].analogsignals[ch].name = 'Ch1'
     return block
 
 def get_cell_IDs (filename_char, slic, active_channels):
@@ -47,10 +53,6 @@ def load_traces (filename):
     data_dict = {}
     for ch in range(0, channels):
         name = block.segments[0].analogsignals[ch].name
-        if name == '_Ipatch' or name == 'IN0':
-            name = 'Ch1'
-            block.segments[0].analogsignals[ch].name = 'Ch1'
-        
         ch_data = np.ndarray([sweep_len, sweep_count])                
         for i in range(0,sweep_count):
             ch_data[:,i] = block.segments[i].analogsignals[ch].view(np.recarray).reshape(sweep_len)
@@ -71,7 +73,7 @@ def get_abf_info (filename, cell_chan, sweep_count, sweep_len):
         all_chans_len = len(block.segments[middle_swp_num].analogsignals)
         active_channels = []
         for ch in range(all_chans_len):
-            chan_name = int(block.segments[middle_swp_num].analogsignals[ch].name[-1])
+            chan_name = int(block.segments[0].analogsignals[ch].name[-1])
             active_channels.append(chan_name)
         chan_index = active_channels.index(cell_chan)
         #have to find the index of this chan in all chans

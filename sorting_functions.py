@@ -174,7 +174,7 @@ def get_json_meta (human_dir, OP, patcher, file_out): # file_out = '_meta_active
     
     active_chans_all, slice_names_dict, treatments = [], [], []
     for i in indices_dict['vc']:
-        treatment = input('Treatment (Ctrl, high K, or TTX) for ' + OP + ' ' + slice_names[i]).split()
+        treatment = input('Treatment (Ctrl, high K, or TTX) for ' + OP + ' ' + slice_names[i])
         active_channels = [int(item) for item in input('Used channels in ' + OP + ' ' + slice_names[i]).split()]
         active_chans_all.append(active_channels)
         slice_names_dict.append(slice_names[i])
@@ -191,7 +191,7 @@ def get_json_meta (human_dir, OP, patcher, file_out): # file_out = '_meta_active
     for indx in indices_dict['con_screen']:
         pre_chans = [int(item) for item in input('Pre channels in ' + filenames[indx]).split()]
         post_chans = [int(item) for item in input('Post channels in ' + filenames[indx]).split()]
-        treatment = input('Treatment (Ctrl, high K, or TTX) for ' + OP + ' ' + slice_names[indx]).split()
+        treatment = input('Treatment (Ctrl, high K, or TTX) for ' + OP + ' ' + slice_names[indx])
         pre_chans_all.append(pre_chans)
         post_chans_all.append(post_chans)
         treatments.append(treatment)
@@ -206,7 +206,7 @@ def get_json_meta (human_dir, OP, patcher, file_out): # file_out = '_meta_active
     chans_all, mini_slices, treatments = [],[], []
     for i in indices_dict['minis']:
         active_channels = [int(item) for item in input('Used channels in ' + OP + ' ' + slice_names[i]).split()]
-        treatment = input('Treatment (Ctrl, high K, or TTX) for ' + OP + ' ' + slice_names[i]).split()
+        treatment = input('Treatment (Ctrl, high K, or TTX) for ' + OP + ' ' + slice_names[i])
         chans_all.append(active_channels)
         mini_slices.append(slice_names[i])
         treatments.append(treatment)
