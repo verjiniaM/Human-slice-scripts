@@ -89,30 +89,50 @@ def plot_vc_holding (filename, channels):
                 THRs = Res[0,1] * 0.1 #10 %
                 THRi = Res[0,2] * 0.1
         
-                fig,ax = plt.subplots(3,1,sharex=True)
-                ax[0].scatter(range(sweep_count), Res[:,0], color='b', label = 'Holding current (median)')
+                #fig,ax = plt.subplots(3,2,sharex=True, figsize = (12,6))
+                fig,ax = plt.subplots(3,2,sharex=True)
+                hold = ax[0,0].scatter(range(sweep_count), Res[:,0], color='b', label = 'Holding current (median)')
                 #ax[0].set_title('Holding current')
-                ax[0].fill_between(range(sweep_count), Res[0,0] - THholding, Res[0,0] + THholding, color='b', alpha=0.1, label = '20% window')
-                ax[0].set_ylim([np.min(Res[0,0] - 1.5 * THholding), np.max(Res[0,0] + 1.5 * THholding)])
-                ax[0].set_yticks([np.min(Res[0,0] - 1.5 * THholding), Res[0,0], np.max(Res[0,0] + 1.5 * THholding)])
+                hold_win = ax[0,0].fill_between(range(sweep_count), Res[0,0] - THholding, Res[0,0] + THholding, color='b', alpha=0.1, label = '20% window')
+                ax[0,0].set_ylim([np.min(Res[0,0] - 1.5 * THholding), np.max(Res[0,0] + 1.5 * THholding)])
+                ax[0,0].set_yticks([np.min(Res[0,0] - 1.5 * THholding), Res[0,0], np.max(Res[0,0] + 1.5 * THholding)])
                 #ax[0].legend(loc = 'upper right')
 
-                ax[1].scatter(range(sweep_count), Res[:,1], color='r', label = 'Series resistance (median)')
+                Rs = ax[1,0].scatter(range(sweep_count), Res[:,1], color='r', label = 'Series resistance (median)')
                 #ax[1].set_title('Series resistance')
-                ax[1].fill_between(range(sweep_count), Res[0,1] - THRs, Res[0,1] + THRs, color='r', alpha=0.1, label = '20% window')
-                ax[1].set_ylim([np.min(Res[0,1] - 1.5 * THRs), np.max(Res[0,1] + 1.5 * THRs)])
-                ax[1].set_yticks([np.min(Res[0,1] - 1.3 * THRs), Res[0,1], np.max(Res[0,1] + 1.3 * THRs)])
+                Rs_win = ax[1,0].fill_between(range(sweep_count), Res[0,1] - THRs, Res[0,1] + THRs, color='r', alpha=0.1, label = '20% window')
+                ax[1,0].set_ylim([np.min(Res[0,1] - 1.5 * THRs), np.max(Res[0,1] + 1.5 * THRs)])
+                ax[1,0].set_yticks([np.min(Res[0,1] - 1.3 * THRs), Res[0,1], np.max(Res[0,1] + 1.3 * THRs)])
                 #ax[1].legend(loc = 'upper right')
 
-                ax[2].scatter(range(sweep_count), Res[:,2], color='g', label = 'Input resistance (median)')
+                Rin = ax[2,0].scatter(range(sweep_count), Res[:,2], color='g', label = 'Input resistance (median)')
                 #ax[2].set_title('Input resistance')
-                ax[2].fill_between(range(sweep_count), Res[0,2] - THRi, Res[0,2] + THRi, color='g', alpha=0.1, label = '20% window')
-                ax[2].set_ylim([np.min(Res[0,2] - 1.5 * THRi), np.max(Res[0,2] + 1.5 * THRi)])
-                ax[2].set_yticks([np.min(Res[0,2] - 1.3 * THRi), Res[0,2], np.max(Res[0,2] + 1.3 * THRi)])
-                ax[2].set_xlabel('Sweep num')
+                Rin_win = ax[2,0].fill_between(range(sweep_count), Res[0,2] - THRi, Res[0,2] + THRi, color='g', alpha=0.1, label = '20% window')
+                ax[2,0].set_ylim([np.min(Res[0,2] - 1.5 * THRi), np.max(Res[0,2] + 1.5 * THRi)])
+                ax[2,0].set_yticks([np.min(Res[0,2] - 1.3 * THRi), Res[0,2], np.max(Res[0,2] + 1.3 * THRi)])
+                ax[2,0].set_xlabel('Sweep num')
                 #ax[2].legend(loc = 'upper right')
+            
+            #leg = plt.figlegend(loc = 'center right', bbox_to_anchor=(1.4, 0.5))
+                lgd = plt.legend(
+                    [hold, hold_win, Rs, Rs_win, Rin, Rin_win],
+                    ['Holding current (median)','20% window', 'Series resistance (median)', '20% window', 'Input resistance (median)', '20% window'],
+                    ## by default, legend anchor to axis, but can
+                    ## also be anchored to arbitary position
+                    ## positions within [1,1] would be within the figure
+                    ## all numbers are ratio by default
 
-            plt.figlegend(loc = 'center right', bbox_to_anchor=(1.4, 0.5))
+                    bbox_to_anchor=(1.4, 0.7),
+
+                    ## loc indicates the position within the figure
+                    ## it is defined consistent to the same Matlab function 
+                    loc='center right',
+
+                    ncol = 1
+                    #mode="expand",
+                    #borderaxespad=0.
+                    )
+                
             fig.patch.set_facecolor('white') 
             fig.suptitle(key, fontsize = 15)
             fig.tight_layout()
@@ -411,6 +431,7 @@ def plot_connection_window(con_screen_file, preC, postC, pre_window, post_window
     axarr[1].set_xlabel('sec')
     axarr[1].set_ylabel(str(units)[-2:])
     plt.figlegend(loc = 'center right',  bbox_to_anchor=(0.92, 0.5))
+    fig.patch.set_facecolor('white')
 
     plt.savefig(dir_connect + '/pre_post_events_' + con_screen_file[end_fn:-4] + '_Ch' + str(preC) + '#Ch' + str(postC) + '.png')
     plt.close()
@@ -444,7 +465,6 @@ def plot_post_cell(con_screen_file, pre_cell_chan, post_cell_chan):
     plt.close()
 
     fig = plt.figure(figsize=(6,6))
-    fig.patch.set_facecolor('white')
     y = mean_post[xvals:xvals+4000]+10
     times = np.linspace(0,len(y), len(y))/(sampl_rate*1000) #foe ms
     plt.plot(times, y, lw=1.5, color='k')
@@ -452,6 +472,7 @@ def plot_post_cell(con_screen_file, pre_cell_chan, post_cell_chan):
     plt.ylabel('mV')
     plt.savefig(dir_connect + '/post_swps_mean_' + con_screen_file[end_fn:-4] + '_' + 
     'Ch' + str(pre_cell_chan) + '_to_' + 'Ch' + str(post_cell_chan) + '.png')
+    fig.patch.set_facecolor('white')
     plt.close()
 
 
@@ -533,5 +554,83 @@ def plot_post_cell_old_win(con_screen_file, pre_cell_chan, post_cell_chan):
     plt.xlabel('ms')
     plt.ylabel('mV')
     plt.savefig(dir_connect + '/post_swps_mean_' + con_screen_file[end_fn:-4] + '_' + 
+    'Ch' + str(pre_cell_chan) + '_to_' + 'Ch' + str(post_cell_chan) + '.png')
+    plt.close()
+
+
+
+#plots pre_cell in IC, post in VC 
+
+def plot_connection_window_VC (con_screen_file, preC, postC, pre_window, post_window, preAPs_shifted, postsig,\
+                           onsets, preAPs, PSPs, bl):
+
+    sampl_rate, units, times = hcf.get_abf_info(con_screen_file, preC, np.shape(postsig)[1], np.shape(postsig)[0])
+    end_fn = con_screen_file.rfind('/') + 1
+    dir_connect = sort.make_dir_if_not_existing(con_screen_file[:end_fn] + 'plots/',  'connectivity_plots')
+    
+    fig,axarr = plt.subplots(2,1, sharex=True, figsize=(12,12))
+    fig.patch.set_facecolor('white')
+
+    my_labels = {'l1' : 'peak pre_AP', 'l2' : 'baseline', 'l3': 'onset', 'l4': 'post synnaptic peak'}
+    axarr[0].plot(times[:len(pre_window)], pre_window, color='k')   #plost pre APs 0 shifted
+    
+    for i in range(0,len(preAPs_shifted[0])):
+        axarr[0].scatter(preAPs_shifted[0][i]/sampl_rate,\
+             pre_window[preAPs_shifted[0][i]], marker='o', color='r', label = my_labels['l1'])
+        my_labels['l1'] = "_nolegend_"
+
+    for i in range(np.shape(postsig)[1]):
+        y = postsig[:,i][preAPs[0][0]-750:preAPs[0][len(preAPs)-1]+750]
+        axarr[1].plot(times[0:len(y)], y, lw=0.2, color='grey', alpha=0.4, zorder=0 )
+        #axarr[1].plot(y, lw=0.2, color='grey', alpha=0.4)
+    
+    y = post_window
+    axarr[1].plot(times[0:len(y)], post_window, color='k', lw=0.5, zorder=10) #post_window is the averaged 0 shifter post signal 
+
+    for i in range(0,len(preAPs_shifted[0])):
+        sample_rate = sampl_rate.item()
+        axarr[1].hlines(bl[i,0], (preAPs_shifted[0][i]-170)/sample_rate, (preAPs_shifted[0][i]-30)/sample_rate, 
+        linestyles = 'solid', lw = 3, color='b', label = my_labels['l2'],zorder=10, alpha = 0.6)
+        my_labels['l2'] = "_nolegend_"
+
+    axarr[1].scatter(onsets/sampl_rate, bl, marker='^', color='r', label = my_labels['l3'],zorder=10)
+
+    for i in range(0,len(PSPs)):
+        axarr[1].scatter(PSPs[i][1]/sampl_rate, PSPs[i][0], marker='+',\
+             color='g', s=30, linewidth=10, label = my_labels['l4'],zorder=10)
+        my_labels['l4'] = "_nolegend_"
+
+    axarr[0].set_title('Pre APs')
+    axarr[0].set_ylabel(str(units)[-2:])
+    axarr[1].set_title('Post cell responsees')
+    axarr[1].set_xlabel('sec')
+    axarr[1].set_ylabel(str(units)[-2:])
+    plt.figlegend(loc = 'center right',  bbox_to_anchor=(0.92, 0.5))
+    fig.patch.set_facecolor('white')
+
+    plt.savefig(dir_connect + '/VC_pre_post_events_' + con_screen_file[end_fn:-4] + '_Ch' + str(preC) + '#Ch' + str(postC) + '.png')
+    plt.close()
+
+
+def plot_post_cell_VC(con_screen_file, pre_cell_chan, post_cell_chan):
+    end_fn = con_screen_file.rfind('/') + 1
+    dir_connect = sort.make_dir_if_not_existing(con_screen_file[:end_fn] + 'plots/',  'connectivity_plots')
+
+    stim_window = stim_win.stim_window_con_screen
+
+    pre_sig, es, vm0_pre = con_param.presynaptic_screen_IC(con_screen_file, pre_cell_chan)
+    post_sig, vm0_post = con_param.postsynaptic_screen_VC(con_screen_file, post_cell_chan, es)
+    mean_pre, mean_post, pre_window, post_window, preAPs_shifted, preAPs = con_param.get_analysis_window_VC(pre_sig, post_sig)
+    sampl_rate = 200_000
+    
+    xvals = preAPs[0][0]-100
+    fig = plt.figure(figsize=(6,6))
+    fig.patch.set_facecolor('white')
+    y = mean_post[xvals:xvals+4000]+10
+    times = np.linspace(0,len(y), len(y))/(sampl_rate*1000) #foe ms
+    plt.plot(times, y, lw=1.5, color='k')
+    plt.xlabel('ms')
+    plt.ylabel('mV')
+    plt.savefig(dir_connect + '/VC_post_swps_mean_' + con_screen_file[end_fn:-4] + '_' + 
     'Ch' + str(pre_cell_chan) + '_to_' + 'Ch' + str(post_cell_chan) + '.png')
     plt.close()

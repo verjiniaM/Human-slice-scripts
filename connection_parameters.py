@@ -57,9 +57,9 @@ def postsynaptic_screen(con_screen_file, post_cell_chan, es):
     chan_name = 'Ch' + str(post_cell_chan)
 
     post_sig = con_screen_data[chan_name][0]
+    post_sig = np.delete(post_sig, es, axis=1)
     sweep_count = np.shape(post_sig)[1]
 
-    post_sig = np.delete(post_sig, es, axis=1)
     if post_sig[0].size == 0:
         return post_sig, []
     vmO = np.mean(post_sig[:,0][0:4000]) #from column 0, 0:4000
@@ -159,8 +159,10 @@ def get_onsets(preAPs_shifted, post_window, PSPs, bl):
             continue
         x = range(155)
         if fit_end[0][0] < fit_start[0][0]:
-            end_corr = fit_end[0][fit_end[0] > fit_start[0][0]][0]
-            x1 = x[fit_start[0][0] : end_corr]
+            onsets[i,0] = math.nan
+            continue
+            # end_corr = fit_end[0][fit_end[0] > fit_start[0][0]][0]
+            # x1 = x[fit_start[0][0] : end_corr]
         else:
             x1 = x[fit_start[0][0] : fit_end[0][0]]
         fit1 = np.polyfit(x1, PSP_window[x1], 1)
@@ -190,14 +192,14 @@ def latencies(onsets, preAPs_shifted):
             continue
         latency[i,0] = int(onsets[i].item()) - preAPs_shifted[0][i]
     latency = latency/20
-    
     return latency
 
 def get_amps(PSPs, bl):
     amps = []
-    for u in range(4):
-        amps.append(PSPs[u][0] - bl[0][0])
-
+    for u in range(len(PSPs)):
+        amps.append(PSPs[u][0] - bl[u][0])
+    while len(amps) - 4 < 0:
+                amps.append(math.nan)
     return amps
 
 
@@ -244,3 +246,141 @@ def get_pre_aps_diff_freqs (con_screen_file, pre_cell_chan, post_cell_chan, hz):
     #         PSPs[p,1] = np.argmax(post_window[preAPs_shifted[0][p]+20:\
     #                             preAPs_shifted[0][p]+150])+preAPs_shifted[0][p]+20
     #     return PSPs
+
+
+#functions for pre_cahn in IC; post chan in VC
+
+def presynaptic_screen_IC(con_screen_file, pre_cell_chan):
+    con_screen_data = hcf.load_traces(con_screen_file)
+    chan_name = 'Ch' + str(pre_cell_chan)
+
+    pre_sig = con_screen_data[chan_name][0]
+    sweep_count = np.shape(pre_sig)[1]
+    vmO = np.mean(pre_sig[:,0][10_000:14_000]) #from column 0, 0:4000
+
+    es = []
+    for i in range(sweep_count): #intrasweep control for excessively depolarised
+    #cells (above -50mV) or a drift in Vm of more than 10% from start to end of sweep
+        vm1 = np.mean(pre_sig[:,i][7000:11000])
+        vm2 = np.mean(pre_sig[:,i][40_000:44_000])
+        max_val = np.max(pre_sig[:,i])
+        if (vm1 > -50) or vm1-(vm1 * -0.1) > vm2 or vm2 >vm1 + (vm1 * -0.1):
+            es.append(i)
+            print("Excluding swp # " + str(i) + '; drift more than 0.1*RMP start to end or RMP > -50') 
+        elif vmO - (vmO * -0.1) > vm1 or vm1 > vmO + (vmO * -0.1):
+            es.append(i)
+            print("Excluding swp # " + str(i) + '; drift more than 0.1* RMP') 
+        #this statement accounts for APs that reverse below 0
+        elif max_val < 0:
+            es.append(i)
+            print("Excluding swp # " + str(i) + '; APs < 0') 
+    exclude = 'no'
+    if len(es) == sweep_count:
+        print('Stop analsis')
+        # es = []
+        # print('changing the es = [], to continue analysis')
+        # exclude = 'yes'
+
+    pre_sig = np.delete(pre_sig, es, axis=1)
+    return pre_sig, es, vmO
+
+
+def postsynaptic_screen_VC (con_screen_file, post_cell_chan, es):
+    con_screen_data = hcf.load_traces(con_screen_file)
+    chan_name = 'Ch' + str(post_cell_chan)
+
+    post_sig = con_screen_data[chan_name][0]
+    post_sig = np.delete(post_sig, es, axis=1)
+    sweep_count = np.shape(post_sig)[1]
+
+    if post_sig[0].size == 0:
+        return post_sig, [] 
+    vmO = np.mean(post_sig[:,0][30_000:34_000]) #from column 0, 0:4000
+
+    # es2 = []
+    # for i in range(0,sweep_count): #intrasweep control for excessively depolarised
+    # #cells (above -50mV) or a drift in Vm of more than 10% from start to end of sweep
+    #     vm1 = np.mean(post_sig[:,i][7_000:11_000])
+    #     vm2 = np.mean(post_sig[:,i][40_000:44_000])
+    #     if (vm1 < - 800) or vm1 - (vm1 * -0.1) > vm2 or vm2 > vm1 + (vm1 * -0.1):
+    #         es2.append(i)
+    #     elif vmO-(vmO*-0.1) > vm1 or vm1 > vmO+(vmO*-0.1):
+    #         es2.append(i)
+    # post_sig = np.delete(post_sig, es2, axis=1)
+    return post_sig, vmO
+
+def get_analysis_window_VC (pre_sig, post_sig):
+
+    mean_pre = np.mean(pre_sig, axis = 1)
+
+    preAPs = find_peaks(mean_pre, height=0, distance=400)
+    j = 0 #starting with min AP heigth 0
+    while len(preAPs[0]) == 0:
+        j = j-5
+        preAPs=find_peaks(mean_pre, height=j, distance=400)
+    print("Pre APs found with heigth " + str(j))
+
+    num_APs = len(preAPs[0])
+    pre_window = mean_pre[preAPs[0][0]-750:preAPs[0][num_APs-1]+750]
+
+    mean_post = np.mean(post_sig, axis = 1)
+    post_window = mean_post[preAPs[0][0]-750:preAPs[0][num_APs-1]+750]    
+    preAPs_shifted = find_peaks(pre_window, height=j, distance=400) #shifts so that stim_sindow starts at 0
+    
+    return mean_pre, mean_post, pre_window, post_window, preAPs_shifted, preAPs
+
+def find_postsynaptic_peaks_VC(post_window, preAPs_shifted):
+    post_window_negative = post_window * -1 #so that the find_peaks_works
+
+    post_d1 = np.diff(post_window_negative,1)
+    post_d1_peaks = find_peaks(post_d1 ,distance=800) 
+
+    num_aps = len(preAPs_shifted[0])
+    PSPs = np.ndarray([num_aps,2])
+    for p in range(num_aps):
+        PSPs[p,0] = np.min(post_window[preAPs_shifted[0][p]+20:\
+                           preAPs_shifted[0][p]+150])
+        PSPs[p,1] = np.argmin(post_window[preAPs_shifted[0][p]+20:\
+                              preAPs_shifted[0][p]+150])+preAPs_shifted[0][p]+20
+    return PSPs
+
+def get_onsets_VC(preAPs_shifted, post_window, PSPs, bl):
+    
+    num_aps = len(preAPs_shifted[0])
+    onsets = np.ndarray([num_aps,1])
+    for i in range(num_aps): #for each event
+        PSP_window = post_window[preAPs_shifted[0][i]-5:\
+                                 preAPs_shifted[0][i]+150] #more precise adjustment; smaller window
+        #calc diff bewteen bl and peak
+        delta = PSPs[i][0] - bl[i] #event size
+        x_20 = (delta * 0.2 + bl[i][0]).item()
+        x_80 = (delta * 0.8 + bl[i][0]).item()
+        fit_start = interpFL.findLevels(PSP_window, x_20, mode='falling')
+        fit_end = interpFL.findLevels(PSP_window, x_80, mode='falling')
+        if fit_start[0].size == 0 or fit_end[0].size == 0:
+            onsets[i,0] = math.nan
+            continue
+        if fit_start[0][0] == fit_end[0][0]:
+            onsets[i,0] = math.nan
+            continue
+        x = range(155)
+        if fit_end[0][0] < fit_start[0][0]:
+            onsets[i,0] = math.nan
+            continue
+            # end_corr = fit_end[0][fit_end[0] > fit_start[0][0]][0]
+            # x1 = x[fit_start[0][0] : end_corr]
+        else:
+            x1 = x[fit_start[0][0] : fit_end[0][0]]
+        fit1 = np.polyfit(x1, PSP_window[x1], 1)
+        foot = (bl[i][0]-fit1[1])/fit1[0] #where the fit crosses the local baseline
+        onsets[i,0] = int(foot) + preAPs_shifted[0][i]-5
+        
+    return onsets
+
+def get_amps_VC (PSPs, bl):
+    amps = []
+    for u in range(4):
+        amps.append(bl[u][0] - PSPs[u][0])
+    while len(amps) - 4 < 0:
+                amps.append(math.nan)
+    return amps

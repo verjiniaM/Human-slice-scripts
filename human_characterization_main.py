@@ -7,8 +7,8 @@ import funcs_for_results_tables as get_results
 
 
 #%%
-OP = 'OP220111'
-patcher = 'Rosie'
+OP = 'OP220228'
+patcher = 'Verji'
 tissue_source = 'Bielefeld'
 inj = 'full'
 age = 'A'
@@ -50,7 +50,7 @@ for i in op_to_analyse:
     get_results.get_intrinsic_properties_df(human_dir, OP, tissue_source, patcher, age, inj)
     get_results.get_QC_access_resistance_df (human_dir, OP, patcher)
     get_results.get_con_params_df(human_dir, OP, patcher)
+    get_results.get_con_screen_VC(human_dir, OP, patcher)
     get_results.get_spontan_QC(human_dir, OP, patcher)
     get_results.get_minis_QC(human_dir, OP, patcher)
-    get_results.remove_bad_data(OP, patcher)
     get_results.check_cell_IDs(work_dir, OP) #this could be run multiple times

@@ -1,10 +1,12 @@
 import os
 import pandas as pd
 import sorting_functions as sort
+import numpy as np
 import human_characterisation_functions as hcf
 import plotting_funcs
 import connection_parameters as con_param
 import json
+import math
 
 def get_intrinsic_properties_df(human_dir, OP, tissue_source, patcher, age, inj):
     '''
@@ -15,7 +17,8 @@ def get_intrinsic_properties_df(human_dir, OP, tissue_source, patcher, age, inj)
     file_list = sort.get_sorted_file_list(work_dir)
     jsons = sort.get_json_files(file_list)
     if OP + '_indices_dict.json' in jsons:
-        indices_dict = sort.from_json(work_dir, OP, '_indices_dict.json')[0]
+        indices_dict = sort.from_json(work_dir, OP, '_indices_dict.json')
+    # sort.to_json(work_dir, OP, '_indices_dict.json', indices_dict)
 
     #creating a dir to save plots and data_tables (if not existing)
     dir_plots = sort.make_dir_if_not_existing (work_dir, 'plots')
@@ -104,21 +107,24 @@ def get_QC_access_resistance_df (human_dir, OP, patcher):
     if OP + '_indices_dict.json' in jsons:
         indices_dict = sort.from_json(work_dir, OP, '_indices_dict.json')
 
-    [print(key,':',value) for key, value in indices_dict.items()]
-    if len(indices_dict['vc']) != len(indices_dict['vc_end']): 
-        print('Fix protocol names. Unequal number of VC and freq analyse protocols')
-    #     index_vc_in = [int(item) for item in input('Vc files corresponding to vc_end files for ' + OP +' (input with spaces in between)').split()]
-    #     index_vc_end_in = [int(item) for item in input('Vc_end files ' + OP +' (input with spaces in between)').split()]
-    # #saved the original indices
-    #     indices_dict['vc_orig'] = indices_dict['vc']
-    #     indices_dict['vc_end_org'] = indices_dict['vc_end']
-    #     indices_dict['vc'] = index_vc_in
-    #     indices_dict['vc_end'] = index_vc_end_in
-        input('Press enter when indices have been fixed')
-        work_dir, filenames, indices_dict, slice_names = sort.get_OP_metadata(human_dir, OP, patcher)
-        [print(key,':',value) for key, value in indices_dict.items()]
-
+    if indices_dict['vc_end'] == []:
+        return "no VC end files found; skipping"
+        
     active_chans_meta = sort.get_json_meta(human_dir, OP, patcher, '_meta_active_chans.json')
+
+    # [print(key,':',value) for key, value in indices_dict.items()]
+    # if len(indices_dict['vc']) != len(indices_dict['vc_end']): 
+    #     print('Fix protocol names. Unequal number of VC and freq analyse protocols')
+    #     active_chans_vc_end, vc_indx  = [], []
+    #     for vc_end_indx in indices_dict['vc_end']:
+    #         [vc_indx.append(i) for i, item in enumerate(indices_dict['vc']) if item < vc_end_indx]
+    #         active_chans = active_chans_meta[0]['active_chans'][vc_indx[-1]]
+    #         active_chans_vc_end.append(active_chans)
+    #     active_chans_meta[0]['active_chans_vc_end'] = active_chans_vc_end
+    #     #indices_dict['vc_end'] = list(input('replace missing vc_end file with "nan" '))
+    # else:
+    #     active_chans_meta[0]['active_chans_vc_end']  = active_chans_meta[0]['active_chans']
+
     #date_frame for quality control - change in Rin, Rs 
     df_qc = pd.DataFrame(columns=['OP','patcher', 'filename', 'slice', 'cell_ID', 'cell_ch', 'Rs_start', 'Rin_start', 'Rs_end', 'Rin_end', 
     'change_rs', 'change_rin'])
@@ -133,7 +139,7 @@ def get_QC_access_resistance_df (human_dir, OP, patcher):
 
         Rs, Rin = hcf.get_access_resistance(filename_vc, active_channels)
 
-        if indices_dict['vc_end'][0] == 'nan':
+        if indices_dict['vc_end'][i] == 'nan':
             data_to_add = pd.DataFrame({'OP':OP[:-1], 'patcher':patcher, 'filename':filenames[vc], 'slice':slic, 
             'cell_ID': cell_IDs, 'cell_ch': active_channels, 'Rs_start': Rs, 'Rin_start': Rin, 
             'Rs_end': float('nan'), 'Rin_end': float('nan'), 'chagne_rs': float('nan'), 'change_rin':float('nan')})
@@ -155,6 +161,7 @@ def get_QC_access_resistance_df (human_dir, OP, patcher):
         df_qc = pd.concat([df_qc.loc[:], data_to_add]).reset_index(drop=True)
 
     df_qc.to_excel(work_dir + 'data_tables/' + OP + '_QC_measures_rs.xlsx') 
+    remove_bad_data(OP, patcher, human_dir)
     #df_qc.to_csv(work_dir + 'data_tables/' + OP[:-1] + '_QC_measures_rs.csv')
 
 def get_con_params_df (human_dir, OP, patcher):
@@ -179,6 +186,8 @@ def get_con_params_df (human_dir, OP, patcher):
         active_chans = json_meta[1]['con_screen_active_chans'][i]
         plotting_funcs.plot_connect(con_screen_file, active_chans)
 
+    input('wait to get the plots and put pre- and post- chans')
+
     pre_chans_all, post_chans_all = [], []
     for indx in indices_dict['con_screen']:
         pre_chans = [int(item) for item in input('Pre channels in ' + filenames[indx]).split()]
@@ -193,7 +202,7 @@ def get_con_params_df (human_dir, OP, patcher):
     con_sccreen_connected_chans = sort.get_json_meta(human_dir, OP, patcher, '_meta_active_chans.json')[1]
     cortex_out_time = sort.get_datetime_from_input(con_sccreen_connected_chans['OP_time'][0])
 
-    con_data = pd.DataFrame(columns = ['OP', 'fn', 'slice', 'day', 'cell_ID', 'repatch', 'treatment', 
+    con_data = pd.DataFrame(columns = ['OP', 'fn', 'slice', 'day', 'connection_ID', 'repatch', 'treatment', 
     'hrs_after_OP', 'hrs_incubation','chan_pre', 'chan_post', 'Vm pre', 'Vm post', 
     'Amp1',	'Amp2',	'Amp3',	'Amp4',	'Lat1',	'Lat2',	'Lat3',	'Lat4', 'num excluded swps', 'comments'])
 
@@ -209,18 +218,19 @@ def get_con_params_df (human_dir, OP, patcher):
         for j, pre_cell in enumerate(pre_cells):
             post_cell = post_cells[j]
             slic = slice_names[indx]
-            cell_ID = hcf.get_cell_IDs(con_screen_file, slic, [pre_cell])
+            con_ID = hcf.get_connection_ID(con_screen_file, slic, pre_cell, post_cell)
             day = 'D1'
             if slic[-2:] == 'D2': 
                 day = 'D2'
 
             pre_signal, es, vm_pre = con_param.presynaptic_screen(con_screen_file, pre_cell)
             post_signal, vm_post = con_param.postsynaptic_screen(con_screen_file, post_cell, es)
-            if vm_post.size == 0:
+            if (np.array(vm_post)).size == 0:
                 print('QC not passed!!')
                 exclude = 'all'
                 es2 = []
                 post_signal, vm_post = con_param.postsynaptic_screen(con_screen_file, post_cell, es2)
+                continue
             mean_pre, mean_post, pre_window, post_window, preAPs_shifted, preAPs = \
                 con_param.get_analysis_window(pre_signal, post_signal)
             pre_signal, post_signal = con_param.remove_sweeps_with_POSTsynAPs(pre_signal, post_signal, preAPs)
@@ -228,15 +238,10 @@ def get_con_params_df (human_dir, OP, patcher):
             post_local_baseline = con_param.get_psp_baselines(post_window,preAPs_shifted)
             onsets = con_param.get_onsets(preAPs_shifted, post_window, post_peaks, post_local_baseline)
             latency = con_param.latencies(onsets, preAPs_shifted)
-
-            amps = []
-            for u in range(len(post_peaks)):
-                amps.append(post_peaks[u][0] - post_local_baseline[0][0])
-            while len(amps) - 4 < 0:
-                amps.append(math.nan)
+            amps = con_param.get_amps(post_peaks, post_local_baseline)
 
             df_add = pd.DataFrame({'OP': OP, 'fn': filenames[indx], 'slice': slic, 'day':day, 'treatment': treatment, 
-            'cell_ID' : cell_ID, 'hrs_after_OP' : time_after_op,
+            'connection_ID' : con_ID, 'hrs_after_OP' : time_after_op,
             'chan_pre': pre_cell, 'chan_post': post_cell, 'Vm pre' :vm_pre, 'Vm post': vm_post,
             'Amp1': amps[0], 'Amp2': amps[1],	'Amp3': amps[2],	'Amp4': amps[3],	
              'Lat1': latency[0][0],	'Lat2' : latency[1][0],	'Lat3': latency[2][0],	'Lat4': latency[3][0], 
@@ -251,6 +256,83 @@ def get_con_params_df (human_dir, OP, patcher):
 
     con_data.to_excel(work_dir + '/data_tables/' + OP + '_connected_cell_properties.xlsx') 
 
+def get_con_screen_VC (human_dir, OP, patcher):
+    work_dir, filenames, indices_dict, slice_names = sort.get_OP_metadata(human_dir, OP, patcher)
+
+    file_list = sort.get_sorted_file_list(work_dir)
+    jsons = sort.get_json_files(file_list)
+    if OP + '_indices_dict.json' in jsons:
+        indices_dict = sort.from_json(work_dir, OP, '_indices_dict.json')
+
+    json_meta = sort.get_json_meta(human_dir, OP, patcher, '_meta_active_chans.json')
+    
+    pre_chans_IC, post_chans_VC = [], []
+    for con_indx in json_meta[4]['con_screen_IC_file_indices']:
+        pre_chans_IC = [int(item) for item in input('Pre channels in IC in ' + filenames[indx]).split()]
+        post_chans_VC = [int(item) for item in input('Post channels in  VC in ' + filenames[indx]).split()]
+        pre_chans_IC.append(pre_chans_IC)
+        post_chans_VC.append(post_chans_VC)
+    json_meta[4]['pre_chans_IC'] = pre_chans_IC
+    json_meta[4]['post_chans_VC'] = post_chans_VC
+  
+    sort.to_json(work_dir, OP, '_meta_active_chans.json', json_meta)
+    con_sccreen_connected_chans = sort.get_json_meta(human_dir, OP, patcher, '_meta_active_chans.json')[4]
+    cortex_out_time = sort.get_datetime_from_input(con_sccreen_connected_chans['OP_time'][0])
+
+    con_data = pd.DataFrame(columns = ['OP', 'fn', 'slice', 'day', 'connection_ID', 'repatch', 'treatment', 
+    'hrs_after_OP', 'hrs_incubation','chan_pre', 'chan_post', 'Vm pre', 'Holding post', 
+    'Amp 1',	'Amp 2',	'Amp 3',	'Amp 4',	'Lat1',	'Lat2',	'Lat3',	'Lat4', 'num excluded swps', 'comments'])
+
+    for i, indx in enumerate(con_sccreen_connected_chans['con_screen_IC_file_indices']):
+        con_screen_file_IC = work_dir + filenames[indx]
+        
+        pre_cells = con_sccreen_connected_chans['pre_chans_IC'][i]
+        post_cells = con_sccreen_connected_chans['post_chans_VC'][i]
+        if pre_cells == [] or post_cells == []:
+            continue
+        treatment = con_sccreen_connected_chans['treatment'][i]
+        time_after_op = sort.get_time_after_OP(con_screen_file_IC, cortex_out_time)
+        
+        exclude = ''
+        for j, pre_cell in enumerate(pre_cells):
+            post_cell = post_cells[j]
+            slic = slice_names[indx]
+            con_ID = hcf.get_connection_ID (con_screen_file_IC, slic, pre_cell, post_cell)
+
+            day = 'D1'
+            if slic[-2:] == 'D2': 
+                day = 'D2'
+
+            pre_sig, es, vm_pre = con_param.presynaptic_screen_IC(con_screen_file_IC, pre_cell)
+            post_sig, holding_post = con_param.postsynaptic_screen_VC (con_screen_file_IC, post_cell, es)
+            if (np.array(holding_post)).size == 0:
+                print('QC not passed!!')
+                exclude = 'all'
+                es2 = []
+                post_sig, holding_post = con_param.postsynaptic_screen_VC (con_screen_file_IC, post_cell, es)
+                continue
+            mean_pre, mean_post, pre_window, post_window, preAPs_shifted, preAPs = con_param.get_analysis_window_VC(pre_sig, post_sig)
+            post_peaks = con_param.find_postsynaptic_peaks_VC(post_window, preAPs_shifted)
+            bl = con_param.get_psp_baselines(post_window,preAPs_shifted)
+            onsets = con_param.get_onsets_VC(preAPs_shifted, post_window, post_peaks, bl)
+            latency = con_param.latencies(onsets, preAPs_shifted)
+            amps = con_param.get_amps_VC(post_peaks, bl)
+
+            df_add = pd.DataFrame({'OP': OP, 'fn': filenames[indx], 'slice': slic, 'day':day, 'treatment': treatment, 
+            'connection_ID' : con_ID, 'hrs_after_OP' : time_after_op,
+            'chan_pre': pre_cell, 'chan_post': post_cell, 'Vm pre' :vm_pre, 'Holding post': holding_post,
+            'Amp1': amps[0], 'Amp2': amps[1],	'Amp3': amps[2],	'Amp4': amps[3],	
+             'Lat1': latency[0][0],	'Lat2' : latency[1][0],	'Lat3': latency[2][0],	'Lat4': latency[3][0], 
+            'num excluded swps': len(es), 'comments': exclude}, index=[0])
+            con_data = pd.concat([con_data.loc[:], df_add]).reset_index(drop=True)
+
+            #plotting
+            plotting_funcs.plot_connection_window_VC(con_screen_file_IC, pre_cell, post_cell, pre_window, \
+                    post_window, preAPs_shifted, post_sig, onsets, preAPs, post_peaks, bl)
+            plotting_funcs.plot_post_cell_VC(con_screen_file_IC, pre_cell, post_cell)
+
+    con_data.to_excel(work_dir + '/data_tables/' + OP + '_connected_cell_properties_post_in_VC.xlsx') 
+
 def get_spontan_QC(human_dir, OP, patcher):
     work_dir, filenames, indices_dict, slice_names = sort.get_OP_metadata(human_dir, OP, patcher)
     file_list = sort.get_sorted_file_list(work_dir)
@@ -259,6 +341,11 @@ def get_spontan_QC(human_dir, OP, patcher):
         indices_dict = sort.from_json(work_dir, OP, '_indices_dict.json')
         
     active_chans_meta = sort.get_json_meta(human_dir, OP, patcher, '_meta_active_chans.json')
+    if len(indices_dict['spontan']) == len(indices_dict['vc']):
+        active_chans_meta[0]['active_chans_spontan'] = active_chans_meta[0]['active_chans']
+    else:
+        print('add active_chans_spontan')
+        input()
 
     #record_sorting = pd.DataFrame(columns = ['OP', 'patcher', 'filename', 'cell_ch','swps_to_analyse', 'swps_to_discard', 
     #'min_vals_each_swp', 'max_vals_each_swp', 'drift'])
@@ -271,7 +358,8 @@ def get_spontan_QC(human_dir, OP, patcher):
         #index_chans = active_chans_meta[0]['slices'].index(slic)
         active_channels = active_chans_meta[0]['active_chans_spontan'][i]
         cell_IDs = hcf.get_cell_IDs(filename_spontan, slic, active_channels)
-        treatment = active_chans_meta[0]['treatment'][i]
+        treatment = active_chans_meta[3][slic]
+        #treatment = active_chans_meta[0]['treatment'][i]
 
         spontan_QC = hcf.rec_stability (filename_spontan, active_channels , 60)
         df_QC = pd.DataFrame(spontan_QC).T
@@ -349,7 +437,7 @@ def get_intrinsic_properties_df_no_VM_file (human_dir, OP, tissue_source, patche
     file_list = sort.get_sorted_file_list(work_dir)
     jsons = sort.get_json_files(file_list)
     if OP + '_indices_dict.json' in jsons:
-        indices_dict = sort.from_json(work_dir, OP, '_indices_dict.json')[0]
+        indices_dict = sort.from_json(work_dir, OP, '_indices_dict.json')
 
     #creating a dir to save plots and data_tables (if not existing)
     dir_plots = sort.make_dir_if_not_existing (work_dir, 'plots')
@@ -448,14 +536,16 @@ def remove_bad_data (OP, patcher, human_dir = '/Users/verjim/laptop_D_17.01.2022
     comments = list(range(0, len(intr_df)))
     big_change_in_Rs = df_vc_qc['cell_ID'][abs(df_vc_qc['change_rs']) > 15].tolist()
     for i in range(len(big_change_in_Rs)):
-        cell_indx = intr_df.index[intr_df['cell_ID'] == big_change_in_Rs[i]][0]
-        comments[cell_indx] = 'exclude; big change in Rs from start to end'
+        for cell in range(len(intr_df.index[intr_df['cell_ID'] == big_change_in_Rs[i]])):
+            cell_indx = intr_df.index[intr_df['cell_ID'] == big_change_in_Rs[i]][cell]
+            comments[cell_indx] = 'exclude; big change in Rs from start to end'
 
     #remove cells where Rs > 30
     Rs_QC_fail = df_vc_qc['cell_ID'][df_vc_qc['Rs_end'] > 30].tolist()
     for j in range(len(Rs_QC_fail)):
-        cell_indx = intr_df.index[intr_df['cell_ID'] == Rs_QC_fail[j]][0]
-        comments[cell_indx] = str(comments[cell_indx]) + '; exclude; Rs_end > 30'
+        for cell in range(len(intr_df.index[intr_df['cell_ID'] == Rs_QC_fail[j]])):
+            cell_indx = intr_df.index[intr_df['cell_ID'] == Rs_QC_fail[j]][cell]
+            comments[cell_indx] = str(comments[cell_indx]) + '; exclude; Rs_end > 30'
 
     intr_df.insert(len(intr_df.columns), 'comments', comments)
 

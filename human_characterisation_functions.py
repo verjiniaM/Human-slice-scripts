@@ -32,6 +32,11 @@ def get_cell_IDs (filename_char, slic, active_channels):
         cell_IDs.append(cellID)
     return cell_IDs
 
+def get_connection_ID (filename_con_screen, slic, pre_chan, post_chan):
+    end_fn = filename_con_screen.rfind('/') + 1
+    con_ID = filename_con_screen[end_fn:-7] + slic + 'c' + str(pre_chan) + '#' + str(post_chan)
+    return con_ID
+
 def read_inj(inj):
     if inj == "full":
         inj=[-300,-200,-150,-100,-50,0,50,100,150,200,250,300,350,400,450,500,550,
