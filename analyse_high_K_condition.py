@@ -371,3 +371,50 @@ for i in range(len(index_char)):
 
 df.to_excel(work_dir + 'data_tables/'  + 'OP220413_Intrinsic_and_synaptic_properties.xlsx') 
 df.to_csv(work_dir + 'data_tables/' + 'OP220413' + '_Intrinsic_and_synaptic_properties.csv')
+
+
+#%%
+#plotting g=funcs
+
+
+vm_files = [25, 27, 28, 29, 30]
+channels = [1,3,4,5,6,7,8]
+
+start_washout = datetime.datetime(2022, 4, 14, 3, 40)
+
+fig1 = plt.figure(figsize=(8,16))
+plt.subplots_adjust(hspace=0.5)
+
+for j, ch in enumerate(channels):
+    chan = 'Ch' + str(ch)
+    RMPs, rec_times = [], []
+    for i in vm_files:
+        vmfile =  work_dir + filenames[i]
+
+        block = hcf.read_abf(vmfile)
+        rec_time = block.rec_datetime
+
+        dt = rec_time - start_washout
+        time_after_washout =   datetime.time(hour = int(dt.seconds /3600), minute = int((dt.seconds / 3600 - int(dt.seconds / 3600))*60))
+
+        rec_times.append(time_after_washout.minute)
+
+        vm_dict = load_traces(vmfile)
+        ch1 = vm_dict[chan][0]
+        RMPs.append(np.median(ch1[:,0]))
+
+    ax = plt.subplot(6, 1, j+1)
+    ax.scatter(rec_times, RMPs)
+
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    #ax.spines['bottom'].set_visible(False)
+    #ax.spines['left'].set_visible(False)
+
+    ax.set_xticks(ticks = rec_times)
+    ax.set_title(chan)
+    ax.set_xlabel('Time after high K wash in (min)')
+    ax.set_ylabel('RMP (mV)')
+
+plt.show()
+

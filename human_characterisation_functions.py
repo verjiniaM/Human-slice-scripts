@@ -184,7 +184,7 @@ def get_max_spikes(charact_data, channels):
         ch1 = charact_data[key][0]
         max_spikes = 0
         for i, j in enumerate(range(0, len(ch1[0]))): #loop through all swps
-            pks = detect_peaks(ch1[:,j], mph=0,mpd=50) # detects the peaks for each timepoint? 
+            pks = detect_peaks(ch1[:,j], mph=20, mpd=50) # detects the peaks for each timepoint? 
             if len(pks)> max_spikes:
                 max_spikes = len(pks) #find the max number of spikes (peaks)
         max_spikes_all.append(max_spikes)
@@ -216,7 +216,7 @@ def get_ap_param (charact_data, channels, inj, max_spikes):
         peaks = np.empty([len(inj), max_spikes[i], 3])
         peaks.fill(np.nan)
         for i, j in enumerate(range(0, len(ch1[0]))): #for all swps
-            pks = detect_peaks(ch1[:,j], mph=0,mpd=50) 
+            pks = detect_peaks(ch1[:,j], mph=20,mpd=50) 
             peaks[i,0:len(pks), 0] = inj[i] #injected current
             peaks[i,0:len(pks), 1] = pks #
             peaks[i,0:len(pks), 2] = ch1[pks,j] #sweep number
@@ -308,7 +308,7 @@ def get_ap_param_for_plotting (charact_data, channels, inj, max_spikes):
         peaks = np.empty([len(inj), max_spikes[i], 3])
         peaks.fill(np.nan)
         for i, j in enumerate(range(0, len(ch1[0]))): #for all swps
-            pks = detect_peaks(ch1[:,j], mph=0,mpd=50) 
+            pks = detect_peaks(ch1[:,j], mph=20,mpd=50) 
             peaks[i,0:len(pks), 0] = inj[i] #injected current
             peaks[i,0:len(pks), 1] = pks #
             peaks[i,0:len(pks), 2] = ch1[pks,j] #sweep number
@@ -385,3 +385,4 @@ def rec_stability (mini_filename, active_chans, max_drift, min_holding = -800):
         'max_vals_each_swp':max_vals, 'drift':dyn_range}
     return rec_stability
 
+    

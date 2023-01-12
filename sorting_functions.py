@@ -120,13 +120,16 @@ def fix_slice_names (def_slice_names, slice_indx):
     slice_names  = [x for xs in new_slice_names for x in xs]
     return slice_names
 
-def get_OP_metadata (human_dir, OP, patcher):
+def get_work_dir(human_dir, OP, patcher):
     OP_folder = OP + '/'
     if patcher == 'Verji': 
         work_dir = human_dir + 'data_verji/'+ OP_folder
     else:
         work_dir = human_dir + 'data_rosie/'+ OP_folder 
+    return work_dir
 
+def get_OP_metadata (human_dir, OP, patcher):
+    work_dir = get_work_dir(human_dir, OP, patcher)
     file_list = get_sorted_file_list(work_dir)
     df_rec = get_lab_book(work_dir)
     filenames = get_abf_files(file_list)
@@ -207,7 +210,7 @@ def get_json_meta (human_dir, OP, patcher, file_out): # file_out = '_meta_active
     pre_chans_all, post_chans_all, treatments = [], [], [] 
     for indx in indices_dict['con_screen']:
         #treatment = input('Treatment (Ctrl, high K, or TTX) for ' + OP + ' ' + slice_names[indx])
-        treatment = treatment_dict[slice_names[i]]
+        treatment = treatment_dict[slice_names[indx]]
         pre_chans = [int(item) for item in input('Pre channels in ' + filenames[indx]).split()]
         post_chans = [int(item) for item in input('Post channels in ' + filenames[indx]).split()]
         pre_chans_all.append(pre_chans)
@@ -253,7 +256,7 @@ def get_json_meta (human_dir, OP, patcher, file_out): # file_out = '_meta_active
         'mini_chans' : chans_all
     }
     
-    to_json (work_dir, OP, file_out, [charact_meta, con_screen_meta, mini_meta, treatment_dict])
+    to_json (work_dir, OP, file_out, [charact_meta, con_screen_meta, mini_meta, treatment_dict, con_screen_meta_IC])
     json_meta = from_json(work_dir, OP, file_out)
     return json_meta
 

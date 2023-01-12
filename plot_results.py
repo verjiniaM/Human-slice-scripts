@@ -65,4 +65,5 @@ for k in range(len(treatments)):
     fig.tight_layout()
     plt.show()
     
-# %%
+        
+

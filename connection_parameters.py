@@ -379,7 +379,7 @@ def get_onsets_VC(preAPs_shifted, post_window, PSPs, bl):
 
 def get_amps_VC (PSPs, bl):
     amps = []
-    for u in range(4):
+    for u in range(len(bl)):
         amps.append(bl[u][0] - PSPs[u][0])
     while len(amps) - 4 < 0:
                 amps.append(math.nan)
