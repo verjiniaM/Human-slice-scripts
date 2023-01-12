@@ -18,6 +18,8 @@ def get_intrinsic_properties_df(human_dir, OP, tissue_source, patcher, age, inj)
     '''
     work_dir, filenames, indices_dict, slice_names = sort.get_OP_metadata(human_dir, OP, patcher)
 
+    # if not already existing, creates an indices dict .json file
+    # useful when indices were fixed by hand so that the rest of the analysis could run smoothly
     file_list = sort.get_sorted_file_list(work_dir)
     jsons = sort.get_json_files(file_list)
     if OP + '_indices_dict.json' in jsons:

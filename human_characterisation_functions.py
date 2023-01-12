@@ -24,6 +24,14 @@ def read_abf(filename):
             block.segments[0].analogsignals[ch].name = 'Ch1'
     return block
 
+def get_recording_time(filename):
+    '''
+    gives the times of the recording of this filename
+    '''
+    block = read_abf(filename)
+    rec_time = block.rec_datetime
+    return rec_time
+
 def get_cell_IDs (filename_char, slic, active_channels):
     end_fn = filename_char.rfind('/') + 1
     cell_IDs = []
@@ -384,5 +392,33 @@ def rec_stability (mini_filename, active_chans, max_drift, min_holding = -800):
         'swps_to_analyse':good_swps, 'swps_to_discard':bad_swps, 'min_vals_each_swp':min_vals, 
         'max_vals_each_swp':max_vals, 'drift':dyn_range}
     return rec_stability
+
+
+def get_RMP_over_time(filename, channels):
+    data_dict = load_traces(filename)
+
+    RMPs = []
+    for ch in channels:
+        key = 'Ch' + str(ch)
+        ch1 = data_dict[key][0]
+
+        num_swps = np.shape(ch1)[1]
+        
+        RMP_all = []
+        if num_swps > 1:
+            for swp in range(0, num_swps, 10):
+                RMP = np.mean(ch1[:,swp][0:500])
+                RMP_all.append(RMP)
+        else: 
+            data_points = int(np.shape(ch1)[0] / 100_000)
+            for j in range(0,data_points):
+                start = 99_500 + j*100_000
+                RMP = np.mean(ch1[start : start + 500])
+                RMP_all.append(RMP)
+        RMPs.append(RMP_all)
+    return RMPs
+
+
+
 
     

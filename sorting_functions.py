@@ -91,7 +91,7 @@ def sort_protocol_names (file_list, df_rec):
     def_slice_names = df_rec['slice'][slice_indx].tolist()
     
     index_dict = {}
-    dict_keys = ['vc', 'resting', 'freq analyse','con_screen', 'spontan','vc_end', 'vc_mini', 'minis', 'vc_mini_end']
+    dict_keys = ['vc', 'resting', 'freq analyse','con_screen', 'spontan','vc_end', 'vc_mini', 'minis', 'vc_mini_end', 'resting long']
     for key in dict_keys:
         index = df_rec.index[df_rec['protocol'] == key].tolist()
         #df_rec['protocol'][index] = np.nan
@@ -116,7 +116,7 @@ def fix_slice_names (def_slice_names, slice_indx):
         if i < len(def_slice_names)-1:
             new_slice_names.append([def_slice_names[i]]*(slice_indx[i+1]-slice_indx[i]))
         else :
-            new_slice_names.append([def_slice_names[i]]*(15))
+            new_slice_names.append([def_slice_names[i]]*(40))
     slice_names  = [x for xs in new_slice_names for x in xs]
     return slice_names
 
@@ -133,8 +133,8 @@ def get_OP_metadata (human_dir, OP, patcher):
     file_list = get_sorted_file_list(work_dir)
     df_rec = get_lab_book(work_dir)
     filenames = get_abf_files(file_list)
-    slice_indx, def_slice_names, indices_dict = sort_protocol_names (file_list, df_rec)
-    slice_names = fix_slice_names (def_slice_names, slice_indx)
+    slice_indx, def_slice_names, indices_dict = sort_protocol_names(file_list, df_rec)
+    slice_names = fix_slice_names(def_slice_names, slice_indx)
     return work_dir, filenames, indices_dict, slice_names
 
 def make_dir_if_not_existing(working_dir, new_dir):
@@ -194,11 +194,10 @@ def get_json_meta (human_dir, OP, patcher, file_out): # file_out = '_meta_active
     
     active_chans_all, slice_names_dict, treatments = [], [], []
     for i in indices_dict['vc']:
-        treatment = treatment_dict[slice_names[i]]
+        treatment = 'high K'
         active_channels = [int(item) for item in input('Used channels in ' + OP + ' ' + filenames[i]).split()]
         active_chans_all.append(active_channels)
         slice_names_dict.append(slice_names[i])
-        treatments.append(treatment)
     charact_meta = {
         'OP_time' : op_time,
         'slices' : slice_names_dict,
@@ -215,7 +214,6 @@ def get_json_meta (human_dir, OP, patcher, file_out): # file_out = '_meta_active
         post_chans = [int(item) for item in input('Post channels in ' + filenames[indx]).split()]
         pre_chans_all.append(pre_chans)
         post_chans_all.append(post_chans)
-        treatments.append(treatment)
     con_screen_meta = {
         'OP_time' : op_time,
         'con_screen_file_indices' : indices_dict['con_screen'],
@@ -226,12 +224,11 @@ def get_json_meta (human_dir, OP, patcher, file_out): # file_out = '_meta_active
 
     pre_chans_all_IC, post_chans_all_VC, treatments = [], [], []
     for i in indices_dict['IC_files']:
-        treatment = treatment_dict[slice_names[i]]
+        treatment = 'high K'
         pre_chans_IC = [int(item) for item in input('Pre channels in IC ' + filenames[i]).split()]
         post_chans_VC = [int(item) for item in input('Post channels in VC ' + filenames[i]).split()]
         pre_chans_all_IC.append(pre_chans_IC)
         post_chans_all_VC.append(post_chans_VC)
-        treatments.append(treatment)
     con_screen_meta_IC = {
         'OP_time' : op_time,
         'con_screen_IC_file_indices' : indices_dict['IC_files'],
@@ -243,11 +240,10 @@ def get_json_meta (human_dir, OP, patcher, file_out): # file_out = '_meta_active
     chans_all, mini_slices, treatments = [],[], []
     for i in indices_dict['minis']:
         #treatment = input('Treatment (Ctrl, high K, or TTX) for ' + OP + ' ' + slice_names[i])
-        treatment = treatment_dict[slice_names[i]]
+        treatment = 'high K'
         active_channels = [int(item) for item in input('Used channels in ' + OP + ' ' + filenames[i]).split()]
         chans_all.append(active_channels)
         mini_slices.append(slice_names[i])
-        treatments.append(treatment)
     mini_meta = {
         'OP_time' : op_time,
         'mini_slices' : mini_slices,
@@ -267,8 +263,8 @@ def get_datetime_from_input (op_time):
     return cortex_out_time
 
 def get_time_after_OP (filename, cortex_out_time):
-    block = hcf.read_abf(filename)
-    rec_time = block.rec_datetime
+
+    rec_time = hcf.get_recording_time(filename)
 
     dt = rec_time - cortex_out_time
     h_after_op = dt.days*24 + dt.seconds/3600
@@ -276,3 +272,67 @@ def get_time_after_OP (filename, cortex_out_time):
     time_after_op = datetime.time(hour = int(dt.seconds /3600), minute = int((dt.seconds / 3600 - int(dt.seconds / 3600))*60))
 
     return h_after_op
+
+def get_json_meta_high_K (human_dir, OP, patcher, file_out): # file_out = '_meta_active_chans.json'
+    work_dir, filenames, indices_dict, slice_names = get_OP_metadata(human_dir, OP, patcher)
+    exp_view = pd.read_excel(glob.glob(human_dir + '*experiments_overview.xlsx')[0]) 
+
+    file_list = get_sorted_file_list(work_dir)
+    jsons = get_json_files(file_list)
+
+    if OP + file_out in jsons:
+        json_meta = from_json(work_dir, OP, file_out)
+        return json_meta
+
+    exp_view['cortex_out'] = exp_view['cortex_out'].dt.strftime('%Y-%m-%d %H:%M:%S')
+    op_time = exp_view['cortex_out'][exp_view.index[exp_view['OP'] == OP]].tolist()
+
+    active_chans_all, slice_names_dict = [], []
+    for i in indices_dict['vc']:
+        active_channels = [int(item) for item in input('Used channels in ' + OP + ' ' + filenames[i]).split()]
+        active_chans_all.append(active_channels)
+        slice_names_dict.append(slice_names[i])
+    vc_meta = {
+        'OP_time' : op_time,
+        'slices' : slice_names_dict,
+        'vc_files' : indices_dict['vc'],
+        'active_chans': active_chans_all
+    }
+
+    active_chans_all, slice_names_dict = [], []
+    for i in indices_dict['freq analyse']:
+        active_channels = [int(item) for item in input('Used channels in ' + OP + ' ' + filenames[i]).split()]
+        active_chans_all.append(active_channels)
+        slice_names_dict.append(slice_names[i])
+    charact_meta = {
+        'OP_time' : op_time,
+        'slices' : slice_names_dict,
+        'char_files' : indices_dict['freq analyse'],
+        'active_chans': active_chans_all
+    }
+
+    active_chans_all, slice_names_dict = [], []
+    for i in indices_dict['resting']:
+        active_channels = [int(item) for item in input('Used channels in ' + OP + ' ' + filenames[i]).split()]
+        active_chans_all.append(active_channels)
+        slice_names_dict.append(slice_names[i])
+    resting_meta = {
+        'slices' : slice_names_dict,
+        'resting' : indices_dict['resting'],
+        'active_chans': active_chans_all
+    }
+
+    active_chans_all, slice_names_dict = [], []
+    for i in indices_dict['resting long']:
+        active_channels = [int(item) for item in input('Used channels in ' + OP + ' ' + filenames[i]).split()]
+        active_chans_all.append(active_channels)
+        slice_names_dict.append(slice_names[i])
+    resting_long_meta = {
+        'slices' : slice_names_dict,
+        'resting long' : indices_dict['resting long'],
+        'active_chans': active_chans_all
+    }
+
+    to_json (work_dir, OP, file_out, [vc_meta, charact_meta, resting_meta, resting_long_meta])
+    json_meta = from_json(work_dir, OP, file_out)
+    return json_meta
