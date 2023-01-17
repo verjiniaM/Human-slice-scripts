@@ -8,7 +8,6 @@ import datetime
 import numpy as np
 import math
 
-df_intr_props = get_results.collect_intrinsic_df()
 
 def patient_age_to_float(df_intr_props, min_age, max_age=151):
     '''
@@ -109,8 +108,6 @@ def dict_for_plotting():
     'capacitance': ['Capacitance', 'F']}
     return titles_dict
 
-#%%
-
 def plot_time_after_OP_vs_param(df, param,
 destintaion_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/intrinsic_properties/hrs_after_op_dependency/'): 
     titles_dict = dict_for_plotting()
@@ -186,18 +183,129 @@ destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/i
         plt.savefig(destination_dir  + 'Repatch_plot_' + param + '.png')
         plt.close(fig2)
 
-    #
-# %%
-#MAIN
 
-adult_df = get_adult_data(df_intr_props)
-adult_df = adult_df[adult_df['area'] == 'temporal']
+#%%
 
-repatch_df = get_repatch_df(adult_df)
-repatch_df = repatch_df.sort_values(['cell_ID_new', 'treatment'])
-plot_param_for_days(repatch_df) #for all params repatch!
+#Funcs for analysis of intrinsic properties of testing high K condition
 
 
+def format_RMP_column(df_resting):
+    resting_format = []
+    for j in range(len(df_resting)): 
+        RMP_format = df_resting['resting_potential'].tolist()[j][1:-1]
+        resting_format.append(RMP_format)
+    df_resting['RMP_formatted'] = resting_format
+    return df_resting
 
+def get_hh_mm_from_rec_time(df):
+    rec_time = []
+    for j in range(len(df)): 
+        rec_time.append(df['recording_time'].tolist()[j][11:16])
+    df['rec_time_short'] = rec_time
+    return df
 
+def plot_RMP_time(df_resting, save_dir):
+    for slic in df_resting['slice'].unique():
+        df_slice = df_resting[df_resting['slice'] == slic]
+
+        fig, ax = plt.subplots(len(df_slice['cell_ch'].unique()),1)
+        fig.set_figheight(11)
+        fig.set_figwidth(10)
+
+        color_dict = {
+                'puff high K': ['puff high K' , 'red'],
+                'wash out' : ['wash out', 'blue'],
+                'wash in high K': ['wash in high K', 'k'],
+                'before' : ['before', 'white']
+                }
+
+        for i, chan in enumerate(df_slice['cell_ch'].unique()):
+            k = -2
+            df_chan = df_slice[df_slice['cell_ch'] == chan]
+
+            time_label,x_all, y_all = [], [], []
+            for fn in df_chan['filename'].unique():
+                k = k + 1
+                df_fn = df_chan[df_chan['filename'] == fn]
+        
+                RMPs = [ss.split(',') for ss in df_fn.RMP_formatted][0]
+                num_vals = len(RMPs)
+    
+                x = np.linspace(1 + k, 1.9 + k, num_vals)
+                y = [float(c) for c in RMPs]
+
+                for val in range(num_vals):
+                    x_all.append(x[val])
+                    y_all.append(y[val])
+                time_label.append(str(df_fn['recording_time'])[16:22])
+
+            for condition in df_chan['circumstance'].unique():
+                    x_1 = df_chan['rec_time_short'][df_chan['circumstance'] == condition]
+                    
+                    ax[i].vlines(x_1, ymin = max(y_all), ymax = min(y_all) - 5, lw = 0.45, linestyle = '-',
+                    color = color_dict[condition][1], label = color_dict[condition][0])
+                    color_dict[condition][0] = "_nolegend_"
+
+            ax[i].scatter(x_all,y_all)
+            ax[i].set_title('Ch' + str(chan))
+            ax[i].set_xticks(ticks = list(range(2,len(time_label)+2)), labels = time_label,
+            rotation = 45) 
+            ax[i].set_ylabel('mV')
+            ax[i].spines['top'].set_visible(False)
+            ax[i].spines['right'].set_visible(False)
+
+        ax[i].set_xlabel('time')
+        fig.patch.set_facecolor('white')
+        plt.figlegend(loc = 'upper right',  bbox_to_anchor=(0.95, 0.95))
+        fig.suptitle('Resting membrane potential', fontsize = 19)
+        plt.subplots_adjust(hspace = 0.6)
+        plt.savefig(save_dir + 'RMP_' + slic + '_'  + '.png')
+        plt.close()
+
+def plot_ap_props(df_ap_props, ap_props_dict, save_dir):
+    for param in ap_props_dict.keys():
+        if param not in df_ap_props.columns :
+            continue
+        
+        for slic in df_ap_props['slice'].unique():
+            df_slice = df_ap_props[df_ap_props['slice'] == slic]
+
+            fig, ax = plt.subplots(len(df_slice['cell_ch'].unique()),1, sharex = True)
+            fig.set_figheight(11)
+            fig.set_figwidth(8)
+
+            color_dict = {
+                'puff high K': ['puff high K' , 'red'],
+                'wash out' : ['wash out', 'blue'],
+                'wash in high K': ['wash in high K', 'k'],
+                'before' : ['before', 'white']
+                }
+
+            for i, chan in enumerate(df_slice['cell_ch'].unique()):
+                k = 0
+                df_chan = df_slice[df_slice['cell_ch'] == chan]
+
+                rec_time = df_chan['rec_time_short']
+                param_y = df_chan[param]
+
+                ax[i].scatter(rec_time,param_y)
+                ax[i].set_title('Ch' + str(chan))
+                ax[i].set_ylabel(ap_props_dict[param][1])
+                ax[i].spines['top'].set_visible(False)
+                ax[i].spines['right'].set_visible(False)
+
+                for condition in df_slice['circumstance'].unique():
+                    x_1 = df_chan['rec_time_short'][df_chan['circumstance'] == condition]
+                    
+                    ax[i].vlines(x_1, ymin = min(param_y) -2 , ymax = max(param_y) + 2, lw = 0.3, linestyle = '-',
+                    color = color_dict[condition][1], label = color_dict[condition][0])
+                    color_dict[condition][0] = "_nolegend_"
+            ax[i].set_xlabel('time')
+
+            fig.patch.set_facecolor('white')
+            plt.figlegend(loc = 'upper right',  bbox_to_anchor=(0.95, 0.95))
+            fig.suptitle(ap_props_dict[param][0], fontsize = 19)
+            plt.subplots_adjust(hspace=0.35)
+            plt.savefig(save_dir + 'AP_' + slic + '_' + param + '.png')
+            plt.close()
 
