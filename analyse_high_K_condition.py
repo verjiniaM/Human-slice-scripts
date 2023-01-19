@@ -3,6 +3,7 @@ import sorting_functions as sort
 import plotting_funcs
 import human_characterisation_functions as hcf
 import pandas as pd
+import plot_intrinsic_props
 
 
 human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'
@@ -93,6 +94,7 @@ for k, RMP in enumerate(all_RMP_files):
 
     slic = slice_names[RMP]
     filename_resting = work_dir + filenames[RMP]
+
     time_after_op = sort.get_time_after_OP(filename_resting, cortex_out_time)
 
     active_channels = all_RMP_active_chans[k]
@@ -107,7 +109,9 @@ for k, RMP in enumerate(all_RMP_files):
 
     df_resting = pd.concat([df_resting.loc[:], df_to_add]).reset_index(drop=True)
 
+    plot_intrinsic_props.plot_spiking_when_RMP_increases(filename_resting)
+
 df_resting.sort_values(by = 'recording_time', axis=0, ascending=True, inplace=True)
 #df_resting.to_excel(work_dir + 'data_tables/' + OP + '_RMPs_over_time.xlsx', index=False) 
 
-
+#%%%
