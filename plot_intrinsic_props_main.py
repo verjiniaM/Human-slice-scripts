@@ -30,3 +30,12 @@ df_ap_props = pl_intr.get_hh_mm_from_rec_time(df_ap_props)
 save_dir_ap_props = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/high K evaluation/'
 ap_props_dict = pl_intr.dict_for_plotting()
 pl_intr.plot_ap_props(df_ap_props, ap_props_dict, save_dir_ap_props) 
+
+
+#plotting whole RMP changes of a Ch over recordings 
+file_folder = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/data_verji/OP221116/'
+plots_destination = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/data_verji/OP221116/plots/'
+files = ['22n16037.abf', '22n16039.abf', '22n16040.abf']
+channel = 6
+
+pl_intr.plot_full_RMP_trace(file_folder, files, plots_destination, channel) #files = ['fn1', 'fn2']

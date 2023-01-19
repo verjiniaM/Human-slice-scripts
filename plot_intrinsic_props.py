@@ -1,13 +1,12 @@
 #%%
 
-
 import matplotlib.pyplot as plt 
 import funcs_for_results_tables as get_results
 import pandas as pd
 import datetime
 import numpy as np
 import math
-
+import human_characterisation_functions as hcf
 
 def patient_age_to_float(df_intr_props, min_age, max_age=151):
     '''
@@ -308,4 +307,86 @@ def plot_ap_props(df_ap_props, ap_props_dict, save_dir):
             plt.subplots_adjust(hspace=0.35)
             plt.savefig(save_dir + 'AP_' + slic + '_' + param + '.png')
             plt.close()
+
+#%%
+
+
+#%%
+
+def plot_spiking_when_RMP_increases(filename, plots_destination):
+    '''Finds where there is a jump in the RMP >30 mV 
+    plots those sweeps '''
+    data_dict = hcf.load_traces(filename)
+    end_fn = filename.rfind('/') + 1
+
+    for key in data_dict.keys():
+        num_swps = np.shape(data_dict[key][0])[1]
+        avg = np.mean(data_dict[key][0])
+
+        for i in range(num_swps):
+            if max(data_dict[key][0][:,i]) - min(data_dict[key][0][:,i]) > 40:
+                #index = np.where(data_dict[key][0][:,i] > 40)[0][0] #finding the fifrst AP
+
+                sampl_rate, units, times = hcf.get_abf_info(filename, int(key[-1]), num_swps, np.shape(data_dict[key][0])[0])
+
+                fig = plt.figure(figsize=(15,7))
+                ax = plt.subplot(1,1,1)
+            
+                ax.plot(times, data_dict[key][0][:,i])
+                ax.set_xlabel('time [s]')
+                ax.set_ylabel(str(units)[-2:])
+                ax.set_title(filename[end_fn:-4] + key)
+                fig.patch.set_facecolor('white')
+
+                plt.savefig(plots_destination + 'RMP_big_change_' + filename[end_fn:-4] + '_sweep_' + str(i)  + '.png')
+                plt.close()
+
+
+
+def plot_full_RMP_trace(file_folder, files, plots_destination, channel):
+    '''
+    files can be a list of RMP files to be plotted one after the other
+    the first one should be control and then RMP recorded during wash in
+    '''
+    key = 'Ch' + str(channel)
+    data_plot, times_plot_all, len_times_plot = [], [], []
+    for fn in files:
+        filename = file_folder + fn
+        data_dict = hcf.load_traces(filename)
+
+        sweep_len = np.shape(data_dict[key][0])[0] 
+        num_swps = np.shape(data_dict[key][0])[1]
+
+        for i in range(num_swps):
+            data_plot = np.append(data_plot, data_dict[key][0][:,i], 0)
+
+        sampl_rate, units, times = hcf.get_abf_info(filename, int(key[-1]), num_swps, sweep_len)
+
+        times_plot = np.linspace(len(times_plot_all) ,sweep_len*num_swps,sweep_len*num_swps)/sampl_rate
+        len_times_plot.append(len(times_plot))
+        times_plot_all = np.append(times_plot_all, times_plot)
+
+    fig = plt.figure(figsize=(40,15))
+    ax = plt.subplot(1,1,1)
+    ax.plot(times_plot_all, data_plot)
+    ax.vlines(times_plot_all[len_times_plot[0]], ymin = min(data_plot)  - 5, ymax = max(data_plot) + 5, lw = 1, 
+        linestyle = '-', color = 'red', label = 'start wash in high K')
+
+    end_fn = filename.rfind('/') + 1
+
+    ax.set_xlabel('time [s]', fontsize = 20)
+    ax.set_ylabel(str(units)[-2:], fontsize = 20)
+    ax.set_title(filename[end_fn:-4] + key)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+
+    plt.figlegend(loc = 'upper right',  bbox_to_anchor=(0.95, 0.95), fontsize = 20)
+    fig.patch.set_facecolor('white')
+    plt.xticks(fontsize = 20) 
+    plt.yticks(fontsize = 20)
+
+    plt.savefig(plots_destination + 'all_RMP_big_change_' + filename[end_fn:-4] + '_' + key + '.png')
+    plt.close()
+
+
 

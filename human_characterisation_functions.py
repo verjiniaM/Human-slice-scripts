@@ -76,7 +76,7 @@ def load_traces (filename):
     #np.shape(data_dict1['Ch1'][0])[0] - sweep len
     #np.shape(data_dict1['Ch1'][0])[1] - number of sweeps
 
-def get_abf_info (filename, cell_chan, sweep_count, sweep_len):
+def get_abf_info(filename, cell_chan, sweep_count, sweep_len):
     '''
     returns descriptive parameters about the block object
     '''
