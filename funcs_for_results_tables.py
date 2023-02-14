@@ -625,13 +625,18 @@ def get_metadata_for_event_analysis(human_dir, OP, patcher, event_type): # add e
     df_meta.to_excel(work_dir + 'data_tables/' + event_type + '_meta_' + OP + '.xlsx', index=False) 
 
 
-def collect_meta_events (human_dir):
+def prapare_for_event_analysis(human_dir):
+    '''
+    checks mini or spontan experiments surgery in the '*experiments_overview.xlsx'
+    puts all files to be analyzed in human_dir + '/meta_events/[spontan/mini]_files/'
+    saves the meta_tables to be analyzed in human_dir + '/meta_events/meta_files_to_analyse/'
+    '''
     exp_view = pd.read_excel(glob.glob(human_dir + '*experiments_overview.xlsx')[0]) 
     date = str(datetime.date.today())
 
     #op_to_analyse = exp_view['OP'][exp_view['analysed_minis'] == 'no']
     meta_df_mini, meta_df_spontan = pd.DataFrame(), pd.DataFrame()
-    for i in range(22, 33): #ran to range 22
+    for i in range(len(exp_view)): #ran to range 22
 
         if exp_view['minis'][i] == 'yes':    
             patcher =  exp_view['patcher'][i]

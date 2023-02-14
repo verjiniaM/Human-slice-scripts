@@ -343,10 +343,11 @@ def plot_spiking_when_RMP_increases(filename, plots_destination):
 
 
 
-def plot_full_RMP_trace(file_folder, files, plots_destination, channel):
+def plot_full_RMP_trace(file_folder, files, plots_destination, channel, index_start_wash_in):
     '''
     files can be a list of RMP files to be plotted one after the other
     the first one should be control and then RMP recorded during wash in
+    index_start_wash_in - index of the filename in files where the washin start; plotted red line
     '''
     key = 'Ch' + str(channel)
     data_plot, times_plot_all, len_times_plot = [], [], []
@@ -362,15 +363,15 @@ def plot_full_RMP_trace(file_folder, files, plots_destination, channel):
 
         sampl_rate, units, times = hcf.get_abf_info(filename, int(key[-1]), num_swps, sweep_len)
 
-        times_plot = np.linspace(len(times_plot_all) ,sweep_len*num_swps,sweep_len*num_swps)/sampl_rate
+        times_plot = np.linspace(len(times_plot_all), len(times_plot_all) + sweep_len*num_swps, sweep_len*num_swps)/sampl_rate
         len_times_plot.append(len(times_plot))
         times_plot_all = np.append(times_plot_all, times_plot)
 
     fig = plt.figure(figsize=(40,15))
     ax = plt.subplot(1,1,1)
     ax.plot(times_plot_all, data_plot)
-    ax.vlines(times_plot_all[len_times_plot[0]], ymin = min(data_plot)  - 5, ymax = max(data_plot) + 5, lw = 1, 
-        linestyle = '-', color = 'red', label = 'start wash in high K')
+    ax.vlines(times_plot_all[len_times_plot[index_start_wash_in]], ymin = min(data_plot)  - 5, 
+    ymax = max(data_plot) + 5, lw = 1, linestyle = '-', color = 'red', label = 'start wash in')
 
     end_fn = filename.rfind('/') + 1
 

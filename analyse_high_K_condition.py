@@ -109,7 +109,7 @@ for k, RMP in enumerate(all_RMP_files):
 
     df_resting = pd.concat([df_resting.loc[:], df_to_add]).reset_index(drop=True)
 
-    plot_intrinsic_props.plot_spiking_when_RMP_increases(filename_resting)
+    plot_intrinsic_props.plot_spiking_when_RMP_increases(filename_resting, (work_dir + '/plots'))
 
 df_resting.sort_values(by = 'recording_time', axis=0, ascending=True, inplace=True)
 #df_resting.to_excel(work_dir + 'data_tables/' + OP + '_RMPs_over_time.xlsx', index=False) 
