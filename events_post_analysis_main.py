@@ -9,19 +9,14 @@ spontan_1 = pd.read_excel(results_dir + 'spontan_2023-02-07_summary_results_pt1.
 spontan_2 = pd.read_excel(results_dir + 'spontan_2023-02-07_summary_results_pt2.xlsx', 'summary')
 spontan_df_orig = pd.concat([spontan_1.loc[:], spontan_2]).reset_index(drop=True)
 
-visual_QC_spontan = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/notes/analysis/events_detection/rough_evaluation_algorithm_all_results_01.02.2023.xlsx'
+visual_QC_spontan = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/notes/analysis/events_detection/spontan_rough_evaluation_algorithm_all_results_01.02.2023.xlsx'
 QC = pd.read_excel(visual_QC_spontan)
 
-QC = event_funcs.exclude_fn_only_in_QC(spontan_df_orig, QC)
-spontan_df = event_funcs.get_non_excluded_traces(spontan_df_orig, QC)
-spontan_df = event_funcs.add_day_of_recording_column(spontan_df)
-#spontan_df = event_funcs.filter_min_hrs_incubation(spontan_df, 24)
-spontan_df = event_funcs.remove_noisy_traces(spontan_df)
-#spontan_df = event_funcs.remove_small_events(df = spontan_df, min_event_size = 3)
+spontan_df = event_funcs.post_event_analysis_main(QC, spontan_df_orig) #min_event_size = 3, min_hrs = 24
 
 repatch_df = event_funcs.get_repatched_cells(spontan_df)
 n_nums_repatch = event_funcs.get_n_nums_per_day(repatch_df)
-event_funcs.    plot_event_by_day(repatch_df, n_nums_repatch, 'spontan')
+event_funcs.plot_event_by_day(repatch_df, n_nums_repatch, 'spontan')
 
 #%%
 
@@ -30,6 +25,9 @@ results_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/meta_eve
 mini_1 = pd.read_excel( results_dir + 'minis_2022-11-04_summary_results.xlsx', 'summary')
 mini_2 = pd.read_excel( results_dir + 'minis_2022-11-08_summary_results.xlsx', 'summary')
 mini_df = pd.concat([mini_1.loc[:], mini_2]).reset_index(drop=True)
+
+visual_QC_minis = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/notes/analysis/events_detection/minis_rough_evaluation_algorithm_all_results_13.02.2023.xlsx
+QC = pd.read_excel(visual_QC_spontan)
 
 for i in reversed(range(len(mini_df))):
     if mini_df['hrs_incubation'][i]  == 0:
