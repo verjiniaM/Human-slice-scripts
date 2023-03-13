@@ -391,3 +391,31 @@ def plot_full_RMP_trace(file_folder, files, plots_destination, channel, index_st
 
 
 
+#%%
+
+
+def plot_IFF_distribution(IFF_all):
+    fig, ax = plt.subplots(1,20)
+    fig.set_figheight(10)
+    fig.set_figwidth(80)
+
+    for i in range(5, np.shape(IFF_all)[1]):
+        x = np.linspace(0, 10, len(IFF_all[:,0]))
+        ax[i-6].scatter(x, IFF_all[:,i])
+
+def plot_IFF_averages_for_I(IFF_all, inj):
+    fig, ax = plt.subplots(1,1)
+    fig.set_figheight(10)
+    fig.set_figwidth(10)
+
+    for i in range(np.shape(IFF_all)[0]):
+        mean_IFF = np.mean(IFF_all, axis = 0)
+
+    ax.scatter(inj, mean_IFF)
+    ax.plot(inj, mean_IFF)
+
+    ax.set_title('Initial firing frequency (AP#1 to AP#2)')
+    ax.set_xlabel('Current (pA)')
+    ax.set_ylabel('Instantaneous firing rate (Hz)')
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)

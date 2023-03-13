@@ -16,45 +16,24 @@ spontan_df = event_funcs.post_event_analysis_main(QC, spontan_df_orig) #min_even
 
 repatch_df = event_funcs.get_repatched_cells(spontan_df)
 n_nums_repatch = event_funcs.get_n_nums_per_day(repatch_df)
-event_funcs.plot_event_by_day(repatch_df, n_nums_repatch, 'spontan')
+event_funcs.plot_event_by_day_spontan(repatch_df, n_nums_repatch, 'spontan')
 
 #%%
 
 results_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/meta_events/results/'
 
-mini_1 = pd.read_excel( results_dir + 'minis_2022-11-04_summary_results.xlsx', 'summary')
-mini_2 = pd.read_excel( results_dir + 'minis_2022-11-08_summary_results.xlsx', 'summary')
-mini_df = pd.concat([mini_1.loc[:], mini_2]).reset_index(drop=True)
+mini_1 = pd.read_excel( results_dir + 'minis_2023-02-14_summary_results_pt1.xlsx', 'summary')
+mini_2 = pd.read_excel( results_dir + 'minis_2023-02-14_summary_results_pt2.xlsx', 'summary')
+mini_df_orig = pd.concat([mini_1.loc[:], mini_2]).reset_index(drop=True)
 
-visual_QC_minis = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/notes/analysis/events_detection/minis_rough_evaluation_algorithm_all_results_13.02.2023.xlsx
-QC = pd.read_excel(visual_QC_spontan)
+visual_QC_minis = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/notes/analysis/events_detection/minis_rough_evaluation_algorithm_all_results_13.02.2023.xlsx'
+QC = pd.read_excel(visual_QC_minis)
 
-for i in reversed(range(len(mini_df))):
-    if mini_df['hrs_incubation'][i]  == 0:
-        continue
-    if float(mini_df['hrs_incubation'][i]) < 20 and float(mini_df['hrs_incubation'][i]) > 30:
-        mini_df = mini_df.drop([mini_df.index[i]])
-mini_df.reset_index(inplace = True, drop = True)
+mini_df = event_funcs.post_event_analysis_main(QC, mini_df_orig, min_event_size = 3, min_hrs = 22)
 
-for i in reversed(range(len(mini_df))):
-    if float(mini_df['Average interevent interval (ms)'][i]) > 1000 :
-        mini_df = mini_df.drop([mini_df.index[i]])
-        continue
-mini_df.reset_index(inplace = True, drop = True)
+n_nums_minis = event_funcs.get_n_nums_per_day(mini_df)
+event_funcs.plot_event_by_day_mini(mini_df, n_nums_minis, 'minis')
 
-for i in reversed(range(len(mini_df))):
-    if float(mini_df['Average amplitude (pA)'][i]) > 30 :
-        mini_df = mini_df.drop([mini_df.index[i]])
-        continue
-mini_df.reset_index(inplace = True, drop = True)
-
-mini_df.boxplot(column=['Average interevent interval (ms)'], by=['treatment'])
-mini_df.boxplot(column=['Average amplitude (pA)'], by=['treatment'])
-
-treatments = ['Ctrl', 'high K', 'TTX']
-nums_dict = {}
-for tr in treatments:
-    nums_dict[tr] = len(mini_df[(mini_df['treatment'] == tr)])
 
 
 #%%

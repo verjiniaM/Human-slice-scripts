@@ -53,7 +53,7 @@ def read_inj(inj):
         inj = inj
     return inj
 
-def load_traces (filename):
+def load_traces(filename):
     '''
     returns a dictionary; key: channel name (e.g. 'Ch1')
     value: np.array(sweep_len, sweep_count), each column is a sweep, len column - sweep len
@@ -191,7 +191,7 @@ def get_max_spikes(charact_data, channels):
         key = 'Ch' + str(ch)
         ch1 = charact_data[key][0]
         max_spikes = 0
-        for i, j in enumerate(range(0, len(ch1[0]))): #loop through all swps
+        for j in range(len(ch1[0])): #loop through all swps
             pks = detect_peaks(ch1[:,j], mph=20, mpd=50) # detects the peaks for each timepoint? 
             if len(pks)> max_spikes:
                 max_spikes = len(pks) #find the max number of spikes (peaks)
@@ -223,7 +223,7 @@ def get_ap_param (charact_data, channels, inj, max_spikes):
             continue
         peaks = np.empty([len(inj), max_spikes[i], 3])
         peaks.fill(np.nan)
-        for i, j in enumerate(range(0, len(ch1[0]))): #for all swps
+        for i in range(len(ch1[0])): #for all swps
             pks = detect_peaks(ch1[:,j], mph=20,mpd=50) 
             peaks[i,0:len(pks), 0] = inj[i] #injected current
             peaks[i,0:len(pks), 1] = pks #
@@ -315,7 +315,7 @@ def get_ap_param_for_plotting (charact_data, channels, inj, max_spikes):
             continue
         peaks = np.empty([len(inj), max_spikes[i], 3])
         peaks.fill(np.nan)
-        for i, j in enumerate(range(0, len(ch1[0]))): #for all swps
+        for i in range(len(ch1[0])): #for all swps
             pks = detect_peaks(ch1[:,j], mph=20,mpd=50) 
             peaks[i,0:len(pks), 0] = inj[i] #injected current
             peaks[i,0:len(pks), 1] = pks #
@@ -419,6 +419,47 @@ def get_RMP_over_time(filename, channels):
     return RMPs
 
 
+#%%
 
 
-    
+fn = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/data_verji/OP221027/22o27022.abf' 
+channels = [1,2,3,4,6,7,8]
+inj = 'full'
+
+
+# #IFF_data = pd.DataFrame(columns = ['OP', 'fn', 'slice', 'day', 'repatch', 'treatment', 
+#     'hrs_incubation','chan_pre', 'chan_post', 'Vm pre', 'Vm post', 
+#     'Amp 1','Amp '])
+
+
+# def get_initial_firing_rate(fn, channels, inj = 'full'):
+#     '''
+#     function creats a dataframe with filename, channel, treatment
+#     DV: initial firing frequency for each inj. current
+#     'IFF' --> initial firing frequency matrix where each row is a channel (from 'channels') and each column 'inj'
+#     'num_aps' --> number of APs matrix rows are channels, columns are 'inj'
+#     '''
+
+#     charact_data = load_traces(fn)
+#     sampl_rate, units, times = get_abf_info(fn, channels[0], np.shape(charact_data['Ch1'][0])[1], np.shape(charact_data['Ch1'][0])[0])
+
+#     IFF_dict = 
+#     IFF_dict['inj'] = read_inj(inj)
+
+#     IFF_matr, num_aps_matr = np.zeros((len(channels),len(read_inj(inj)))), np.zeros((len(channels),len(read_inj(inj))))
+#     for i, ch in enumerate(channels):
+#         key = 'Ch' + str(ch)
+#         ch1 = charact_data[key][0]
+#         for j in range(0, len(ch1[0])): #loop through all swps
+#             pks = detect_peaks(ch1[:,j], mph=20, mpd=50) # detects peaks
+#             num_aps_matr[i, j] = len(pks)
+#             if len(pks) > 1 :
+#                 IFF_matr[i, j] = 1/(times[pks[1]] - times[pks[0]]) #inital firing freq = 1/(time 2nd AP - time 1st AP)
+#             else :
+#                 IFF_matr[i, j] = 0
+#     IFF_dict['IFF'] = IFF_matr
+#     IFF_dict['num_aps'] = num_aps_matr
+
+#     return IFF_dict
+
+

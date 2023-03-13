@@ -333,6 +333,6 @@ def get_json_meta_high_K (human_dir, OP, patcher, file_out): # file_out = '_meta
         'active_chans': active_chans_all
     }
 
-    to_json (work_dir, OP, file_out, [vc_meta, charact_meta, resting_meta, resting_long_meta])
+    to_json(work_dir, OP, file_out, [vc_meta, charact_meta, resting_meta, resting_long_meta])
     json_meta = from_json(work_dir, OP, file_out)
     return json_meta
