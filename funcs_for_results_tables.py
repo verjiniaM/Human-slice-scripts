@@ -11,6 +11,7 @@ import math
 import datetime
 import shutil
 import glob
+import plot_intrinsic_props as plot_intr
 
 def get_intrinsic_properties_df(human_dir, OP, tissue_source, patcher, age, inj):
     '''
@@ -699,7 +700,116 @@ def collect_intrinsic_df(human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_
     all_intr_props.loc[all_intr_props['treatment'] == 'high k'] = 'high K'
 
     date = str(datetime.date.today())
-    all_intr_props.to_excel('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/summary_data_tables/intrinsic_properties/' 
+    all_intr_props.to_excel('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/data/summary_data_tables/intrinsic_properties/' 
     + date + '_collected.xlsx', index=False)
     return all_intr_props
 
+
+def create_IFF_data_table(OP, patcher, file_out = '_meta_active_chans.json', inj = 'full',
+human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'):
+
+    work_dir, filenames, indices_dict, slice_names = sort.get_OP_metadata(human_dir, OP, patcher)
+    OP_meta = sort.from_json(work_dir, OP, file_out)
+
+    treatments = OP_meta[0]['treatment']
+    active_chans = OP_meta[0]['active_chans']
+    slices = OP_meta[0]['slices']
+
+    inj = hcf.read_inj(inj)
+    col_names_inj = []
+    for i in inj:
+        col_names_inj.append(str(i) + 'pA')
+
+    iterables = [col_names_inj, ["IFF", "num_aps"]]
+    col_names = pd.MultiIndex.from_product(iterables, names=["current_inj", "parameter"])
+    df_1 = pd.DataFrame(columns = ['OP', 'patcher', 'filename', 'slice', 'day', 'cell_ch', 'treatment'])
+    df_2 = pd.DataFrame(columns = col_names)
+    df_IFF = pd.concat([df_1, df_2], axis = 1)
+
+    for i, char in enumerate(indices_dict['freq analyse']):
+        fn = work_dir + filenames[char]
+        channels = active_chans[i]
+        treatment = treatments[i]
+        if type(treatment) == list:
+            treatment = treatments[i][0]
+        slic = slices[i]
+        day = 'D1'
+        if slic[-2:] == 'D2': 
+            day = 'D2'
+
+        param = hcf.get_initial_firing_rate(fn, channels, inj = 'full')
+
+        df_OP1 = pd.DataFrame({'OP':OP, 'patcher': patcher, 'filename': filenames[char], 'slice':slic,
+        'day': day, 'cell_ch': channels, 'treatment': treatment})
+        df_OP2 = pd.DataFrame(param, columns = col_names)
+        df_IFF = pd.concat([df_IFF.loc[:], pd.concat([df_OP1, df_OP2], axis = 1)]).reset_index(drop=True)
+
+    df_IFF.to_excel(work_dir + 'data_tables/' + OP + '_IFF_all.xlsx',index=False)
+
+def collect_IFF_dfs(human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'):
+    exp_view = pd.read_excel(glob.glob(human_dir + '*experiments_overview.xlsx')[0]) 
+    exp_view_IFF = exp_view[exp_view['repatch'] == 'yes']
+
+    area_dict, high_k_dict = {}, {}
+    for OP in exp_view_IFF['OP'].unique():
+        area_dict[OP] = exp_view_IFF['region'][exp_view_IFF['OP'] == OP].tolist()[0]
+        high_k_dict[OP] = exp_view_IFF['K concentration'][exp_view_IFF['OP'] == OP].tolist()[0]
+
+    IFF_dirs = glob.glob(human_dir + '/data_*/' + 'OP*' + '/data_tables/'  + '*_IFF_all.xlsx')
+    IFF_all = pd.DataFrame()
+    for IFF_path in IFF_dirs:
+        df = pd.read_excel(IFF_path)
+        IFF_all = pd.concat([IFF_all.loc[:], df]).reset_index(drop=True)
+     
+    IFF_all.insert(0, 'area', '')
+    for OP in IFF_all['OP'].unique():
+        mask = IFF_all['OP'] == OP
+        IFF_all.loc[mask, 'area'] = area_dict[OP]
+        IFF_all.loc[mask, 'high K concentration'] = high_k_dict[OP]
+
+    IFF_all['treatment'].loc[IFF_all['treatment'] == 'high k'] = 'high K'
+
+    date = str(datetime.date.today())
+    IFF_all.to_excel('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/data/initial_firing_freqs/' 
+    + date + '_IFF_collected.xlsx', index=False)
+    return IFF_all
+
+
+def get_QC_for_IFF_df(intrinsic_df, IFF_df):
+    ''' 
+    takes cellIDs and repatch info from intrinsic df
+    remove data for which no cell IDs are present (data didn't pass quality check)
+    create a IFF excel sheet with data and sheet1 - all IFF data, sheet2 - repatch IFF
+    '''
+    cell_IDs, repatches = [], []
+    for OP in IFF_df['OP'].unique():
+        for i, slic in enumerate(IFF_df['slice'][IFF_df['OP'] == OP]):
+            cell_ch = IFF_df['cell_ch'].tolist()[i]
+            cell_ID = intrinsic_df['cell_ID'][(intrinsic_df['OP'] == OP) & \
+                (intrinsic_df['slice'] == slic) & (intrinsic_df['cell_ch'] == cell_ch)]
+            if len(cell_ID) == 0:
+                cell_ID = hcf.get_cell_IDs(IFF_df['filename'].tolist()[i], slic, [cell_ch])[0]
+                cell_IDs.append(cell_ID)
+                repatches.append([''])
+                continue
+            cell_ID = cell_ID.unique()[0]
+            repatch = intrinsic_df['repatch'][intrinsic_df['cell_ID'] == cell_ID].unique()[0]
+            cell_IDs.append(cell_ID)
+            repatches.append(repatch)
+    
+    IFF_df.insert(7, 'cell_ID', cell_IDs)
+    IFF_df.insert(8, 'repatch', repatches)
+
+    #remove cells which are not in the inttrisic df
+    mask_QC = (IFF_df['repatch'] == 'yes') | (IFF_df['repatch'] == 'no') | (IFF_df['repatch'] == 'no ')
+    IFF_df = IFF_df.loc[mask_QC, :] #include only cells that passed the QC for intrinsic properties
+
+    IFF_repatch = plot_intr.get_repatch_df(IFF_df)
+
+    date = str(datetime.date.today())
+    file_name = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/data/initial_firing_freqs/' + date + '_IFF_full_.xlsx'
+    with pd.ExcelWriter(file_name) as writer:  
+        IFF_df.to_excel(writer, sheet_name='Initial_firing_freq_all')
+        IFF_repatch.to_excel(writer, sheet_name='Initial_firing_freq_repatch')
+    
+    return IFF_df, IFF_repatch

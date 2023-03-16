@@ -1,33 +1,26 @@
-import sorting_functions as sort
+import pandas as pd
+import glob
 import human_characterisation_functions as hcf
-import pandas as pd 
-import numpy as np
+import funcs_for_results_tables as get_results
 import plot_intrinsic_props as plot_intr
 
 
 human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'
-OP = 'OP221027'
-patcher = 'Verji'
-file_out = '_meta_active_chans.json'
+exp_view = pd.read_excel(glob.glob(human_dir + '*experiments_overview.xlsx')[0]) 
+exp_view_IFF = exp_view[exp_view['repatch'] == 'yes']
 
-work_dir, filenames, indices_dict, slice_names = sort.get_OP_metadata(human_dir, OP, patcher)
-OP_meta = sort.from_json(work_dir, OP, file_out)
+# OPs = exp_view_IFF['OP']
+# patchers = exp_view_IFF['patcher'].tolist()
+# for i, OP in enumerate(OPs):
+#     patcher = patchers[i]
+#     get_results.create_IFF_data_table(OP, patcher, file_out = '_meta_active_chans.json', inj = 'full', human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/')
 
-treatments = OP_meta[0]['treatment']
-active_chans = OP_meta[0]['active_chans']
+IFF_collected = get_results.collect_IFF_dfs(human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/')
+intrinsic_df = pd.read_excel('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/data/summary_data_tables/intrinsic_properties/2022-12-07_collected.xlsx')
+IFF_all, IFF_repatch = get_results.get_QC_for_IFF_df(intrinsic_df, IFF_collected)
 
-IFF_all = np.zeros((1,26))
-for i, char in enumerate(indices_dict['freq analyse']):
-    fn = work_dir + filenames[char]
-    channels = active_chans[i]
-    inj = 'full'
-    IFF_dict = hcf.get_initial_firing_rate(fn, channels, inj = 'full')
-    IFF_all = np.concatenate((IFF_all, IFF_dict['IFF']))
+plot_intr.plot_IFF_distribution(IFF_repatch, 'repatch')
+plot_intr.plot_IFF_distribution(IFF_all, 'all')
 
-df = pd.DataFrame(IFF_all)
-df.to_excel(work_dir + 'data_tables/IFF_all.xlsx',index=False)
 
-plot_intr.plot_IFF_distribution(IFF_all)
-
-plot_intr.plot_IFF_averages_for_I(IFF_all, IFF_dict['inj'])
-
+# plot_intr.plot_IFF_averages_for_I(IFF_all, IFF_dict['inj'])

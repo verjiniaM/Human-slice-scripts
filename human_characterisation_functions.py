@@ -419,47 +419,31 @@ def get_RMP_over_time(filename, channels):
     return RMPs
 
 
-#%%
+def get_initial_firing_rate(fn, channels, inj = 'full'):
+    '''
+    function creats a matrix
+    'channels' --> rows in matrices, 'inj' --> columns [-300, -300, -200, -200, etc.]
+    value1 = IFF, value2 = num_aps
+    each injection appears twice 
+    '''
 
+    charact_data = load_traces(fn)
+    inj = read_inj(inj)
+    ch_0 = 'Ch' + str(channels[0])
+    sampl_rate, units, times = get_abf_info(fn, channels[0], np.shape(charact_data[ch_0][0])[1], np.shape(charact_data[ch_0][0])[0])
 
-fn = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/data_verji/OP221027/22o27022.abf' 
-channels = [1,2,3,4,6,7,8]
-inj = 'full'
+    params = np.zeros((len(channels),len(read_inj(inj))*2))
+    for i, ch in enumerate(channels):
+        key = 'Ch' + str(ch)
+        ch1 = charact_data[key][0]
+        for j in range(0, len(ch1[0])): #loop through all swps
+            k = 2*j
+            pks = detect_peaks(ch1[:,j], mph=20, mpd=50) # detects peaks
+            if len(pks) > 1 :
+                params[i,k] = (1/(times[pks[1]] - times[pks[0]])) #inital firing freq = 1/(time 2nd AP - time 1st AP)
+                params[i,k+1] = (len(pks)) #num_aps
+            else :
+                params[i,k] = 0 #inital firing freq = 1/(time 2nd AP - time 1st AP)
+                params[i,k+1] = len(pks) #num_aps
 
-
-# #IFF_data = pd.DataFrame(columns = ['OP', 'fn', 'slice', 'day', 'repatch', 'treatment', 
-#     'hrs_incubation','chan_pre', 'chan_post', 'Vm pre', 'Vm post', 
-#     'Amp 1','Amp '])
-
-
-# def get_initial_firing_rate(fn, channels, inj = 'full'):
-#     '''
-#     function creats a dataframe with filename, channel, treatment
-#     DV: initial firing frequency for each inj. current
-#     'IFF' --> initial firing frequency matrix where each row is a channel (from 'channels') and each column 'inj'
-#     'num_aps' --> number of APs matrix rows are channels, columns are 'inj'
-#     '''
-
-#     charact_data = load_traces(fn)
-#     sampl_rate, units, times = get_abf_info(fn, channels[0], np.shape(charact_data['Ch1'][0])[1], np.shape(charact_data['Ch1'][0])[0])
-
-#     IFF_dict = 
-#     IFF_dict['inj'] = read_inj(inj)
-
-#     IFF_matr, num_aps_matr = np.zeros((len(channels),len(read_inj(inj)))), np.zeros((len(channels),len(read_inj(inj))))
-#     for i, ch in enumerate(channels):
-#         key = 'Ch' + str(ch)
-#         ch1 = charact_data[key][0]
-#         for j in range(0, len(ch1[0])): #loop through all swps
-#             pks = detect_peaks(ch1[:,j], mph=20, mpd=50) # detects peaks
-#             num_aps_matr[i, j] = len(pks)
-#             if len(pks) > 1 :
-#                 IFF_matr[i, j] = 1/(times[pks[1]] - times[pks[0]]) #inital firing freq = 1/(time 2nd AP - time 1st AP)
-#             else :
-#                 IFF_matr[i, j] = 0
-#     IFF_dict['IFF'] = IFF_matr
-#     IFF_dict['num_aps'] = num_aps_matr
-
-#     return IFF_dict
-
-
+    return params

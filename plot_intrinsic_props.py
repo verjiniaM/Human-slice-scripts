@@ -72,9 +72,15 @@ def get_adult_data(df_intr_props):
     return adult_df
 
 def get_repatch_df(df):
+    '''
+    creates new unique cell IDs for each patcher (with initials)
+    removes cells which are reaptched but one day was removed (not up to quality standards)
+    '''
+    #take only repatched cells
     repatch_df = df[df['repatch'] == 'yes']
     repatch_df.reset_index(inplace = True, drop = True)
 
+    #create unique cell ID
     patcher_dict = {'Verji':'vm', 'Rosie': 'rs'}
     cell_IDs_new = []
     for i in range(len(repatch_df)):
@@ -82,11 +88,12 @@ def get_repatch_df(df):
         cell_IDs_new.append(cell_ID)
     repatch_df['cell_ID_new'] = cell_IDs_new
 
+    #check if cell IDs appear twice, if not remove
     not_repatched_cells = []
     for cell in repatch_df['cell_ID_new'].unique():
         if len(repatch_df[repatch_df['cell_ID_new'] == cell]) < 2:
             not_repatched_cells.append(cell)
-
+    
     for cell in not_repatched_cells:
         repatch_df = repatch_df.drop(repatch_df.index[repatch_df['cell_ID_new'] == cell])
         
@@ -394,28 +401,115 @@ def plot_full_RMP_trace(file_folder, files, plots_destination, channel, index_st
 #%%
 
 
-def plot_IFF_distribution(IFF_all):
-    fig, ax = plt.subplots(1,20)
-    fig.set_figheight(10)
-    fig.set_figwidth(80)
+def plot_IFF_distribution(IFF_df, data_type):
 
-    for i in range(5, np.shape(IFF_all)[1]):
-        x = np.linspace(0, 10, len(IFF_all[:,0]))
-        ax[i-6].scatter(x, IFF_all[:,i])
+    num_aps_indx, IFF_indx = [], []
+    for i in range(len(IFF_df.columns)):
+        if 'num_aps' in IFF_df.columns[i]:
+            num_aps_indx.append(i)
+        if 'IFF' in IFF_df.columns[i]:
+            IFF_indx.append(i)
 
-def plot_IFF_averages_for_I(IFF_all, inj):
-    fig, ax = plt.subplots(1,1)
-    fig.set_figheight(10)
-    fig.set_figwidth(10)
+    kwargs = dict(alpha=0.6, bins=7)
+    destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/plots/IFF/'
+    date = str(datetime.date.today())
 
-    for i in range(np.shape(IFF_all)[0]):
-        mean_IFF = np.mean(IFF_all, axis = 0)
+    for treatment in IFF_df['treatment'].unique():
+        tr_df = IFF_df[IFF_df['treatment'] == treatment]
 
-    ax.scatter(inj, mean_IFF)
-    ax.plot(inj, mean_IFF)
+        fig, ax = plt.subplots(5,5,sharex = False, sharey = True ,figsize=(15,25))
+        fig.subplots_adjust(hspace=0.3,  wspace = None)
+        ax = ax.flatten()
+        for day in tr_df['day'].unique():
+            day_df = tr_df[tr_df['day'] == day]
+            for i, col in enumerate(num_aps_indx[1:]):
+                plot_data = day_df.iloc[:,col]
+                ax[i].hist(plot_data, **kwargs, label  = day)
 
-    ax.set_title('Initial firing frequency (AP#1 to AP#2)')
-    ax.set_xlabel('Current (pA)')
-    ax.set_ylabel('Instantaneous firing rate (Hz)')
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
+                ax[i].set_ylabel('Frequency')
+                ax[i].set_xlabel('Number of APs')
+                stim = day_df.columns[col][2:(day_df.columns[col]).rfind('pA')+2]
+                ax[i].set_title(stim)
+                ax[i].spines['top'].set_visible(False)
+                ax[i].spines['right'].set_visible(False)
+
+        plt.figlegend(loc = 'upper right', bbox_to_anchor=(0.95, 0.95), fontsize = 10)
+        fig.patch.set_facecolor('white')
+        fig.suptitle('Number of APs distibution for ' + treatment)
+        plt.savefig(destination_dir + date_type + treatment + date + '_Num_APs_distibution_plot.png')
+        plt.close(fig)
+
+        fig2, ax2 = plt.subplots(5,5,sharex = False, sharey = True ,figsize=(15,25))
+        fig2.subplots_adjust(hspace=0.3,  wspace = None)
+        ax2 = ax2.flatten()
+        for day in tr_df['day'].unique():
+            day_df = tr_df[tr_df['day'] == day]
+            for i, col2 in enumerate(IFF_indx[1:]):
+                plot_data2 = day_df.iloc[:,col2]
+                ax2[i].hist(plot_data2, **kwargs, label = day)
+
+                ax2[i].set_ylabel('Frequency')
+                ax2[i].set_xlabel('Initial firing rate')
+                stim = day_df.columns[col2][2:(day_df.columns[col2]).rfind('pA')+2]
+                ax2[i].set_title(stim)
+                ax2[i].spines['top'].set_visible(False)
+                ax2[i].spines['right'].set_visible(False)
+
+        plt.figlegend(loc = 'upper right', bbox_to_anchor=(0.95, 0.95), fontsize = 10)
+        fig2.patch.set_facecolor('white')
+        fig2.suptitle('Initial firing rate for ' + treatment, size = 20)
+
+        plt.savefig(destination_dir + date_type + treatment + date + '_IFF_distibution_plot.png')
+        plt.close(fig2)
+
+
+def plot_IFF_avg_against_current_inj (IFF_df, datetime):
+
+    num_aps_indx, IFF_indx = [], []
+    for i in range(len(tr_df.columns)):
+        if 'num_aps' in tr_df.columns[i]:
+            num_aps_indx.append(i)
+        if 'IFF' in tr_df.columns[i]:
+            IFF_indx.append(i)
+
+    for treatment in IFF_df['treatment'].unique():
+        tr_df = IFF_df[IFF_df['treatment'] == treatment]
+
+        fig, ax = plt.subplots(1, 1,figsize=(10,10))
+        fig.subplots_adjust(hspace=0.3,  wspace = None)
+
+        for day in tr_df['day'].unique():
+            day_df = tr_df[tr_df['day'] == day]
+            avgs, sems, inj = [], [], []
+            for i, col in enumerate(IFF_indx[1:]):
+                data = day_df.iloc[:,col]
+                data = data[data > 0]
+                x = np.linspace(0.65+i, 1.35+i, len(data))
+                ax.scatter(x, data, alpha = 0.5, s = 2)
+
+                avg = np.mean(data)
+                sem = np.std(data, ddof=1) / np.sqrt(np.size(data))
+
+                #yerr = np.linspace((avg - sem), (avg + sem), 5) 
+                ax.errorbar(i + 1, avg, yerr = sem)
+
+                avgs.append(avg)
+                sems.append(sem) #standard error of the mean
+                inj.append(day_df.columns[col][2:(day_df.columns[col]).rfind('pA')])
+            
+            ax.scatter(range(1, len(inj)+1), avgs, label = day)
+            ax.plot(range(1, len(inj)+1), avgs, label = day)
+            ax.errorbar(range(1, len(inj)+1), avgs, yerr = sem, label = day)
+
+            ax.set_title(treatment + ' Initial firing frequency (AP#1 to AP#2)')
+            ax.set_xlabel('Current (pA)')
+            ax.set_ylabel('Instantaneous firing rate (Hz)')
+            ax.set_xticks(ticks = list(range(1,len(inj)+1)), labels = inj) 
+            ax.spines['top'].set_visible(False)
+            ax.spines['right'].set_visible(False)
+
+            # add n numbers
+            #ax.text(1.7 + 2*i, int(np.max(df[param])), 'n = ' + str(len(df_plot)), size = 10, c = colors[2*i+1])
+        plt.figlegend(loc = 'upper right', bbox_to_anchor=(0.95, 0.95), fontsize = 10)
+
+
