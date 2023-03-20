@@ -17,10 +17,22 @@ exp_view_IFF = exp_view[exp_view['repatch'] == 'yes']
 
 IFF_collected = get_results.collect_IFF_dfs(human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/')
 intrinsic_df = pd.read_excel('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/data/summary_data_tables/intrinsic_properties/2022-12-07_collected.xlsx')
+
+intrinsic_df = plot_intr.create_new_cell_IDs(intrinsic_df)
 IFF_all, IFF_repatch = get_results.get_QC_for_IFF_df(intrinsic_df, IFF_collected)
 
-plot_intr.plot_IFF_distribution(IFF_repatch, 'repatch')
-plot_intr.plot_IFF_distribution(IFF_all, 'all')
+IFF_repatch_firing = get_results.remove_non_firing_cells_D1(IFF_repatch)
 
+plot_intr.plot_IFF_distribution(IFF_repatch, 'repatch', 'num_aps') #data_type - all, repatch, repatch firing cells; DV - num_aps or IFF
+plot_intr.plot_IFF_distribution(IFF_repatch, 'repatch', 'IFF')
 
-# plot_intr.plot_IFF_averages_for_I(IFF_all, IFF_dict['inj'])
+plot_intr.plot_IFF_avg_against_current_inj(IFF_repatch, 'repatch', 'num_aps')
+plot_intr.plot_IFF_avg_against_current_inj(IFF_repatch, 'repatch', 'IFF')
+
+plot_intr.plot_IFF_distribution(IFF_repatch_firing, 'repatch_firing_D1', 'num_aps') #data_type - all, repatch, repatch firing cells; DV - num_aps or IFF
+plot_intr.plot_IFF_distribution(IFF_repatch_firing, 'repatch_firing_D1', 'IFF')
+
+plot_intr.plot_IFF_avg_against_current_inj(IFF_repatch_firing, 'repatch_firing_D1', 'num_aps')
+plot_intr.plot_IFF_avg_against_current_inj(IFF_repatch_firing, 'repatch_firing_D1', 'IFF')
+
+           

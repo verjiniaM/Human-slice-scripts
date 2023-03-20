@@ -40,6 +40,26 @@ def get_cell_IDs (filename_char, slic, active_channels):
         cell_IDs.append(cellID)
     return cell_IDs
 
+def get_new_cell_IDs(filename_char, slic, active_channels, patcher):
+    patcher_dict = {'Verji':'vm', 'Rosie': 'rs'}
+    
+    end_fn = filename_char.rfind('/') + 1
+    cell_IDs = []
+    for ch in active_channels:
+        cellID = patcher_dict[patcher] + filename_char[end_fn:-7] + slic + 'c' + str(ch)
+        cell_IDs.append(cellID)
+    return cell_IDs
+
+def get_new_cell_IDs_fn(fn, slic, active_channels, patcher):
+    patcher_dict = {'Verji':'vm', 'Rosie': 'rs'}
+    
+    cell_IDs = []
+    for ch in active_channels:
+        cellID = patcher_dict[patcher] + fn[:-7] + slic + 'c' + str(ch)
+        cell_IDs.append(cellID)
+    return cell_IDs
+
+
 def get_connection_ID (filename_con_screen, slic, pre_chan, post_chan):
     end_fn = filename_con_screen.rfind('/') + 1
     con_ID = filename_con_screen[end_fn:-7] + slic + 'c' + str(pre_chan) + '#' + str(post_chan)

@@ -705,6 +705,10 @@ def collect_intrinsic_df(human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_
     return all_intr_props
 
 
+#%% 
+### Functions for fixing initial firing frequency tables
+
+
 def create_IFF_data_table(OP, patcher, file_out = '_meta_active_chans.json', inj = 'full',
 human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'):
 
@@ -781,28 +785,40 @@ def get_QC_for_IFF_df(intrinsic_df, IFF_df):
     remove data for which no cell IDs are present (data didn't pass quality check)
     create a IFF excel sheet with data and sheet1 - all IFF data, sheet2 - repatch IFF
     '''
-    cell_IDs, repatches = [], []
-    for OP in IFF_df['OP'].unique():
-        for i, slic in enumerate(IFF_df['slice'][IFF_df['OP'] == OP]):
-            cell_ch = IFF_df['cell_ch'].tolist()[i]
-            cell_ID = intrinsic_df['cell_ID'][(intrinsic_df['OP'] == OP) & \
-                (intrinsic_df['slice'] == slic) & (intrinsic_df['cell_ch'] == cell_ch)]
-            if len(cell_ID) == 0:
-                cell_ID = hcf.get_cell_IDs(IFF_df['filename'].tolist()[i], slic, [cell_ch])[0]
-                cell_IDs.append(cell_ID)
-                repatches.append([''])
-                continue
-            cell_ID = cell_ID.unique()[0]
-            repatch = intrinsic_df['repatch'][intrinsic_df['cell_ID'] == cell_ID].unique()[0]
-            cell_IDs.append(cell_ID)
-            repatches.append(repatch)
     
-    IFF_df.insert(7, 'cell_ID', cell_IDs)
+    cell_IDs, repatches, not_in_intrinsic = [], [], []
+    for i in range(len(IFF_df)):
+        OP = IFF_df['OP'][i]
+        patcher = IFF_df['patcher'][i]
+        fn = IFF_df['filename'][i]
+        slic = IFF_df['slice'][i]
+        day = IFF_df['day'][i]
+        cell_ch = IFF_df['cell_ch'][i]
+
+        cell_ID = intrinsic_df['cell_ID_new'][(intrinsic_df['OP'] == OP) & (intrinsic_df['patcher'] == patcher) & \
+        (intrinsic_df['slice'] == slic) & (intrinsic_df['day'] == day) & \
+        (intrinsic_df['cell_ch'] == cell_ch) & (intrinsic_df['filename'] == fn)]
+
+        if len(cell_ID) == 0:
+            cell_ID = hcf.get_new_cell_IDs_fn(fn, slic, [cell_ch], patcher)[0]
+            
+            not_in_intrinsic.append(cell_ID)
+            cell_IDs.append(cell_ID)
+            repatches.append('no')
+            continue
+
+        cell_IDs.append(cell_ID.tolist()[0])
+        repatches.append(intrinsic_df['repatch'][intrinsic_df['cell_ID_new'] == cell_ID.tolist()[0]].tolist()[0])
+    
+
+    IFF_df.insert(7, 'cell_ID_new', cell_IDs)
     IFF_df.insert(8, 'repatch', repatches)
 
-    #remove cells which are not in the inttrisic df
-    mask_QC = (IFF_df['repatch'] == 'yes') | (IFF_df['repatch'] == 'no') | (IFF_df['repatch'] == 'no ')
-    IFF_df = IFF_df.loc[mask_QC, :] #include only cells that passed the QC for intrinsic properties
+    #remove cells which are not in the intrinsic_df (not QC passed)
+    not_QC_passed_cells = plot_intr.in_list1_not_in_list2(IFF_df['cell_ID_new'].tolist(), intrinsic_df['cell_ID_new'].tolist())
+    for cell in not_QC_passed_cells :
+        IFF_df = IFF_df.drop(IFF_df.index[IFF_df['cell_ID_new'] == cell])
+    IFF_df.reset_index(inplace = True, drop = True)
 
     IFF_repatch = plot_intr.get_repatch_df(IFF_df)
 
@@ -813,3 +829,40 @@ def get_QC_for_IFF_df(intrinsic_df, IFF_df):
         IFF_repatch.to_excel(writer, sheet_name='Initial_firing_freq_repatch')
     
     return IFF_df, IFF_repatch
+
+def get_num_aps_and_IFF_data_culumns(df):
+    num_aps_indx, IFF_indx = [], []
+    for i in range(len(df.columns)):
+        if 'num_aps' in df.columns[i]:
+            num_aps_indx.append(i)
+        if 'IFF' in df.columns[i]:
+            IFF_indx.append(i)
+    return num_aps_indx, IFF_indx
+
+def remove_non_firing_cells_D1 (repatched_IFF_df):
+    '''
+    use this function on the repatch dataframe
+    removes cells that are not firing any APs at any current injecion on day1
+    '''
+    num_aps_indx, IFF_indx = get_num_aps_and_IFF_data_culumns(repatched_IFF_df)
+    
+    not_firing_cells, weird_cells = [], []
+    for i, cell in enumerate(repatched_IFF_df['cell_ID_new']):
+        df = repatched_IFF_df[(repatched_IFF_df['cell_ID_new'] == cell) & (repatched_IFF_df['day'] == 'D1')]
+        if len(df) == 0:
+            weird_cells.append(cell)
+            continue
+
+        df2 = df.iloc[:, num_aps_indx].reset_index(drop=True)
+        list_num_aps = df2.loc[0, :].values.flatten().tolist()
+        if max(list_num_aps) <= 0:
+            not_firing_cells.append(cell)
+
+    for cell in not_firing_cells:
+        repatched_IFF_df = repatched_IFF_df.drop(repatched_IFF_df.index[repatched_IFF_df['cell_ID_new'] == cell])
+    repatched_IFF_df.reset_index(inplace = True, drop = True)
+
+    return repatched_IFF_df
+
+
+2# %%

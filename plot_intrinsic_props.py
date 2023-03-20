@@ -7,6 +7,7 @@ import datetime
 import numpy as np
 import math
 import human_characterisation_functions as hcf
+import seaborn as sns
 
 def patient_age_to_float(df_intr_props, min_age, max_age=151):
     '''
@@ -71,6 +72,19 @@ def get_adult_data(df_intr_props):
     adult_df = filter_on_hrs_incubation(adult_df, 20)
     return adult_df
 
+def create_new_cell_IDs(df):
+
+    if 'cell_ID_new' in df.columns:
+        return df
+
+    patcher_dict = {'Verji':'vm', 'Rosie': 'rs'}
+    cell_IDs_new = []
+    for i in range(len(df)):
+        cell_ID = patcher_dict[df['patcher'][i]] + df['cell_ID'][i]
+        cell_IDs_new.append(cell_ID)
+    df['cell_ID_new'] = cell_IDs_new
+    return df
+
 def get_repatch_df(df):
     '''
     creates new unique cell IDs for each patcher (with initials)
@@ -81,12 +95,7 @@ def get_repatch_df(df):
     repatch_df.reset_index(inplace = True, drop = True)
 
     #create unique cell ID
-    patcher_dict = {'Verji':'vm', 'Rosie': 'rs'}
-    cell_IDs_new = []
-    for i in range(len(repatch_df)):
-        cell_ID = patcher_dict[repatch_df['patcher'][i]] + repatch_df['cell_ID'][i]
-        cell_IDs_new.append(cell_ID)
-    repatch_df['cell_ID_new'] = cell_IDs_new
+    repatch_df = create_new_cell_IDs(repatch_df)
 
     #check if cell IDs appear twice, if not remove
     not_repatched_cells = []
@@ -99,6 +108,31 @@ def get_repatch_df(df):
         
     repatch_df.reset_index(inplace = True, drop = True)
     return repatch_df
+
+def in_list1_not_in_list2(list1, list2):
+    missing_in_list_2 = []
+    [missing_in_list_2.append(item) for item in list1 if item not in list2]
+    return missing_in_list_2
+
+def fix_OP220322_cell_IDs(intrinsic_df):
+    mask_OP = intrinsic_df['OP'] == 'OP220322'
+    cell_IDs_fix = []
+    for cell in intrinsic_df.loc[mask_OP, 'cell_ID']:
+        cell_IDs_fix.append('22322' + cell[5:])
+
+    intrinsic_df.loc[mask_OP, 'cell_ID'] = cell_IDs_fix
+    return intrinsic_df
+
+def find_repaeting_cell_IDs(df):
+    df = create_new_cell_IDs(df)
+    repeating_cells, repeats = [], []
+    for cell in df['cell_ID_new'].unique():
+        cells = df['cell_ID_new'][df['cell_ID_new'] == cell]
+        if len(cells) > 2:
+            repeating_cells.append(cells)
+            repeats.append(len(cells))
+    return repeating_cells, repeats
+
 
 def dict_for_plotting():
     titles_dict = {'Rs': ['Series resistance', 'Ω'], 
@@ -400,19 +434,31 @@ def plot_full_RMP_trace(file_folder, files, plots_destination, channel, index_st
 
 #%%
 
-
-def plot_IFF_distribution(IFF_df, data_type):
-
+def get_num_aps_and_IFF_data_culumns(df):
     num_aps_indx, IFF_indx = [], []
-    for i in range(len(IFF_df.columns)):
-        if 'num_aps' in IFF_df.columns[i]:
+    for i in range(len(df.columns)):
+        if 'num_aps' in df.columns[i]:
             num_aps_indx.append(i)
-        if 'IFF' in IFF_df.columns[i]:
+        if 'IFF' in df.columns[i]:
             IFF_indx.append(i)
+    return num_aps_indx, IFF_indx
 
-    kwargs = dict(alpha=0.6, bins=7)
-    destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/plots/IFF/'
+def plot_IFF_distribution(IFF_df, data_type, DV):
+    ''' 
+    plots distribution of number of APs and initial firing frequencies at each current injection
+    on D1 and D2
+    data_type - all, repatch, repatch firing cells D1
+    DV - (dependent variable): num_aps or IFF
+    '''
+    
+    num_aps_indx, IFF_indx = get_num_aps_and_IFF_data_culumns(IFF_df)
     date = str(datetime.date.today())
+    destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/plots/IFF/'
+    kwargs = dict(alpha=0.6, bins=7)
+
+    colors_dict = {'D1' : sns.color_palette("colorblind")[1], 'D2': sns.color_palette("colorblind")[2]}
+    DV_dict = {'IFF' : [IFF_indx, 'Initial firing frequency (AP#1 to AP#2)',  'Firing frequency (Hz)'], 
+    'num_aps' : [num_aps_indx, 'Number of fired action potentials', 'AP count']}
 
     for treatment in IFF_df['treatment'].unique():
         tr_df = IFF_df[IFF_df['treatment'] == treatment]
@@ -422,94 +468,84 @@ def plot_IFF_distribution(IFF_df, data_type):
         ax = ax.flatten()
         for day in tr_df['day'].unique():
             day_df = tr_df[tr_df['day'] == day]
-            for i, col in enumerate(num_aps_indx[1:]):
+            for i, col in enumerate(DV_dict[DV][0][1:]):
                 plot_data = day_df.iloc[:,col]
                 ax[i].hist(plot_data, **kwargs, label  = day)
 
                 ax[i].set_ylabel('Frequency')
-                ax[i].set_xlabel('Number of APs')
+                ax[i].set_xlabel(DV_dict[DV][2])
                 stim = day_df.columns[col][2:(day_df.columns[col]).rfind('pA')+2]
                 ax[i].set_title(stim)
                 ax[i].spines['top'].set_visible(False)
                 ax[i].spines['right'].set_visible(False)
 
-        plt.figlegend(loc = 'upper right', bbox_to_anchor=(0.95, 0.95), fontsize = 10)
+        plt.figlegend(loc = 'upper right', bbox_to_anchor=(0.95, 0.97), fontsize = 15)
         fig.patch.set_facecolor('white')
-        fig.suptitle('Number of APs distibution for ' + treatment)
-        plt.savefig(destination_dir + date_type + treatment + date + '_Num_APs_distibution_plot.png')
+
+        fig.suptitle(DV_dict[DV][1] + ' ' +  data_type + ' ' + treatment, size = 20)
+
+        plt.savefig(destination_dir + date + treatment + data_type + DV + '_distibution_plot.png')
         plt.close(fig)
 
-        fig2, ax2 = plt.subplots(5,5,sharex = False, sharey = True ,figsize=(15,25))
-        fig2.subplots_adjust(hspace=0.3,  wspace = None)
-        ax2 = ax2.flatten()
-        for day in tr_df['day'].unique():
-            day_df = tr_df[tr_df['day'] == day]
-            for i, col2 in enumerate(IFF_indx[1:]):
-                plot_data2 = day_df.iloc[:,col2]
-                ax2[i].hist(plot_data2, **kwargs, label = day)
 
-                ax2[i].set_ylabel('Frequency')
-                ax2[i].set_xlabel('Initial firing rate')
-                stim = day_df.columns[col2][2:(day_df.columns[col2]).rfind('pA')+2]
-                ax2[i].set_title(stim)
-                ax2[i].spines['top'].set_visible(False)
-                ax2[i].spines['right'].set_visible(False)
+def plot_IFF_avg_against_current_inj(IFF_df, data_type, DV):
 
-        plt.figlegend(loc = 'upper right', bbox_to_anchor=(0.95, 0.95), fontsize = 10)
-        fig2.patch.set_facecolor('white')
-        fig2.suptitle('Initial firing rate for ' + treatment, size = 20)
+    ''' 
+    data_type - all, repatch, repatch firing cells D1
+    DV - (dependent variable): num_aps or IFF
+    for each current injection >0 plots the DV for D1 and D2 with
+    mean with standard error around the mean
+    '''
+    
+    num_aps_indx, IFF_indx = get_num_aps_and_IFF_data_culumns(IFF_df)
+    date = str(datetime.date.today())
+    destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/plots/IFF/'
 
-        plt.savefig(destination_dir + date_type + treatment + date + '_IFF_distibution_plot.png')
-        plt.close(fig2)
+    colors_dict = {'D1' : sns.color_palette("colorblind")[1], 'D2': sns.color_palette("colorblind")[2]}
+    DV_dict = {'IFF' : [IFF_indx, 'Initial firing frequency (AP#1 to AP#2)',  'Instantaneous firing frequency (Hz)'], 
+    'num_aps' : [num_aps_indx, 'Number of fired action potentials', 'AP count']}
 
+    fig, ax = plt.subplots(3, 1, figsize=(15,30))
+    #fig.subplots_adjust(hspace = 0.1)
 
-def plot_IFF_avg_against_current_inj (IFF_df, datetime):
-
-    num_aps_indx, IFF_indx = [], []
-    for i in range(len(tr_df.columns)):
-        if 'num_aps' in tr_df.columns[i]:
-            num_aps_indx.append(i)
-        if 'IFF' in tr_df.columns[i]:
-            IFF_indx.append(i)
-
-    for treatment in IFF_df['treatment'].unique():
+    for k, treatment in enumerate(IFF_df['treatment'].unique()):
         tr_df = IFF_df[IFF_df['treatment'] == treatment]
-
-        fig, ax = plt.subplots(1, 1,figsize=(10,10))
-        fig.subplots_adjust(hspace=0.3,  wspace = None)
 
         for day in tr_df['day'].unique():
             day_df = tr_df[tr_df['day'] == day]
             avgs, sems, inj = [], [], []
-            for i, col in enumerate(IFF_indx[1:]):
+            for i, col in enumerate(DV_dict[DV][0][5:]):
                 data = day_df.iloc[:,col]
-                data = data[data > 0]
-                x = np.linspace(0.65+i, 1.35+i, len(data))
-                ax.scatter(x, data, alpha = 0.5, s = 2)
+                x = np.linspace(0.75+i, 1.25+i, len(data))
+                ax[k].scatter(x, data, alpha = 0.5, s = 2, c = colors_dict[day])
 
                 avg = np.mean(data)
                 sem = np.std(data, ddof=1) / np.sqrt(np.size(data))
 
                 #yerr = np.linspace((avg - sem), (avg + sem), 5) 
-                ax.errorbar(i + 1, avg, yerr = sem)
+                ax[k].errorbar(i + 1, avg, yerr = sem)
 
                 avgs.append(avg)
                 sems.append(sem) #standard error of the mean
                 inj.append(day_df.columns[col][2:(day_df.columns[col]).rfind('pA')])
             
-            ax.scatter(range(1, len(inj)+1), avgs, label = day)
-            ax.plot(range(1, len(inj)+1), avgs, label = day)
-            ax.errorbar(range(1, len(inj)+1), avgs, yerr = sem, label = day)
+            ax[k].scatter(range(1, len(inj)+1), avgs, label = day, color = colors_dict[day])
+            ax[k].plot(range(1, len(inj)+1), avgs, label = day, color = colors_dict[day])
+            ax[k].errorbar(range(1, len(inj)+1), avgs, yerr = sem, label = day, color = colors_dict[day])
 
-            ax.set_title(treatment + ' Initial firing frequency (AP#1 to AP#2)')
-            ax.set_xlabel('Current (pA)')
-            ax.set_ylabel('Instantaneous firing rate (Hz)')
-            ax.set_xticks(ticks = list(range(1,len(inj)+1)), labels = inj) 
-            ax.spines['top'].set_visible(False)
-            ax.spines['right'].set_visible(False)
+            ax[k].set_title(treatment + ' ' + data_type, fontsize = 16)
+            ax[k].set_xlabel('Current (pA)', fontsize = 15)
+            ax[k].set_ylabel(DV_dict[DV][2], fontsize = 15)
+            ax[k].set_xticks(ticks = list(range(1,len(inj)+1)), labels = inj) 
+            ax[k].spines['top'].set_visible(False)
+            ax[k].spines['right'].set_visible(False)
 
             # add n numbers
             #ax.text(1.7 + 2*i, int(np.max(df[param])), 'n = ' + str(len(df_plot)), size = 10, c = colors[2*i+1])
-        plt.figlegend(loc = 'upper right', bbox_to_anchor=(0.95, 0.95), fontsize = 10)
+    plt.figlegend(loc = 'upper right', bbox_to_anchor=(0.95, 0.9), fontsize = 15)
+    fig.patch.set_facecolor('white')
+    fig.suptitle(DV_dict[DV][1], size = 20)
 
+    plt.savefig(destination_dir + date + data_type + DV + '_vs_curernt_inj_plot.png')
+    plt.close(fig)
 
