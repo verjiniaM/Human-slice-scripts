@@ -1,35 +1,50 @@
 import pandas as pd
 import sorting_functions as sort
+import human_characterisation_functions as hcf
+import glob
 
 class slice_meta :
-  def __init__(self, name, treatment, patcher, day, active_chans, 
-  vc_files, RMP, char, ramp, con_screen, con_screen_VC,
-  spontan, minis):
-    self.name = name
-    self.treatment = treatment
-    self.patcher = patcher #Verji, Rosie
-    self.day = day
-    self.channels = active_chans
-    #incides of the filenames from the work_dir
-    self.vc_files = vc_files
-    self.RMP = RMP
-    self.char = char
-    self.ramp = ramp
-    self.con_screen = con_screen
-    self.con_screen_VC = con_screen_VC
-    self.spontan = spontan
-    self.minis = minis
+    def __init__(self, name, treatment, patcher, day, active_chans):
 
-  def new_cell_IDs(self, filenames):
-    patcher_dict = {'Verji':'vm', 'Rosie': 'rs'}
-    date_part = filenames[0][:-7]
+        self.name = name
+        self.treatment = treatment
+        self.patcher = patcher #Verji, Rosie
+        self.day = day
+        self.channels = active_chans
 
-    cell_IDs = []
-    for ch in self.channels[-1]:
-        cellID = patcher_dict[self.patcher] + date_part + \
-            self.name + 'c' + str(ch)
-        cell_IDs.append(cellID)
-    return cell_IDs
+        #incides of the filenames from the work_dir
+        self.vc_files = []
+        self.RMP = []
+        self.char = []
+        self.ramp = []
+        self.con_screen = []
+        self.con_screen_VC = []
+        self.spontan = []
+        self.minis = []
+    
+    def filenames_rec_type (self, df_slic_fn):
+        self.vc_files.append(df_slic_fn['files'].iloc[indices_dict['vc']].loc[df_slic_fn['slice'] == self.name].tolist())
+        self.RMP.append(df_slic_fn['files'].iloc[indices_dict['resting']].loc[df_slic_fn['slice'] == self.name].tolist())
+        self.char.append(df_slic_fn['files'].iloc[indices_dict['freq analyse']].loc[df_slic_fn['slice'] == self.name].tolist())
+        self.ramp.append(df_slic_fn['files'].iloc[indices_dict['ramp']].loc[df_slic_fn['slice'] == self.name].tolist())
+        self.con_screen.append(df_slic_fn['files'].iloc[indices_dict['con_screen']].loc[df_slic_fn['slice'] == self.name].tolist())
+        self.con_screen_VC.append(df_slic_fn['files'].iloc[indices_dict['con_screen_VC']].loc[df_slic_fn['slice'] == self.name].tolist())
+        self.spontan.append(df_slic_fn['files'].iloc[indices_dict['spontan']].loc[df_slic_fn['slice'] == self.name].tolist())
+        self.minis.append(df_slic_fn['files'].iloc[indices_dict['minis']].loc[df_slic_fn['slice'] == slice_name].tolist())
+        self.vc_minis.append(df_slic_fn['files'].iloc[indices_dict['vc_mini']].loc[df_slic_fn['slice'] == slice_name].tolist())
+        if self.vc_files == []:
+            self.vc_files == df_slic_fn['files'].iloc[indices_dict['vc_mini']].loc[df_slic_fn['slice'] == slice_name].tolist()
+
+    def new_cell_IDs(self, filenames):
+        patcher_dict = {'Verji':'vm', 'Rosie': 'rs'}
+        date_part = filenames[0][:-7]
+
+        cell_IDs = []
+        for ch in self.channels:
+            cellID = patcher_dict[self.patcher] + date_part + \
+                self.name + 'c' + str(ch)
+            cell_IDs.append(cellID)
+        return cell_IDs
 
 #%%
 
@@ -44,47 +59,23 @@ age = '4.5'
 human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'
 results_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/data/'
 
+exp_view = pd.read_excel(glob.glob(human_dir + '*experiments_overview.xlsx')[0]) 
+
 #%%
 work_dir, filenames, indices_dict, slice_names = sort.get_OP_metadata(human_dir, OP, patcher)
 
-df_slic_vc = pd.DataFrame({'slice': slice_names[:len(filenames)], 'files':filenames})
+df_slic_fn = pd.DataFrame({'slice': slice_names[:len(filenames)], 'files':filenames})
 
+''' 
+Each slice class is defined by one VC fiels and whatever else
+'''
 
 all_slices = sorted(list(set(slice_names)))
-#for slice_name in all_slices:
-slice_name = all_slices[0]
-treatment = input('Treatment (Ctrl, high K, or TTX) for ' + slice_name + ' ' + OP)
-day = 'D1'
-if slice_name[-2:] == 'D2': 
-    day = 'D2'
 
-vc_per_slice = len(df_slic_vc.iloc[indices_dict['vc']].loc[df_slic_vc['slice'] == slice_name])
+cortex_out_time = exp_view['cortex_out'].loc[exp_view['OP'] == OP].tolist()[0]
 
-if vc_per_slice == 1:
-    active_chans = [[int(item) for item in input('Used channels in ' + fn + ' ' + OP).split()]]
-elif vc_per_slice > 1:
-    active_chans = []
-    for i, fn in enumerate(df_slic_vc['files'].iloc[indices_dict['vc']].loc[df_slic_vc['slice'] == slice_name]):
-        active_chans.append([int(item) for item in input(slice_name + 'Used channels in ' + fn + ' ' + OP).split()])
-
-vc_files = df_slic_vc['files'].iloc[indices_dict['vc']].loc[df_slic_vc['slice'] == slice_name].tolist()
-RMP = df_slic_vc['files'].iloc[indices_dict['resting']].loc[df_slic_vc['slice'] == slice_name].tolist()
-char = df_slic_vc['files'].iloc[indices_dict['freq analyse']].loc[df_slic_vc['slice'] == slice_name].tolist()
-ramp = df_slic_vc['files'].iloc[indices_dict['ramp']].loc[df_slic_vc['slice'] == slice_name].tolist()
-con_screen = df_slic_vc['files'].iloc[indices_dict['con_screen']].loc[df_slic_vc['slice'] == slice_name].tolist()
-con_screen_VC = df_slic_vc['files'].iloc[indices_dict['con_screen_VC']].loc[df_slic_vc['slice'] == slice_name].tolist()
-spontan = df_slic_vc['files'].iloc[indices_dict['spontan']].loc[df_slic_vc['slice'] == slice_name].tolist()
-minis = df_slic_vc['files'].iloc[indices_dict['minis']].loc[df_slic_vc['slice'] == slice_name].tolist()
-
-slice1 = slice_meta(slice_name, treatment, patcher, day, active_chans, 
-vc_files, RMP, char, ramp, con_screen, con_screen_VC,
-spontan, minis)
-
-
-
-
-
-
-
-
-
+2
+3
+5
+7
+8
