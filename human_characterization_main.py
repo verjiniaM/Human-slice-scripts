@@ -7,24 +7,24 @@ import funcs_for_results_tables as get_results
 
 
 #%%
-OP = 'OP221027'
+OP = 'OP230314'
 patcher = 'Verji'
-tissue_source = 'Mitte'
+tissue_source = 'Virchow'
 inj = 'full'
-age = '61'
+age = '12'
 #%%
 
 #loading the updated experiments_overview and the old summary_data_table
 human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'
-results_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/'
+results_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/data/'
 
 exp_view = pd.read_excel(glob.glob(human_dir + '*experiments_overview.xlsx')[0]) 
-# exp_view_new = sort.update_op_list(human_dir, exp_view)
-# sort.add_cortex_out_time(human_dir, exp_view_new)
+exp_view_new = sort.update_op_list(human_dir, exp_view)
+sort.add_cortex_out_time(human_dir, exp_view_new)
 
 #%%
 #loading the latest data table, should be the last one in the folder
-latest_sum_data_table = sorted(glob.glob(results_dir + 'summary_data_tables/' + '*.xlsx'))[-1]
+latest_sum_data_table = sorted(glob.glob(results_dir + 'summary_data_tables/intrinsic_properties/' + '*.xlsx'))[-1]
 end_path = latest_sum_data_table.rfind('/')
 summary_data_table = pd.read_excel(latest_sum_data_table)
 print('Using summary data table from ' + latest_sum_data_table[end_path + 1 : end_path + 11])
@@ -35,8 +35,7 @@ newest_op_list = exp_view.OP.unique().tolist()
 all_OPs = last_update_op_list + newest_op_list
 op_to_analyse = [i for i in all_OPs if all_OPs.count(i)==1]
 
-for i in op_to_analyse:
-    OP = op_to_analyse[i]
+for OP in op_to_analyse:
     y_or_n = input('Do you want to start analysis of ' + OP + '(y/n)?') 
     if y_or_n == "n":
         continue
@@ -49,8 +48,19 @@ for i in op_to_analyse:
     print('starting analysis for '+ OP)
     get_results.get_intrinsic_properties_df(human_dir, OP, tissue_source, patcher, age, inj)
     get_results.get_QC_access_resistance_df (human_dir, OP, patcher)
+    input() # to give the user time to check and correct the results
     get_results.get_con_params_df(human_dir, OP, patcher)
     get_results.get_con_screen_VC(human_dir, OP, patcher)
     get_results.get_spontan_QC(human_dir, OP, patcher)
     get_results.get_minis_QC(human_dir, OP, patcher)
     get_results.check_cell_IDs(human_dir, OP, patcher) #this could be run multiple times
+    input('fix cell IDs in spontan df if needed')
+    get_results.check_cell_IDs(human_dir, OP, patcher)
+    get_results.create_IFF_data_table(OP, patcher, '_meta_active_chans.json', inj, human_dir)
+
+
+
+#%%
+
+get_results.prapare_for_event_analysis(human_dir)
+connections_IC, connections_VC = get_results.collect_connections_df(human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/')

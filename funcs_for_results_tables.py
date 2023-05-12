@@ -377,7 +377,7 @@ def get_spontan_QC(human_dir, OP, patcher):
         #index_chans = active_chans_meta[0]['slices'].index(slic)
         active_channels = active_chans_meta[0]['active_chans_spontan'][i]
         cell_IDs = hcf.get_cell_IDs(filename_spontan, slic, active_channels)
-        treatment = active_chans_meta[3][slic]
+        treatment = active_chans_meta[3][slic[:2]]
         #treatment = active_chans_meta[0]['treatment'][i]
 
         spontan_QC = hcf.rec_stability (filename_spontan, active_channels , 60)
@@ -704,6 +704,53 @@ def collect_intrinsic_df(human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_
     + date + '_collected.xlsx', index=False)
     return all_intr_props
 
+#analysis of intrinsic properties
+def collect_connections_df(human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'):
+    exp_view = pd.read_excel(glob.glob(human_dir + '*experiments_overview.xlsx')[0]) 
+
+    area_dict, high_k_dict = {}, {}
+    for OP in exp_view['OP'].unique():
+        area_dict[OP] = exp_view['region'][exp_view['OP'] == OP].tolist()[0]
+        high_k_dict[OP] = exp_view['K concentration'][exp_view['OP'] == OP].tolist()[0]
+    
+    connections_IC = glob.glob(human_dir + '/data_*/' + 'OP*' + '/data_tables/' + '*connected_cell_properties.xlsx')
+    all_cons_IC = pd.DataFrame()
+    for IC_path in connections_IC:
+        df = pd.read_excel(IC_path)
+        all_cons_IC = pd.concat([all_cons_IC.loc[:], df]).reset_index(drop=True)
+     
+    all_cons_IC.insert(0, 'area', '')
+    for OP in all_cons_IC['OP'].unique():
+        mask = all_cons_IC['OP'] == OP
+        if len(mask.unique()) == 1:
+            continue
+        all_cons_IC.loc[mask, 'area'] = area_dict[OP]
+        all_cons_IC.loc[mask, 'high K concentration'] = high_k_dict[OP]
+    all_cons_IC.loc[all_cons_IC['treatment'] == 'high k'] = 'high K'
+
+    connections_VC = glob.glob(human_dir + '/data_*/' + 'OP*' + '/data_tables/' + '*connected_cell_properties_post_in_VC.xlsx')
+    all_cons_VC = pd.DataFrame()
+    for VC_path in connections_VC:
+        df = pd.read_excel(VC_path)
+        all_cons_VC = pd.concat([all_cons_VC.loc[:], df]).reset_index(drop=True)
+    
+    all_cons_VC .insert(0, 'area', '')
+    for OP in all_cons_VC ['OP'].unique():
+        mask = all_cons_VC ['OP'] == OP
+        if len(mask.unique()) == 1:
+            continue
+        all_cons_VC .loc[mask, 'area'] = area_dict[OP]
+        all_cons_VC .loc[mask, 'high K concentration'] = high_k_dict[OP]
+    all_cons_VC.loc[all_cons_VC ['treatment'] == 'high k'] = 'high K'
+
+    date = str(datetime.date.today())
+
+    file_name = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/data/summary_data_tables/connectivity/' + date + '_connectivity.xlsx'
+    with pd.ExcelWriter(file_name) as writer:  
+        all_cons_IC.to_excel(writer, sheet_name='Connectivity_IC')
+        all_cons_VC.to_excel(writer, sheet_name='Connectivity_VC')
+
+    return all_cons_IC, all_cons_VC
 
 #%% 
 ### Functions for fixing initial firing frequency tables

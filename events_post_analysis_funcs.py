@@ -22,6 +22,14 @@ def copy_event_analysis_data_to_analysis_folder(event_type):
 def post_events_analysis_add_metadata(event_type, human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/',
     results = '/Users/verjim/spontaneous-postsynaptic-currents-detection/results/results.xlsx',
     metadata = '/Users/verjim/spontaneous-postsynaptic-currents-detection/metadata/metadata.xlsx'):
+    
+    ''' 
+    Takes the overview of the results and the metadataframe from the last analysis in the events direcotry
+    Adds treatment, patcher, slice, incubation time and OP info
+    removes files with less than 2 min of analysis
+    saves and returns a results dataframe
+    '''
+
     date = str(datetime.date.today())
 
     results_df = pd.read_excel(results, 'Summary results')
@@ -138,6 +146,8 @@ def remove_noisy_traces(df):
 
     plt.hist(df['Stdev of the baseline signal (pA)'])
     plt.axvline(avg_noise + 1.5*sd_noise, color = 'r', label = '1.5 * SD noise')
+    plt.xlabel('SD of baseline signal')
+    plt.ylabel('Frequency')
     plt.legend()
     plt.show()
 
@@ -147,7 +157,7 @@ def remove_noisy_traces(df):
     return df
 
 def get_n_nums_per_day(df):
-    treatments = df['treatment'].unique()
+    treatments = ['Ctrl', 'TTX', 'high K']
     days = df['day'].unique() 
     
     n_nums_dict = {}
@@ -174,51 +184,66 @@ def get_repatched_cells(df):
 
     return df
 
-def plot_event_by_day_spontan(df, n_nums, event_type, 
+def plot_event_by_day_spontan(df, n_nums, data_type, 
 save_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/plots/event_analysis/'):
     '''
     Takes the n_nums dictionary for each condition [day x treatemtn]
     scatter plot of the datapoints and median
     '''
     colors = ['moccasin', 'red', 'moccasin', 'cadetblue', 'moccasin', 'mediumpurple']
+    title1 = 'Spontaneous EPSCs'
+    cmap = plt.cm.get_cmap('tab20')
+    op_color_dict = {}
+    for h, op in enumerate(df['OP'].unique()):
+        op_color_dict[op] = cmap((h+1)/10)
+    
     fig = plt.figure(figsize=(10,5))
     ax = plt.subplot(1,1,1)
     day_label = []
 
-    min_h_incubation = str(min(mini_df['hrs_incubation']))
-    min_amplitude = str(min(mini_df['Average amplitude (pA)']))[:4]
-
+    min_h_incubation = str(min(df['hrs_incubation']))
+    min_amplitude = str(min(df['Average amplitude (pA)']))[:4]
+    x_plot = []
     for i, comb in enumerate(n_nums.keys()):
         k = 0 + i
-
         day = comb[:2]
         treatment = comb[3:]
         plot_df = df[(df['treatment'] == treatment) & (df['day'] == day)]
         x = np.linspace(0.65+k, 1.35+k, len(plot_df))
+        x_plot.append(x)
         y = plot_df['Average amplitude (pA)']
         median = np.median(y)
         ax.scatter(x, y, alpha = 0.8, c = colors[k], s = 40)
         ax.plot([0.8+k, 1.2+k], [median, median], c = 'k', linestyle = 'solid', linewidth = 2)
         day_label.append(comb)
-        ax.text(k+0.85, median + 0.5, str(round(median, 2)), size = 10)
-        ax.text(k+0.85, int(np.max(df['Average amplitude (pA)'])+1), 'n = ' + str(n_nums[comb]), size = 10)
-
+        ax.text(k+0.85, median + 0.5, str(round(median, 2)), size = 15)
+        ax.text(k+0.85, int(np.max(df['Average amplitude (pA)'])+1), 'n = ' + str(n_nums[comb]), size = 12)
+        if k in [1,3,5] and data_type == 'repatch':
+            for c, cell in enumerate(plot_df['cell_ID']):
+                x1 = [x_plot[0][c], x[c]] 
+                y = df['Average amplitude (pA)'][df['cell_ID'] == cell]
+                op = plot_df['OP'][plot_df['cell_ID'] == cell].tolist()[0]
+                plt.plot(x1, y, '-', color = op_color_dict[op], alpha = 0.5, label = op)
+            title1 = 'Spontaneous EPSCs (repatch)'
+            x_plot = []
 
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
-    ax.set_xticks(ticks = list(range(1,7)), labels = day_label, size = 12)
+    ax.set_xticks(ticks = list(range(1,7)), labels = day_label, size = 15)
     ax.set_yticks(range(int(np.min(df['Average amplitude (pA)'])),
-                        int(np.max(df['Average amplitude (pA)'])+4),5), size = 12) 
-    plt.title('Average amplitude (pA)', fontsize = 19)
+                        int(np.max(df['Average amplitude (pA)'])+4),5), size = 15) 
+    plt.title(title1, fontsize = 19, x = 0.5, y = 1)
     ax.set_xlabel('Condition', fontsize = 15)
-    ax.set_ylabel('pA', fontsize = 15)
-
+    ax.set_ylabel('Average amplitude (pA)', fontsize = 15)
+    
+    plt.figlegend(loc = 'upper right',  bbox_to_anchor=(1, 1))
+    fig.tight_layout()
     fig.patch.set_facecolor('white')
-    plt.savefig(save_dir  + 'spontan_min_amplitude_' + min_amplitude + '_min_hrs_incubation_' + min_h_incubation + '_avg_amplitude_not_excluded.png')
-    plt.show(fig)
+    #plt.show(fig)
+    plt.savefig(save_dir  + data_type + '_spontan_min_amplitude_' + min_amplitude + '_min_hrs_incubation_' + min_h_incubation + '_avg_amplitude_not_excluded.png')
+    plt.close(fig)
 
-def plot_event_by_day_mini(df, n_nums, 
-save_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/plots/event_analysis/'):
+def plot_event_by_day_mini(df, n_nums, save_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/plots/event_analysis/'):
     '''
     Takes the n_nums dictionary for each condition 
     scatter plot of the datapoints and median
@@ -240,25 +265,26 @@ save_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/plots/ev
         median = np.median(y)
         ax.scatter(x, y, alpha = 0.8, c = colors[i], s = 40)
         ax.plot([0.8+i, 1.2+i], [median, median], c = 'k', linestyle = 'solid', linewidth = 2)
-        ax.text(i+0.85, median + 0.5, str(round(median, 2)), size = 10)
-        ax.text(i+0.85, int(np.max(df['Average amplitude (pA)'])+1), 'n = ' + str(n_nums[comb]), size = 10)
+        ax.text(i+0.85, median + 0.5, str(round(median, 2)), size = 15)
+        ax.text(i+0.85, int(np.max(df['Average amplitude (pA)'])+1), 'n = ' + str(n_nums[comb]), size = 15)
 
 
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
-    ax.set_xticks(ticks = list(range(1,4)), labels = tr_label, size = 12)
+    ax.set_xticks(ticks = list(range(1,4)), labels = tr_label, size = 15)
     ax.set_yticks(range(int(np.min(df['Average amplitude (pA)'])),
-                        int(np.max(df['Average amplitude (pA)'])+4),5), size = 12) 
-    plt.title('Average amplitude (pA)', fontsize = 19)
-    ax.set_xlabel('Condition', fontsize = 15)
-    ax.set_ylabel('pA', fontsize = 15)
+                        int(np.max(df['Average amplitude (pA)'])+4),5), size = 15) 
+    plt.title('mEPSCs in 1 µm TTX, 1 µm Gabazine and 50 µm APV', fontsize = 19, x = 0.5, y = 1.2)
+    ax.set_xlabel('Condition', fontsize = 17)
+    ax.set_ylabel('Average amplitude (pA)', fontsize = 17)
 
     fig.patch.set_facecolor('white')
-    plt.savefig(save_dir  + 'minis_min_amplitude_' + min_amplitude + '_min_hrs_incubation_' + min_h_incubation + '_avg_amplitude_not_excluded.png')
+    fig.tight_layout()
+    plt.savefig(save_dir + 'minis_min_amplitude_' + min_amplitude + '_min_hrs_incubation_' + min_h_incubation + '_avg_amplitude_not_excluded.png')
     plt.show(fig)
 
 
-def post_event_analysis_main(QC, df_orig, min_event_size = 3, min_hrs = 24):
+def post_event_analysis_main(QC, df_orig, min_event_size, min_hrs = 20):
     QC_analyzed = exclude_fn_only_in_QC(df_orig, QC)
     df_analysis = get_non_excluded_traces(df_orig, QC_analyzed)
     df_analysis = add_day_of_recording_column(df_analysis)
@@ -266,6 +292,15 @@ def post_event_analysis_main(QC, df_orig, min_event_size = 3, min_hrs = 24):
     df_analysis = remove_noisy_traces(df_analysis)
     df_analysis = remove_small_events(df = df_analysis, min_event_size = min_event_size)
     return df_analysis
+
+def remove_high_K_15mM (df):
+    indx1 = sorted(df['OP'].unique()).index('OP220602')
+    exclude_list = sorted(df['OP'].unique())[indx1:]
+    for j in exclude_list:
+        indx = df[df['OP'] == j].index
+        df.drop(indx, axis=0, inplace=True)
+    df.reset_index(inplace = True, drop = True)
+    return df
 
 #%%
 #%%

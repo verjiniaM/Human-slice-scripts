@@ -1,4 +1,3 @@
-#%%
 
 import matplotlib.pyplot as plt 
 import funcs_for_results_tables as get_results
@@ -49,7 +48,6 @@ def change_to_numeric(df):
 def get_QC_data(df):
     mask = (df['Rs'] < 30) & \
         (df['resting_potential'] < -45 ) & (df['resting_potential'] > -90) & \
-            (df['max_repol'] > -180) & \
                 (df['membra_time_constant_tau'] > -25 ) &\
                     (df['capacitance'] < 900) &  (df['capacitance'] > 10) & \
                         (df['AP_heigth'] > 30) & \
@@ -80,7 +78,7 @@ def create_new_cell_IDs(df):
     patcher_dict = {'Verji':'vm', 'Rosie': 'rs'}
     cell_IDs_new = []
     for i in range(len(df)):
-        cell_ID = patcher_dict[df['patcher'][i]] + df['cell_ID'][i]
+        cell_ID = patcher_dict[df['patcher'].tolist()[i]] + df['cell_ID'].tolist()[i]
         cell_IDs_new.append(cell_ID)
     df['cell_ID_new'] = cell_IDs_new
     return df
@@ -104,9 +102,9 @@ def get_repatch_df(df):
             not_repatched_cells.append(cell)
     
     for cell in not_repatched_cells:
-        repatch_df = repatch_df.drop(repatch_df.index[repatch_df['cell_ID_new'] == cell])
-        
+        repatch_df = repatch_df.drop(repatch_df.index[repatch_df['cell_ID_new'] == cell])     
     repatch_df.reset_index(inplace = True, drop = True)
+
     return repatch_df
 
 def in_list1_not_in_list2(list1, list2):
@@ -123,7 +121,7 @@ def fix_OP220322_cell_IDs(intrinsic_df):
     intrinsic_df.loc[mask_OP, 'cell_ID'] = cell_IDs_fix
     return intrinsic_df
 
-def find_repaeting_cell_IDs(df):
+def find_repeating_cell_IDs(df):
     df = create_new_cell_IDs(df)
     repeating_cells, repeats = [], []
     for cell in df['cell_ID_new'].unique():
@@ -168,8 +166,8 @@ destintaion_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/i
     plt.close(fig1)
 
 
-def plot_param_for_days(df,
-destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/intrinsic_properties/repatch_all/'):
+def plot_param_for_days(df, data_type,
+destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/plots/intrinsic_properties/'):
 
     treatments = ['Ctrl', 'TTX', 'high K']
     titles_dict = dict_for_plotting()
@@ -195,16 +193,16 @@ destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/i
                 median = df_plot[param].median()
                 x = np.linspace(0.65+k, 1.35+k, len(df_plot))
                 x_plot.append(x)
-                ax.scatter(x, df_plot[param], alpha = 0.8, c = colors[int(k)], s = 40)
+                ax.scatter(x, df_plot[param], alpha = 0.7, c = colors[int(k)], s = 40)
                 yerr = 1.253*(df_plot[param].std()/(math.sqrt(len(df_plot))))
                 ax.scatter(1+k, median, color = 'k', marker = '_', s = 2000)
-                #ax.text(0.9+k, median + 2, str(round(median,2)), size = 12)
+                ax.text(0.9+k, (1.05*median), str(round(median,2)), size = 12)
                 day_label.append(day)
                 num_cels[tr + ' ' + day] = len(df_plot)
                 data_boxplot.append(df_plot[param])
             ax.text(1 + 2*i, int(np.max(df[param])), tr, size = 17, c = colors[2*i+1])
-            ax.text(1.7 + 2*i, int(np.max(df[param])), 'n = ' + str(len(df_plot)), size = 10, c = colors[2*i+1])
-            if k in [1,3,5]:
+            ax.text(1.7 + 2*i, int(np.max(df[param])), 'n = ' + str(len(df_plot)), size = 12, c = colors[2*i+1])
+            if k in [1,3,5] and 'repatch' in data_type:
                 for c, cell in enumerate(df_plot['cell_ID_new']):
                     x1 = [x_plot[0][c], x[c]] 
                     y = df[param][df['cell_ID_new'] == cell]
@@ -215,19 +213,67 @@ destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/i
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
         ax.set_xticks(ticks = list(range(1,7)), labels = day_label) 
-        plt.title(titles_dict[param][0], fontsize = 19)
+        plt.title(titles_dict[param][0], fontsize = 19, x = 0.5, y = 1)
         ax.set_xlabel('Day', fontsize = 15)
         ax.set_ylabel(titles_dict[param][1], fontsize = 15)
 
+        plt.subplots_adjust(hspace=0.35)
         fig2.patch.set_facecolor('white')
-        plt.savefig(destination_dir  + 'Repatch_plot_' + param + '.png')
+        fig2.tight_layout()
+
+        date = str(datetime.date.today())
+        plt.savefig(destination_dir  + date + data_type + '_plot_' + param + '.png')
         plt.close(fig2)
+
+def plot_param_for_hrs_incubation(df, data_type,
+destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/plots/intrinsic_properties/time_dependencies/'):
+
+    treatments = ['Ctrl', 'TTX', 'high K']
+    titles_dict = dict_for_plotting()
+
+    #destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/intrinsic_properties/'
+    colors = [ 'red', 'cadetblue','mediumpurple']
+    cmap = plt.cm.get_cmap('tab20')
+    op_color_dict = {}
+    for h, op in enumerate(df['OP'].unique()):
+        op_color_dict[op] = cmap((h+1)/10)
+
+    for param in titles_dict.keys(): 
+        fig2 = plt.figure(figsize=(10,5))
+        ax = plt.subplot(1,1,1)
+        day_label = []
+        num_cels = {}
+        data_boxplot = []
+        for i, tr in enumerate(treatments):
+            x_plot =[]
+            
+            df_plot1 = df[(df['treatment'] == tr)]
+            df_plot = df_plot1[df_plot1['hrs_after_OP'] > 0]
+            x = df_plot['hrs_after_OP']
+            ax.scatter(x, df_plot[param], c = colors[int(i)], s = 40, label = tr)
+
+        #plt.boxplot(data_boxplot, showbox = False)
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        plt.title(titles_dict[param][0] + ' over time', fontsize = 19, x = 0.5, y = 1)
+        ax.set_xlabel('Hours after OP', fontsize = 15)
+        ax.set_ylabel(titles_dict[param][1], fontsize = 15)
+
+        plt.subplots_adjust(hspace=0.35)
+        fig2.patch.set_facecolor('white')
+        fig2.tight_layout()
+
+        plt.figlegend(loc = 'upper right',  bbox_to_anchor=(1, 1))
+        date = str(datetime.date.today())
+        plt.savefig(destination_dir  + date + data_type + '_plot_' + param + '.png')
+        plt.close(fig2)
+
+
 
 
 #%%
 
 #Funcs for analysis of intrinsic properties of testing high K condition
-
 
 def format_RMP_column(df_resting):
     resting_format = []
@@ -349,10 +395,6 @@ def plot_ap_props(df_ap_props, ap_props_dict, save_dir):
             plt.savefig(save_dir + 'AP_' + slic + '_' + param + '.png')
             plt.close()
 
-#%%
-
-
-#%%
 
 def plot_spiking_when_RMP_increases(filename, plots_destination):
     '''Finds where there is a jump in the RMP >30 mV 
@@ -433,6 +475,7 @@ def plot_full_RMP_trace(file_folder, files, plots_destination, channel, index_st
 
 
 #%%
+#Funcs for IFF and num aps agains current injection
 
 def get_num_aps_and_IFF_data_culumns(df):
     num_aps_indx, IFF_indx = [], []
@@ -451,6 +494,7 @@ def plot_IFF_distribution(IFF_df, data_type, DV):
     DV - (dependent variable): num_aps or IFF
     '''
     
+    treatments = ['Ctrl', 'TTX', 'high K']
     num_aps_indx, IFF_indx = get_num_aps_and_IFF_data_culumns(IFF_df)
     date = str(datetime.date.today())
     destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/plots/IFF/'
@@ -460,7 +504,7 @@ def plot_IFF_distribution(IFF_df, data_type, DV):
     DV_dict = {'IFF' : [IFF_indx, 'Initial firing frequency (AP#1 to AP#2)',  'Firing frequency (Hz)'], 
     'num_aps' : [num_aps_indx, 'Number of fired action potentials', 'AP count']}
 
-    for treatment in IFF_df['treatment'].unique():
+    for treatment in treatments:
         tr_df = IFF_df[IFF_df['treatment'] == treatment]
 
         fig, ax = plt.subplots(5,5,sharex = False, sharey = True ,figsize=(15,25))
@@ -498,6 +542,7 @@ def plot_IFF_avg_against_current_inj(IFF_df, data_type, DV):
     '''
     
     num_aps_indx, IFF_indx = get_num_aps_and_IFF_data_culumns(IFF_df)
+    treatments = ['Ctrl', 'TTX', 'high K']
     date = str(datetime.date.today())
     destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/plots/IFF/'
 
@@ -505,10 +550,10 @@ def plot_IFF_avg_against_current_inj(IFF_df, data_type, DV):
     DV_dict = {'IFF' : [IFF_indx, 'Initial firing frequency (AP#1 to AP#2)',  'Instantaneous firing frequency (Hz)'], 
     'num_aps' : [num_aps_indx, 'Number of fired action potentials', 'AP count']}
 
-    fig, ax = plt.subplots(3, 1, figsize=(15,30))
+    fig, ax = plt.subplots(1, 3, figsize=(30,10), sharey = True)
     #fig.subplots_adjust(hspace = 0.1)
 
-    for k, treatment in enumerate(IFF_df['treatment'].unique()):
+    for k, treatment in enumerate(treatments):
         tr_df = IFF_df[IFF_df['treatment'] == treatment]
 
         for day in tr_df['day'].unique():
@@ -517,7 +562,7 @@ def plot_IFF_avg_against_current_inj(IFF_df, data_type, DV):
             for i, col in enumerate(DV_dict[DV][0][5:]):
                 data = day_df.iloc[:,col]
                 x = np.linspace(0.75+i, 1.25+i, len(data))
-                ax[k].scatter(x, data, alpha = 0.5, s = 2, c = colors_dict[day])
+                ax[k].scatter(x, data, alpha = 0.7, s = 4, c = [colors_dict[day]])
 
                 avg = np.mean(data)
                 sem = np.std(data, ddof=1) / np.sqrt(np.size(data))
@@ -529,23 +574,123 @@ def plot_IFF_avg_against_current_inj(IFF_df, data_type, DV):
                 sems.append(sem) #standard error of the mean
                 inj.append(day_df.columns[col][2:(day_df.columns[col]).rfind('pA')])
             
-            ax[k].scatter(range(1, len(inj)+1), avgs, label = day, color = colors_dict[day])
+            ax[k].scatter(range(1, len(inj)+1), avgs, label = day, color = [colors_dict[day]])
             ax[k].plot(range(1, len(inj)+1), avgs, label = day, color = colors_dict[day])
             ax[k].errorbar(range(1, len(inj)+1), avgs, yerr = sem, label = day, color = colors_dict[day])
 
-            ax[k].set_title(treatment + ' ' + data_type, fontsize = 16)
-            ax[k].set_xlabel('Current (pA)', fontsize = 15)
-            ax[k].set_ylabel(DV_dict[DV][2], fontsize = 15)
-            ax[k].set_xticks(ticks = list(range(1,len(inj)+1)), labels = inj) 
+            ax[k].set_title(treatment + ' ' + data_type, fontsize = 25)
+            ax[k].set_xlabel('Current (pA)', fontsize = 25)
+            ax[k].set_ylabel(DV_dict[DV][2], fontsize = 25)
+            ax[k].set_xticks(ticks = list(range(1,len(inj)+1)), labels = inj, fontsize = 20, rotation = 45) 
+            max_val = max(tr_df.iloc[:,DV_dict[DV][0]].max(numeric_only = True))
+            ax[k].set_yticks(ticks = np.linspace(-10, int(max_val), 6), fontsize = 20) 
+
+            ax[k].tick_params(axis='y', labelsize = 20)
             ax[k].spines['top'].set_visible(False)
             ax[k].spines['right'].set_visible(False)
 
+        #max_val = max(tr_df.max(numeric_only = True))
+        ax[k].text(len(inj)-1, 0.9*max_val, 'n = ' + str(len(tr_df)), size = 25, c = 'k')
+
             # add n numbers
             #ax.text(1.7 + 2*i, int(np.max(df[param])), 'n = ' + str(len(df_plot)), size = 10, c = colors[2*i+1])
-    plt.figlegend(loc = 'upper right', bbox_to_anchor=(0.95, 0.9), fontsize = 15)
+    #plt.figlegend(loc = 'upper right', bbox_to_anchor=(1, 1), fontsize = 25)
     fig.patch.set_facecolor('white')
-    fig.suptitle(DV_dict[DV][1], size = 20)
+    fig.suptitle(DV_dict[DV][1], size = 30)
 
+    fig.tight_layout()
     plt.savefig(destination_dir + date + data_type + DV + '_vs_curernt_inj_plot.png')
     plt.close(fig)
 
+
+#%%
+# connectivity ploting funcs (summary)
+
+def get_QC_connectivity_df(df):
+    mask = (df['Vm pre'] < -50 ) & (df['Vm post'] < -50 )
+    df = df.loc[mask, :]
+    return df
+
+def get_QC_connectivity_VC(df):
+    mask = (df['Vm pre'] < -50 )
+    df = df.loc[mask, :]
+    return df
+
+def get_repatch_connectivity_df(df):
+    mask = (df['repatch'] == 'yes' )
+    df = df.loc[mask, :]
+    return df
+
+def get_amps_lats_columns(df):
+    amps, lats = [], []
+    for i in range(len(df.columns)):
+        if 'Amp' in df.columns[i]:
+            amps.append(i)
+        if 'Lat' in df.columns[i]:
+            lats.append(i)
+    return amps, lats
+
+def plot_connect_amplitude(df, data_type,
+destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/plots/connectivity/'):
+
+    treatments = ['Ctrl', 'TTX', 'high K']
+    amps, lats = get_amps_lats_columns(df)
+    plot_amps = df.columns[amps[0]:amps[3]+1]
+
+    colors = ['moccasin', 'red', 'moccasin', 'cadetblue', 'moccasin', 'mediumpurple']
+    cmap = plt.cm.get_cmap('tab20')
+    op_color_dict = {}
+    for h, op in enumerate(df['OP'].unique()):
+        op_color_dict[op] = cmap((h+1)/10)  
+
+    fig, ax = plt.subplots(2,2, figsize = (10,10))
+    ax = ax.flatten()
+    for a, amp in enumerate(plot_amps): 
+        
+        day_label = []
+        num_cels = {}
+        #data_boxplot = []
+        for i, tr in enumerate(treatments):
+            x_plot =[]
+            for j, day in enumerate(sorted(df['day'].unique())):
+                k = j + 2*i 
+                df_plot = df[(df['treatment'] == tr) & (df['day'] == day)]
+                median = df_plot[amp].median()
+                x = np.linspace(0.65+k, 1.35+k, len(df_plot))
+                x_plot.append(x)
+                ax[a].scatter(x, df_plot[amp], alpha = 0.8, c = colors[int(k)], s = 40)
+                if len(df_plot) == 0:
+                    continue
+                yerr = 1.253*(df_plot[amp].std()/(math.sqrt(len(df_plot))))
+                ax[a].scatter(1+k, median, color = 'k', marker = '_', s = 2000)
+                ax[a].text(0.9+k, 1.2*median, str(round(median,2)), size = 10)
+                day_label.append(day)
+                num_cels[tr + ' ' + day] = len(df_plot)
+                #data_boxplot.append(df_plot[amp)
+            ax[a].text(1 + 2*i, int(np.max(df['Amp 1'])+0.6), tr, size = 17, c = colors[2*i+1])
+            ax[a].text(1.7 + 2*i, int(np.max(df['Amp 1'])-0.3), 'n = ' + str(len(df_plot)), size = 10, c = colors[2*i+1])
+            # if k in [1,3,5]:
+            #     for c, cell in enumerate(df_plot['cell_ID_new']):
+            #         x1 = [x_plot[0][c], x[c]] 
+            #         y = df[param][df['cell_ID_new'] == cell]
+            #         op = df_plot['OP'][df_plot['cell_ID_new'] == cell].tolist()[0]
+            #         plt.plot(x1, y, '-', color = op_color_dict[op], alpha = 0.5)
+
+        #plt.boxplot(data_boxplot, showbox = False)
+        ax[a].spines['top'].set_visible(False)
+        ax[a].spines['right'].set_visible(False)
+        ax[a].set_ylim([-0.5, int(np.max(df['Amp 1']))+1])
+        if 'VC' in data_type:
+            ax[a].set_ylabel('Amplitude (pA)', fontsize = 15)
+        else:
+            ax[a].set_ylabel('Amplitude (mV)', fontsize = 15)
+        ax[a].set_xticks(ticks = list(range(1,7)), labels = day_label) 
+        #ax[a].set_title('#' + str(a+1), fontsize = 15)
+        ax[a].set_xlabel('Day', fontsize = 15)
+        
+    fig.subplots_adjust(hspace = 0.4, wspace = 0.4)
+    fig.suptitle('Postsynaptic responses', fontsize = 20)
+    fig.patch.set_facecolor('white')
+    date = str(datetime.date.today())
+    plt.savefig(destination_dir  + date + data_type +'_postsynaptic_responses.png')
+    plt.close(fig)

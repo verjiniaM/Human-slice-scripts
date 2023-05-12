@@ -225,11 +225,11 @@ def get_ap_param (charact_data, channels, inj, max_spikes):
     array with all peak locations [inj, peak, sweep num]
     '''
     params = [Rheobase_all, AP_all, THloc_all, TH_all, APheight_all, max_depol_all, max_repol_all] = [[], [], [], [], [], [], []]
-    for i, ch in enumerate(channels):
+    for a, ch in enumerate(channels):
         key = 'Ch' + str(ch)
         ch1 = charact_data[key][0]
         
-        if max_spikes[i] == 0:
+        if max_spikes[a] == 0:
             AP = []
             Rheobase = math.nan
             TH, THloc = math.nan, math.nan
@@ -241,13 +241,13 @@ def get_ap_param (charact_data, channels, inj, max_spikes):
             for i, param in enumerate(params):
                 param.append(ch_params[i])
             continue
-        peaks = np.empty([len(inj), max_spikes[i], 3])
+        peaks = np.empty([len(inj), max_spikes[a], 3])
         peaks.fill(np.nan)
         for i in range(len(ch1[0])): #for all swps
-            pks = detect_peaks(ch1[:,j], mph=20,mpd=50) 
+            pks = detect_peaks(ch1[:,i], mph=20,mpd=50) 
             peaks[i,0:len(pks), 0] = inj[i] #injected current
             peaks[i,0:len(pks), 1] = pks #
-            peaks[i,0:len(pks), 2] = ch1[pks,j] #sweep number
+            peaks[i,0:len(pks), 2] = ch1[pks,i] #sweep number
         # number of spikes in each step
         spike_counts = np.ndarray([len(inj),2])
         for i, j in enumerate(inj):
@@ -318,11 +318,11 @@ def get_ap_param_for_plotting (charact_data, channels, inj, max_spikes):
     '''
     '''
     params = [first_spike_all, peaks_all, spike_counts_all, first_spiking_sweep_all] = [[], [], [], []]
-    for i, ch in enumerate(channels):
+    for a, ch in enumerate(channels):
         key = 'Ch' + str(ch)
         ch1 = charact_data[key][0]
         
-        if max_spikes[i] == 0:
+        if max_spikes[a] == 0:
             peaks_all.append([])
             first_spike_all.append(float('nan'))
             spike_counts_all.append(0)
@@ -333,13 +333,13 @@ def get_ap_param_for_plotting (charact_data, channels, inj, max_spikes):
             # for i, param in enumerate(params):
             #     param.append(ch_params[i])
             continue
-        peaks = np.empty([len(inj), max_spikes[i], 3])
+        peaks = np.empty([len(inj), max_spikes[a], 3])
         peaks.fill(np.nan)
         for i in range(len(ch1[0])): #for all swps
-            pks = detect_peaks(ch1[:,j], mph=20,mpd=50) 
+            pks = detect_peaks(ch1[:,i], mph=20,mpd=50) 
             peaks[i,0:len(pks), 0] = inj[i] #injected current
             peaks[i,0:len(pks), 1] = pks #
-            peaks[i,0:len(pks), 2] = ch1[pks,j] #sweep number
+            peaks[i,0:len(pks), 2] = ch1[pks,i] #sweep number
         # number of spikes in each step
         spike_counts = np.ndarray([len(inj),2])
         for i, j in enumerate(inj):
