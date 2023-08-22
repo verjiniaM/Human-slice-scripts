@@ -165,7 +165,7 @@ def get_RMP (vmfile, channels):
 
 def get_hyperpolar_param(charact_data, channels, inj, onset = 2624, offset = 22624, mc = np.ndarray([5,3])):
     '''
-    returns 4 lists with length channels
+    returns 5 lists with length channels
     '''
     params = tau_all, capacitance_all, mc_all, V65_all, RMPs_char = [], [], [], [], []
     #RMPs_char = []
@@ -174,6 +174,7 @@ def get_hyperpolar_param(charact_data, channels, inj, onset = 2624, offset = 226
         ch1 = charact_data[key][0]
         resting_char = np.median(ch1[:,5]) #when the inj = 0mV
         V65s = []
+        mc = np.ndarray([21,3])
         for i in range(0,5):
             I = inj[i]*1e-12 #check step size
             bl = np.median(ch1[0:onset-20,i])
@@ -212,7 +213,7 @@ def get_max_spikes(charact_data, channels):
         ch1 = charact_data[key][0]
         max_spikes = 0
         for j in range(len(ch1[0])): #loop through all swps
-            pks = detect_peaks(ch1[:,j], mph=20, mpd=50) # detects the peaks for each timepoint? 
+            pks = detect_peaks(ch1[:,j], mph=2, mpd=5) # detects the peaks for each timepoint? 
             if len(pks)> max_spikes:
                 max_spikes = len(pks) #find the max number of spikes (peaks)
         max_spikes_all.append(max_spikes)
@@ -255,6 +256,19 @@ def get_ap_param (charact_data, channels, inj, max_spikes):
             spike_counts[i,1] = (np.sum(np.isfinite(peaks[i,:,:])))/3
         
         spikes = np.where(np.isfinite(peaks)) 
+        if spikes[0].size == 0:
+            AP = []
+            Rheobase = math.nan
+            TH, THloc = math.nan, math.nan
+            max_depol = math.nan
+            max_repol = math.nan
+            APheight = math.nan
+            ch_params = [Rheobase, AP, THloc, TH, APheight, max_depol, max_repol]
+
+            for i, param in enumerate(params):
+                param.append(ch_params[i])
+            continue
+
         first_spike = spikes[0][0]
         Rheobase = inj[first_spike]  
         
@@ -336,7 +350,7 @@ def get_ap_param_for_plotting (charact_data, channels, inj, max_spikes):
         peaks = np.empty([len(inj), max_spikes[a], 3])
         peaks.fill(np.nan)
         for i in range(len(ch1[0])): #for all swps
-            pks = detect_peaks(ch1[:,i], mph=20,mpd=50) 
+            pks = detect_peaks(ch1[:,i], mph=2,mpd=5) 
             peaks[i,0:len(pks), 0] = inj[i] #injected current
             peaks[i,0:len(pks), 1] = pks #
             peaks[i,0:len(pks), 2] = ch1[pks,i] #sweep number

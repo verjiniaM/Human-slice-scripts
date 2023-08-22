@@ -8,6 +8,12 @@ import math
 import human_characterisation_functions as hcf
 import seaborn as sns
 
+plt.rcParams['lines.linewidth'] = 2
+plt.rcParams['axes.spines.right'] = False
+plt.rcParams['axes.spines.top'] = False
+plt.rcParams['font.size'] = 20
+#mpl.rcParams['axes.prop_cycle'] = cycler(color=['r', 'g', 'b', 'y']) 3 changes the default colors
+
 def patient_age_to_float(df_intr_props, min_age, max_age=151):
     '''
     takes df intrinsic properties and min and max age
@@ -28,8 +34,8 @@ def patient_age_to_float(df_intr_props, min_age, max_age=151):
      (df_intr_props['patient_age'] < max_age)]
 
     #return back 'A' or 'J'
-    age_filtered_df.loc[mask_adult, 'patient_age'] = 'A'
-    age_filtered_df.loc[mask_juv, 'patient_age'] = 'J'
+    age_filtered_df = age_filtered_df.replace({'patient_age' : 0}, 'J')
+    age_filtered_df = age_filtered_df.replace({'patient_age' : 150}, 'A')
 
     return age_filtered_df
 
@@ -37,12 +43,9 @@ def patient_age_to_float(df_intr_props, min_age, max_age=151):
 def change_to_numeric(df):
     '''
     takes df intrinsic properties  
-    changes datatype of columns 11 and 13:25 to numeric
+    changes datatype to infered ones (usully accurate)
     '''
-    df.assign(hrs_incubation = pd.to_numeric(df['hrs_incubation'], errors = 'coerce'))
-    for col in df.columns[13:25]:
-        df.assign(col = pd.to_numeric(df[col], errors = 'coerce'))
-    #check dtypes with display(df.dtypes)
+    df = df.infer_objects()
     return df
 
 def get_QC_data(df):
@@ -63,11 +66,11 @@ def filter_on_hrs_incubation(df, min_inc_time):
     df = df.loc[mask, :]
     return df
 
-def get_adult_data(df_intr_props):
-    adult_df = patient_age_to_float(df_intr_props, 18)
+def filter_adult_hrs_incubation_data(df_intr_props, min_age, hrs_inc, max_age = 151):
+    adult_df = patient_age_to_float(df_intr_props, min_age, max_age)
     adult_df = change_to_numeric(adult_df)
     adult_df = get_QC_data(adult_df)
-    adult_df = filter_on_hrs_incubation(adult_df, 20)
+    adult_df = filter_on_hrs_incubation(adult_df, hrs_inc)
     return adult_df
 
 def create_new_cell_IDs(df):
@@ -107,6 +110,29 @@ def get_repatch_df(df):
 
     return repatch_df
 
+def get_normalized_df(df_repatch):
+    '''
+    adds columns with normalized data from Rs:capacitance 
+    '''
+    df_repatch = df_repatch.infer_objects()
+
+    sorted_D1 = df_repatch.loc[df_repatch['day'] == 'D1'].sort_values(by=['cell_ID_new'])
+    sorted_D2 = df_repatch.loc[df_repatch['day'] == 'D2'].sort_values(by=['cell_ID_new'])
+    df_sorted = pd.concat([sorted_D1.loc[:], sorted_D2]).reset_index(drop=True)
+
+    cell_diffs = [print(cell) for i, cell in enumerate(sorted_D1['cell_ID_new'].tolist()) if cell != sorted_D2['cell_ID_new'].tolist()[i]] 
+    if cell_diffs != []:
+        print('not possible to normalize, check cell_IDs')
+        return
+
+    for col in (sorted_D1.dtypes == float)['Rs':'capacitance'].index:
+        d1 = ((sorted_D1[col].values - sorted_D1[col].values)/sorted_D1[col].values)*100
+        d2 = ((sorted_D2[col].values - sorted_D1[col].values)/sorted_D1[col].values)*100
+        df_sorted[col + '_norm'] =  np.concatenate((d1, d2), axis=None)
+
+    return df_sorted
+
+
 def in_list1_not_in_list2(list1, list2):
     missing_in_list_2 = []
     [missing_in_list_2.append(item) for item in list1 if item not in list2]
@@ -132,25 +158,43 @@ def find_repeating_cell_IDs(df):
     return repeating_cells, repeats
 
 
+def get_precise_treatment(df):
+    high_K_concentr = df['high K concentration'].tolist()
+    tr_precise = []
+    for i, tr in enumerate(df['treatment']):
+        if tr == 'Ctrl' or tr == 'TTX':
+            tr_precise.append(tr)
+        else:
+            tr_precise.append(high_K_concentr[i])
+    df['treatment'] = tr_precise
+    return df
+
+
 def dict_for_plotting():
-    titles_dict = {'Rs': ['Series resistance', 'Ω'], 
-    'Rin': ['Input resistance', 'Ohm'],
-    'resting_potential': ['Resting membrane potential', 'mV'],
-    'max_spikes': ['Maximum number of spikes', 'count'],
-    'Rheobase': ['Rheobase', 'pA'],
-    'AP_heigth': ['AP amplitude', 'mV'],    
-    'TH': ['AP threshold', 'mV'],
-    'max_depol': ['AP upstroke (30% to 70%)', 'mV/ms'],
-    'max_repol': ['AP downstroke (70% to 30%)', 'mV/ms'],
-    'membra_time_constant_tau': ['Membrane time constant', 'tau'],
-    'capacitance': ['Capacitance', 'F']}
+    '''
+    key is the param as in the data column
+    values[0] plot title
+    values[1] y asix
+    values[2] plot y ticks
+    '''
+    titles_dict = {'Rs': ['Series resistance', 'MΩ', [5,10,15,20,25,30]], 
+    'Rin': ['Input resistance', 'MΩ', [50,100,150,200,250]],
+    'resting_potential': ['Resting membrane potential', 'mV',[-75, -70, -65,-60,-55, -50]],
+    'max_spikes': ['Maximum number of spikes', 'count', [0,10,20,30,40,50]],
+    'Rheobase': ['Rheobase', 'pA', [100,300,500,700,900]],
+    'AP_heigth': ['AP amplitude', 'mV', [50,60,70,80,90,100]],    
+    'TH': ['AP threshold', 'mV', [-45, -40, -30, -35, -25]],
+    'max_depol': ['AP upstroke (30% to 70%)', 'mV/ms', [100,200,300,400,500]],
+    'max_repol': ['AP downstroke (70% to 30%)', 'mV/ms', [-100, -80, -60, -40, -20]],
+    'membra_time_constant_tau': ['Membrane time constant', 'ms', [10, 20, 30, 40, 50]],
+    'capacitance': ['Capacitance', 'pF', [100, 300, 500, 700]]}
     return titles_dict
 
 def plot_time_after_OP_vs_param(df, param,
 destintaion_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/intrinsic_properties/hrs_after_op_dependency/'): 
     titles_dict = dict_for_plotting()
 
-    fig1 = plt.figure(figsize=(10,7))
+    fig1 = plt.figure(figsize=(7,7))
     ax = plt.subplot(1, 1, 1)
     plt.subplots_adjust(hspace=0.5)
     plt.scatter(df['hrs_after_OP'], df[param])
@@ -165,22 +209,276 @@ destintaion_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/i
     plt.savefig(destintaion_dir + date + param +'_vs_time_after_op.png')
     plt.close(fig1)
 
-
-def plot_param_for_days(df, data_type,
-destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/plots/intrinsic_properties/'):
-
-    treatments = ['Ctrl', 'TTX', 'high K']
-    titles_dict = dict_for_plotting()
-
-    #destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/intrinsic_properties/'
-    colors = ['moccasin', 'red', 'moccasin', 'cadetblue', 'moccasin', 'mediumpurple']
+def get_op_color_dict(df):
+    '''
+    input should be adult df with all OPs
+    assigns a color to each OP in the list
+    '''
     cmap = plt.cm.get_cmap('tab20')
     op_color_dict = {}
-    for h, op in enumerate(df['OP'].unique()):
-        op_color_dict[op] = cmap((h+1)/10)
+    OP_list = sorted(list(df['OP'].unique()))
+    for h, op in enumerate(OP_list):
+        op_color_dict[op] = cmap((h+1)/len(OP_list))
+    return op_color_dict
 
-    for param in titles_dict.keys(): 
-        fig2 = plt.figure(figsize=(10,5))
+def plot_param_for_days_slice(df, op_color_dict,
+destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/plots/intrinsic_properties/adult_slice/'):
+
+    treatments = ['Ctrl', 'high K']
+    #treatments = ['Ctrl', 'TTX', 'high K']
+    titles_dict = dict_for_plotting()
+
+    colors = ['#dede00', '#ff7f00', '#dede00', '#4daf4a','#dede00','#984ea3'] #Ctrl, 8mM Kcl, 15 mM KCl
+
+    for u, param in enumerate(titles_dict.keys()): 
+        fig2 = plt.figure(figsize=(7,7))
+        ax = plt.subplot(1,1,1)
+        day_label = []
+        num_cels = {}
+        data_boxplot = []
+        for i, tr in enumerate(treatments):
+            for j, day in enumerate(df['day'].unique()):
+                k = j + 2*i 
+                df_plot = df[(df['treatment'] == tr) & (df['day'] == day)]
+                median = df_plot[param].median()
+                x = np.linspace(0.65+k, 1.35+k, len(df_plot))
+                if tr == 'high K' and day == 'D2':
+                    #ax.scatter(x, df_plot[param], alpha = 0.7, s = 40, c = df_plot['high K concentration'], cmap = colormap_K)
+                    y_8mm = df_plot[param].loc[df_plot['high K concentration'] == '8 mM'] 
+                    x_8 = np.linspace(0.8+k, 1.05+k, len(y_8mm))
+                    median_8 = np.median(y_8mm)
+                    y_15mm = df_plot[param].loc[df_plot['high K concentration'] == '15 mM'] 
+                    x_15 = np.linspace(1.1+k, 1.35+k, len(y_15mm))
+                    median_15 = np.median(y_15mm)
+                    ax.scatter(x_8, y_8mm, c = colors[3], s = 80, alpha = 0.75)
+                    ax.scatter(x_15, y_15mm, c = colors[5], s = 80, alpha = 0.75)
+                    ax.boxplot(y_8mm, positions = [k+0.6], notch = True, patch_artist=True, boxprops=dict(facecolor=colors[3], alpha = 0.75),
+                    medianprops = dict(linewidth=2.3, color = 'k'))
+                    ax.boxplot(y_15mm, positions = [k+1.55], notch = True, patch_artist=True, boxprops=dict(facecolor=colors[5], alpha = 0.75),
+                    medianprops = dict(linewidth=2.3, color = 'k'))
+                else:
+                    ax.boxplot(df_plot[param], positions = [k + 0.5], notch = True, patch_artist=True, boxprops=dict(facecolor=colors[k], alpha = 0.75),
+                    medianprops = dict(linewidth=2.3, color = 'k'))    
+                    ax.scatter(x, df_plot[param], c = colors[int(k)], s = 80, alpha = 0.75)
+                
+                # yerr = 1.253*(df_plot[param].std()/(math.sqrt(len(df_plot))))
+                # ax.scatter(1+k, median, color = 'k', marker = '_', s = 2000)
+                # ax.text(0.9+k, (1.05*median), str(round(median,2)), size = 12)
+                day_label.append(day)
+                num_cels[tr + ' ' + day] = len(df_plot)
+                data_boxplot.append(df_plot[param])
+            ax.text(1 + 2*i, int(np.max(df[param])), tr, size = 17, c = colors[2*i+1])
+            ax.text(1.7 + 2*i, int(np.max(df[param])), 'n = ' + str(len(df_plot)), size = 12, c = colors[2*i+1])
+
+        #plt.boxplot(data_boxplot, showbox = False)
+        ax.tick_params(axis='y', labelsize=22)
+        ax.set_xticks(ticks = [0.6,1.6,2.6,3.55,4.6], labels = ['D1', 
+        'D2 \n Ctrl', 'D1', 'D2 \n 8mM','D2 \n 15mM'], size = 20)
+        #when plotting TTX as well
+        # ax.set_xticks(ticks = [0.6,1.6,2.6,3.55,4.6, 5.6,6.6], labels = ['D1', 
+        # 'D2 \n Ctrl','D1', 'D2 \n TTX' ,'D1', 'D2 \n 8mM','D2 \n 15mM'], size = 20)
+
+        plt.title(titles_dict[param][0], fontsize = 19, x = 0.5, y = 1)
+        ax.set_ylabel(titles_dict[param][1], fontsize = 24)
+        ax.set_yticks(ticks = titles_dict[param][2])
+
+        plt.subplots_adjust(hspace=0.35)
+        fig2.patch.set_facecolor('white')
+        fig2.tight_layout()
+
+        date = str(datetime.date.today())
+        plt.savefig(destination_dir  + date + '_plot_' + param + '.pdf')
+        plt.close(fig2)
+
+def plot_param_for_days_repatch(df, op_color_dict,
+destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/plots/intrinsic_properties/adult_repatch/'):
+    
+    treatments = ['Ctrl', 'high K']
+    #treatments = ['Ctrl', 'TTX', 'high K']
+    titles_dict = dict_for_plotting()
+        
+    colors = ['#dede00', '#ff7f00', '#dede00', '#4daf4a','#dede00','#984ea3'] #Ctrl, 8mM Kcl, 15 mM Kcl
+    for u, param in enumerate(titles_dict.keys()): 
+        fig2 = plt.figure(figsize=(7,7))
+        ax = plt.subplot(1,1,1)
+        day_label = []
+        num_cels = {}
+        for i, tr in enumerate(treatments):
+            x_plot =[]
+            
+            for j, day in enumerate(df['day'].unique()):
+                k = j + 2*i 
+                df_plot = df[(df['treatment'] == tr) & (df['day'] == day)]
+                df_plot.reset_index(drop=True, inplace=True)
+                median = df_plot[param].median()
+                x = np.linspace(0.7+k, 1.3+k, len(df_plot))
+                x_plot.append(x)
+
+                if tr == 'high K' and day == 'D2':
+                    y_8mm = df_plot.loc[df_plot['high K concentration'] == '8 mM']
+                    x_8 = np.linspace(0.8+k, 1.05+k, len(y_8mm))
+                    #x_8 = x[:len(y_8mm)]
+                    median_8 = np.median(y_8mm[param])
+                    y_15mm = df_plot.loc[df_plot['high K concentration'] == '15 mM'] 
+                    x_15 = np.linspace(1.4+k, 1.65+k, len(y_15mm))
+                    #x_15 = x[-len(y_15mm):]
+                    median_15 = np.median(y_15mm[param])
+                    ax.scatter(x_8, y_8mm[param], c = colors[3], s = 80, zorder = 2)
+                    ax.scatter(x_15, y_15mm[param], c = colors[5], s = 80, zorder = 2)
+                    ax.plot([0.7+k, 1+k], [median_8, median_8], c = 'k', linestyle = 'solid')
+                    ax.plot([1.3+k, 1.6+k], [median_15, median_15], c = 'k', linestyle = 'solid')
+                    ax.text(k+0.65, median_8 + 0.5, str(round(median_8, 2)), size = 15)
+                    ax.text(k+1.25, median_15 + 0.5, str(round(median_15, 2)), size = 15)
+                    df_plot.insert(0, 'x', np.concatenate([x_15, x_8]))
+
+                    for c, cell in enumerate(df_plot['cell_ID_new']):
+                        #indx = index_s[c]
+                        x_K = df_plot['x'].loc[df_plot['cell_ID_new'] == cell].tolist()[0]
+                        x1 = [x_plot[0][c], x_K]
+                        y = df[param][df['cell_ID_new'] == cell]
+                        op = df_plot['OP'][df_plot['cell_ID_new'] == cell].tolist()[0]
+                        plt.plot(x1, y, '-', color = op_color_dict[op], alpha = 0.5, linewidth = 2, zorder = 1)
+
+                else:
+                    ax.scatter(x, df_plot[param], c = colors[int(k)], s = 80, zorder = 2)
+                    ax.scatter(1+k, median, color = 'k', marker = '_', s = 2000, zorder = 2)
+                    ax.text(0.75+k, (1.05*median), str(round(median,2)), size = 15)
+                    x_plot.append(x)
+                    if k in [1,3,5]:
+                        for c, cell in enumerate(df_plot['cell_ID_new']):
+                            #indx = index_s[c]
+                            x1 = [x_plot[0][c], x[c]] 
+                            y = df[param][df['cell_ID_new'] == cell]
+                            op = df_plot['OP'][df_plot['cell_ID_new'] == cell].tolist()[0]
+                            plt.plot(x1, y, '-', color = op_color_dict[op], alpha = 0.4, linewidth = 2, zorder = 1)
+
+                day_label.append(day)
+                num_cels[tr + ' ' + day] = len(df_plot)
+
+                # ax.text(1 + 2*i, int(np.max(df[param])), tr, size = 17, c = colors[2*i+1])
+                # ax.text(1.7 + 2*i, int(np.max(df[param])), 'n = ' + str(len(y_8mm)), size = 12, c = colors[2*i+1])
+    
+        ax.tick_params(axis='y', labelsize=22) 
+        ax.set_xticks(ticks = [1,2,3,3.8,4.55], labels = ['D1', 
+        'D2 \n Ctrl', 'D1', 'D2 \n 8mM','D2 \n 15mM'], size = 20)
+        #when plotting TTX as well
+        # ax.set_xticks(ticks = [0.6,1.6,2.6,3.55,4.6, 5.6,6.6], labels = ['D1', 
+        # 'D2 \n Ctrl','D1', 'D2 \n TTX' ,'D1', 'D2 \n 8mM','D2 \n 15mM'], size = 20)
+        ax.set_ylabel(titles_dict[param][1], fontsize = 24)
+        ax.set_yticks(ticks = titles_dict[param][2])
+        #plt.title(titles_dict[param][0], fontsize = 19, x = 0.5, y = 1)
+
+        fig2.patch.set_facecolor('white')
+        fig2.tight_layout()
+
+        date = str(datetime.date.today())
+        plt.savefig(destination_dir + date + '_plot_' + param + '.pdf')
+        plt.close(fig2)
+
+def plot_param_for_days_repatch_all_params(df, op_color_dict,
+destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/plots/intrinsic_properties/adult_repatch/'):
+    
+    treatments = ['Ctrl', 'high K']
+    #treatments = ['Ctrl', 'TTX', 'high K']
+    titles_dict = dict_for_plotting()
+        
+    colors = ['#dede00', '#ff7f00', '#dede00', '#4daf4a','#dede00','#984ea3'] #Ctrl, 8mM Kcl, 15 mM Kcl
+    nrows, ncols = 3, 4
+    fig2, axs = plt.subplots(nrows, ncols,figsize=(22,30))
+
+    for u, param in enumerate(titles_dict.keys()): 
+        ax = axs[u // ncols, u % ncols]
+        day_label = []
+        num_cels = {}
+        for i, tr in enumerate(treatments):
+            x_plot =[]
+
+            for j, day in enumerate(df['day'].unique()):
+                k = j + 2*i 
+                df_plot = df[(df['treatment'] == tr) & (df['day'] == day)]
+                df_plot.reset_index(drop=True, inplace=True)
+                median = df_plot[param].median()
+                x = np.linspace(0.7+k, 1.3+k, len(df_plot))
+                x_plot.append(x)
+
+                if tr == 'high K' and day == 'D2':
+                    y_8mm = df_plot.loc[df_plot['high K concentration'] == '8 mM']
+                    x_8 = np.linspace(0.8+k, 1.05+k, len(y_8mm))
+                    #x_8 = x[:len(y_8mm)]
+                    median_8 = np.median(y_8mm[param])
+                    y_15mm = df_plot.loc[df_plot['high K concentration'] == '15 mM'] 
+                    x_15 = np.linspace(1.4+k, 1.65+k, len(y_15mm))
+                    #x_15 = x[-len(y_15mm):]
+                    median_15 = np.median(y_15mm[param])
+                    ax.scatter(x_8, y_8mm[param], c = colors[3], s = 80, zorder = 2)
+                    ax.scatter(x_15, y_15mm[param], c = colors[5], s = 80, zorder = 2)
+                    ax.plot([0.7+k, 1+k], [median_8, median_8], c = 'k', linestyle = 'solid')
+                    ax.plot([1.3+k, 1.6+k], [median_15, median_15], c = 'k', linestyle = 'solid')
+                    ax.text(k+0.65, median_8 + 0.5, str(round(median_8, 2)), size = 15)
+                    ax.text(k+1.25, median_15 + 0.5, str(round(median_15, 2)), size = 15)
+                    df_plot.insert(0, 'x', np.concatenate([x_15, x_8]))
+
+                    for c, cell in enumerate(df_plot['cell_ID_new']):
+                        #indx = index_s[c]
+                        x_K = df_plot['x'].loc[df_plot['cell_ID_new'] == cell].tolist()[0]
+                        x1 = [x_plot[0][c], x_K]
+                        y = df[param][df['cell_ID_new'] == cell]
+                        op = df_plot['OP'][df_plot['cell_ID_new'] == cell].tolist()[0]
+                        ax.plot(x1, y, '-', color = op_color_dict[op], alpha = 0.5, linewidth = 2, zorder = 1)
+
+                else:
+                    ax.scatter(x, df_plot[param], c = colors[int(k)], s = 80, zorder = 2)
+                    ax.scatter(1+k, median, color = 'k', marker = '_', s = 2000, zorder = 2)
+                    ax.text(0.75+k, (1.05*median), str(round(median,2)), size = 15)
+                    x_plot.append(x)
+                    if k in [1,3,5]:
+                        for c, cell in enumerate(df_plot['cell_ID_new']):
+                            #indx = index_s[c]
+                            x1 = [x_plot[0][c], x[c]] 
+                            y = df[param][df['cell_ID_new'] == cell]
+                            op = df_plot['OP'][df_plot['cell_ID_new'] == cell].tolist()[0]
+                            ax.plot(x1, y, '-', color = op_color_dict[op], alpha = 0.4, linewidth = 2, zorder = 1)
+
+                day_label.append(day)
+                num_cels[tr + ' ' + day] = len(df_plot)
+
+            # ax.text(1 + 2*i, int(np.max(df[param])), tr, size = 17, c = colors[2*i+1])
+            # ax.text(1.7 + 2*i, int(np.max(df[param])), 'n = ' + str(len(y_8mm)), size = 12, c = colors[2*i+1])
+
+        ax.tick_params(axis='y', labelsize=22) 
+        ax.set_xticks(ticks = [1,2,3,3.8,4.55], labels = ['D1', 
+        'D2 \n Ctrl', 'D1', 'D2 \n 8mM','D2 \n 15mM'], size = 20)
+        #when plotting TTX as well
+        # ax.set_xticks(ticks = [0.6,1.6,2.6,3.55,4.6, 5.6,6.6], labels = ['D1', 
+        # 'D2 \n Ctrl','D1', 'D2 \n TTX' ,'D1', 'D2 \n 8mM','D2 \n 15mM'], size = 20)
+        ax.set_ylabel(titles_dict[param][1], fontsize = 24)
+        ax.set_yticks(ticks = titles_dict[param][2])
+        #plt.title(titles_dict[param][0], fontsize = 19, x = 0.5, y = 1)
+
+    fig2.patch.set_facecolor('white')
+    fig2.tight_layout()
+
+    date = str(datetime.date.today())
+    plt.savefig(destination_dir + date + '_plot_all_params' + '.pdf')
+    plt.close(fig2)
+
+
+def plot_param_for_days_repatch_norm(df, op_color_dict,
+destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/plots/intrinsic_properties/adult_repatch/'):
+    
+    treatments = ['Ctrl', 'high K']
+    #treatments = ['Ctrl', 'TTX', 'high K']
+    titles_dict = pl_intr.dict_for_plotting()   
+
+    titles_dict_norm = {}
+    for (key, value) in titles_dict.items():
+        titles_dict_norm[key + '_norm'] = value
+    titles_dict = titles_dict_norm
+
+    colors = ['moccasin', '#ff7f00', 'moccasin', '#4daf4a','moccasin','#984ea3'] #Ctrl, 8mM Kcl, 15 mM Kcl
+
+    for u, param in enumerate(titles_dict.keys()): 
+        fig2 = plt.figure(figsize=(4,7))
         ax = plt.subplot(1,1,1)
         day_label = []
         num_cels = {}
@@ -190,40 +488,32 @@ destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/p
             for j, day in enumerate(df['day'].unique()):
                 k = j + 2*i 
                 df_plot = df[(df['treatment'] == tr) & (df['day'] == day)]
-                median = df_plot[param].median()
-                x = np.linspace(0.65+k, 1.35+k, len(df_plot))
+                x = np.repeat((k + 0.5), len(df_plot))
                 x_plot.append(x)
-                ax.scatter(x, df_plot[param], alpha = 0.7, c = colors[int(k)], s = 40)
-                yerr = 1.253*(df_plot[param].std()/(math.sqrt(len(df_plot))))
-                ax.scatter(1+k, median, color = 'k', marker = '_', s = 2000)
-                ax.text(0.9+k, (1.05*median), str(round(median,2)), size = 12)
-                day_label.append(day)
-                num_cels[tr + ' ' + day] = len(df_plot)
-                data_boxplot.append(df_plot[param])
-            ax.text(1 + 2*i, int(np.max(df[param])), tr, size = 17, c = colors[2*i+1])
-            ax.text(1.7 + 2*i, int(np.max(df[param])), 'n = ' + str(len(df_plot)), size = 12, c = colors[2*i+1])
+
             if k in [1,3,5] and 'repatch' in data_type:
                 for c, cell in enumerate(df_plot['cell_ID_new']):
                     x1 = [x_plot[0][c], x[c]] 
                     y = df[param][df['cell_ID_new'] == cell]
                     op = df_plot['OP'][df_plot['cell_ID_new'] == cell].tolist()[0]
-                    plt.plot(x1, y, '-', color = op_color_dict[op], alpha = 0.5)
+                    plt.plot(x1, y, '-', color = op_color_dict[op], alpha = 0.9, linewidth = 2)
 
-        #plt.boxplot(data_boxplot, showbox = False)
-        ax.spines['top'].set_visible(False)
-        ax.spines['right'].set_visible(False)
-        ax.set_xticks(ticks = list(range(1,7)), labels = day_label) 
-        plt.title(titles_dict[param][0], fontsize = 19, x = 0.5, y = 1)
-        ax.set_xlabel('Day', fontsize = 15)
-        ax.set_ylabel(titles_dict[param][1], fontsize = 15)
+
+        ax.tick_params(axis='y', labelsize=22)
+        ax.set_xticks(ticks = [0.5,1.5,2.5,3.5], labels = ['D1', 
+        'D2 \n Ctrl', 'D1', 'D2 \n high K'], size = 20)
+        #ax.set_xticks(ticks = [0.5,1.5,2.5,3.5], labels = ['D1', 
+        #'D2 \n Ctrl','D1', 'D2 \n TTX', 'D1', 'D2 \n high K'], size = 20)
+        ax.set_ylabel('norm. % difference \n (D1-D2)/D1', fontsize = 24)
 
         plt.subplots_adjust(hspace=0.35)
         fig2.patch.set_facecolor('white')
         fig2.tight_layout()
 
         date = str(datetime.date.today())
-        plt.savefig(destination_dir  + date + data_type + '_plot_' + param + '.png')
+        plt.savefig(destination_dir + date + param + '_plot.pdf')
         plt.close(fig2)
+
 
 def plot_param_for_hrs_incubation(df, data_type,
 destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/plots/intrinsic_properties/time_dependencies/'):
@@ -253,8 +543,6 @@ destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/p
             ax.scatter(x, df_plot[param], c = colors[int(i)], s = 40, label = tr)
 
         #plt.boxplot(data_boxplot, showbox = False)
-        ax.spines['top'].set_visible(False)
-        ax.spines['right'].set_visible(False)
         plt.title(titles_dict[param][0] + ' over time', fontsize = 19, x = 0.5, y = 1)
         ax.set_xlabel('Hours after OP', fontsize = 15)
         ax.set_ylabel(titles_dict[param][1], fontsize = 15)
@@ -477,6 +765,82 @@ def plot_full_RMP_trace(file_folder, files, plots_destination, channel, index_st
 #%%
 #Funcs for IFF and num aps agains current injection
 
+def get_QC_for_IFF_df(intrinsic_df, IFF_df):
+    ''' 
+    takes cellIDs and repatch info from intrinsic df
+    remove data for which no cell IDs are present (data didn't pass quality check)
+    create a IFF excel sheet with data and sheet1 - all IFF data, sheet2 - repatch IFF
+    '''
+    
+    cell_IDs, repatches, not_in_intrinsic = [], [], []
+    for i in range(len(IFF_df)):
+        OP = IFF_df['OP'][i]
+        patcher = IFF_df['patcher'][i]
+        fn = IFF_df['filename'][i]
+        slic = IFF_df['slice'][i]
+        day = IFF_df['day'][i]
+        cell_ch = IFF_df['cell_ch'][i]
+
+        cell_ID = intrinsic_df['cell_ID_new'][(intrinsic_df['OP'] == OP) & (intrinsic_df['patcher'] == patcher) & \
+        (intrinsic_df['slice'] == slic) & (intrinsic_df['day'] == day) & \
+        (intrinsic_df['cell_ch'] == cell_ch) & (intrinsic_df['filename'] == fn)]
+
+        if len(cell_ID) == 0:
+            cell_ID = hcf.get_new_cell_IDs_fn(fn, slic, [cell_ch], patcher)[0]
+            
+            not_in_intrinsic.append(cell_ID)
+            cell_IDs.append(cell_ID)
+            repatches.append('no')
+            continue
+
+        cell_IDs.append(cell_ID.tolist()[0])
+        repatches.append(intrinsic_df['repatch'][intrinsic_df['cell_ID_new'] == cell_ID.tolist()[0]].tolist()[0])
+    
+
+    IFF_df.insert(7, 'cell_ID_new', cell_IDs)
+    IFF_df.insert(8, 'repatch', repatches)
+
+    #remove cells which are not in the intrinsic_df (not QC passed)
+    not_QC_passed_cells = in_list1_not_in_list2(IFF_df['cell_ID_new'].tolist(), intrinsic_df['cell_ID_new'].tolist())
+    for cell in not_QC_passed_cells :
+        IFF_df = IFF_df.drop(IFF_df.index[IFF_df['cell_ID_new'] == cell])
+    IFF_df.reset_index(inplace = True, drop = True)
+
+    IFF_repatch = get_repatch_df(IFF_df)
+
+    date = str(datetime.date.today())
+    file_name = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/data/initial_firing_freqs/' + date + '_IFF_full_.xlsx'
+    with pd.ExcelWriter(file_name) as writer:  
+        IFF_df.to_excel(writer, sheet_name='Initial_firing_freq_all')
+        IFF_repatch.to_excel(writer, sheet_name='Initial_firing_freq_repatch')
+    
+    return IFF_df, IFF_repatch
+
+def remove_non_firing_cells_D1 (repatched_IFF_df):
+    '''
+    use this function on the repatch dataframe
+    removes cells that are not firing any APs at any current injecion on day1
+    '''
+    num_aps_indx, IFF_indx = get_num_aps_and_IFF_data_culumns(repatched_IFF_df)
+    
+    not_firing_cells, weird_cells = [], []
+    for i, cell in enumerate(repatched_IFF_df['cell_ID_new']):
+        df = repatched_IFF_df[(repatched_IFF_df['cell_ID_new'] == cell) & (repatched_IFF_df['day'] == 'D1')]
+        if len(df) == 0:
+            weird_cells.append(cell)
+            continue
+
+        df2 = df.iloc[:, num_aps_indx].reset_index(drop=True)
+        list_num_aps = df2.loc[0, :].values.flatten().tolist()
+        if max(list_num_aps) <= 0:
+            not_firing_cells.append(cell)
+
+    for cell in not_firing_cells:
+        repatched_IFF_df = repatched_IFF_df.drop(repatched_IFF_df.index[repatched_IFF_df['cell_ID_new'] == cell])
+    repatched_IFF_df.reset_index(inplace = True, drop = True)
+
+    return repatched_IFF_df
+
 def get_num_aps_and_IFF_data_culumns(df):
     num_aps_indx, IFF_indx = [], []
     for i in range(len(df.columns)):
@@ -542,16 +906,16 @@ def plot_IFF_avg_against_current_inj(IFF_df, data_type, DV):
     '''
     
     num_aps_indx, IFF_indx = get_num_aps_and_IFF_data_culumns(IFF_df)
-    treatments = ['Ctrl', 'TTX', 'high K']
+    treatments = ['Ctrl', '8 mM', '15 mM']
+    #treatments = ['Ctrl', 'TTX', 'high K']
     date = str(datetime.date.today())
     destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/plots/IFF/'
 
-    colors_dict = {'D1' : sns.color_palette("colorblind")[1], 'D2': sns.color_palette("colorblind")[2]}
+    colors_dict = {'D1' : ['#dede00','#dede00','#dede00'], 'D2': ['#ff7f00', '#4daf4a','#984ea3']}
     DV_dict = {'IFF' : [IFF_indx, 'Initial firing frequency (AP#1 to AP#2)',  'Instantaneous firing frequency (Hz)'], 
     'num_aps' : [num_aps_indx, 'Number of fired action potentials', 'AP count']}
 
-    fig, ax = plt.subplots(1, 3, figsize=(30,10), sharey = True)
-    #fig.subplots_adjust(hspace = 0.1)
+    fig, ax = plt.subplots(1, len(treatments), figsize=(21,8), sharey = True)
 
     for k, treatment in enumerate(treatments):
         tr_df = IFF_df[IFF_df['treatment'] == treatment]
@@ -562,7 +926,7 @@ def plot_IFF_avg_against_current_inj(IFF_df, data_type, DV):
             for i, col in enumerate(DV_dict[DV][0][5:]):
                 data = day_df.iloc[:,col]
                 x = np.linspace(0.75+i, 1.25+i, len(data))
-                ax[k].scatter(x, data, alpha = 0.7, s = 4, c = [colors_dict[day]])
+                ax[k].scatter(x, data, alpha = 0.7, s = 7, c = colors_dict[day][k])
 
                 avg = np.mean(data)
                 sem = np.std(data, ddof=1) / np.sqrt(np.size(data))
@@ -574,23 +938,29 @@ def plot_IFF_avg_against_current_inj(IFF_df, data_type, DV):
                 sems.append(sem) #standard error of the mean
                 inj.append(day_df.columns[col][2:(day_df.columns[col]).rfind('pA')])
             
-            ax[k].scatter(range(1, len(inj)+1), avgs, label = day, color = [colors_dict[day]])
-            ax[k].plot(range(1, len(inj)+1), avgs, label = day, color = colors_dict[day])
-            ax[k].errorbar(range(1, len(inj)+1), avgs, yerr = sem, label = day, color = colors_dict[day])
+            ax[k].scatter(range(1, len(inj)+1), avgs, label = day, color = colors_dict[day][k], s = 30)
+            ax[k].plot(range(1, len(inj)+1), avgs, label = day, color = colors_dict[day][k])
+            ax[k].errorbar(range(1, len(inj)+1), avgs, yerr = sem, label = day, color = colors_dict[day][k])
 
             ax[k].set_title(treatment + ' ' + data_type, fontsize = 25)
-            ax[k].set_xlabel('Current (pA)', fontsize = 25)
-            ax[k].set_ylabel(DV_dict[DV][2], fontsize = 25)
-            ax[k].set_xticks(ticks = list(range(1,len(inj)+1)), labels = inj, fontsize = 20, rotation = 45) 
+            ax[k].set_xlabel('Current (pA)', fontsize = 24)
+            ax[0].set_ylabel(DV_dict[DV][2], fontsize = 24      )
+            ax[k].set_xticks(ticks = list(range(1,22,2)), labels = [0,100,200,300,400,500,600,800,1000,1200,1400],
+            fontsize = 22, rotation = 45) 
             max_val = max(tr_df.iloc[:,DV_dict[DV][0]].max(numeric_only = True))
-            ax[k].set_yticks(ticks = np.linspace(-10, int(max_val), 6), fontsize = 20) 
+            ax[k].set_yticks(ticks = [0, 40, 80, 120, 160, 200], fontsize = 22) 
+            if DV == 'num_aps':
+                ax[k].set_yticks(ticks = [0, 10, 20, 30, 40, 50], fontsize = 22) 
 
-            ax[k].tick_params(axis='y', labelsize = 20)
+            ax[k].tick_params(axis='y', labelsize = 22)
             ax[k].spines['top'].set_visible(False)
             ax[k].spines['right'].set_visible(False)
 
         #max_val = max(tr_df.max(numeric_only = True))
-        ax[k].text(len(inj)-1, 0.9*max_val, 'n = ' + str(len(tr_df)), size = 25, c = 'k')
+        if 'repatch' in data_type:
+            ax[k].text(len(inj)-4, 200, 'n = ' + str(int(len(tr_df)/2)), size = 25, c = 'k')
+        else: 
+            ax[k].text(len(inj)-4, 200, 'n = ' + str(int(len(day_df))), size = 25, c = 'k')
 
             # add n numbers
             #ax.text(1.7 + 2*i, int(np.max(df[param])), 'n = ' + str(len(df_plot)), size = 10, c = colors[2*i+1])
@@ -601,6 +971,7 @@ def plot_IFF_avg_against_current_inj(IFF_df, data_type, DV):
     fig.tight_layout()
     plt.savefig(destination_dir + date + data_type + DV + '_vs_curernt_inj_plot.png')
     plt.close(fig)
+
 
 
 #%%

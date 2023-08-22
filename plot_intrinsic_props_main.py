@@ -1,18 +1,40 @@
 import plot_intrinsic_props as pl_intr
 import funcs_for_results_tables as get_results
 import pandas as pd
+import glob
 
+human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'
+exp_view = pd.read_excel(glob.glob(human_dir + '*experiments_overview.xlsx')[0]) 
+
+#collect all QC intrinsic datatables
 df_intr_props = get_results.collect_intrinsic_df()
-
-adult_df = pl_intr.get_adult_data(df_intr_props) #only patient age >18 and other QC criteria 
+#add patient info
+# df_op_info = pd.DataFrame(columns = ['OP', 'patient_age', 'resected area'])
+# for OP in df_intr_props['OP'].unique():
+#     OP = df_intr_props['OP'].loc[df_intr_props['OP'] == OP].to_list()[0]
+#     area = exp_overview['region'].loc[exp_overview['OP'] == OP].to_list()[0]
+#     patient_age = df_intr_props['patient_age'].loc[df_intr_props['OP'] == OP].tolist()[0]
+#     df_op_add = pd.DataFrame({'OP':OP, 'patient_age':[patient_age], 'resected area':area})
+#     df_op_info = pd.concat([df_op_info.loc[:], df_op_add]).reset_index(drop=True)
+  
+#filter on age and hrs incubation
+adult_df = pl_intr.filter_adult_hrs_incubation_data(df_intr_props, min_age = 18, hrs_inc = 18, max_age = 151) # QC criteria 
 adult_df = adult_df[adult_df['area'] == 'temporal']
+op_color_dict = pl_intr.get_op_color_dict(adult_df)
 adult_df = pl_intr.create_new_cell_IDs(adult_df)
-adult_df_8mM = adult_df[(adult_df['high K concentration'] != '15 mM')]
-pl_intr.plot_param_for_days(adult_df_8mM, 'all', '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/plots/intrinsic_properties/all_QC_passed/') 
+#adult_df = pl_intr.get_precise_treatment(adult_df)
 
-repatch_df = pl_intr.get_repatch_df(adult_df) #adds also the new cell_IDs
-repatch_df = repatch_df.sort_values(['cell_ID_new', 'treatment'])
-pl_intr.plot_param_for_days(repatch_df, '8mM_repatch') #for all params repatch!
+#create slice comparison and repatch dataframes
+adult_df_slice_comparison = adult_df.loc[adult_df['repatch'] == 'no']
+adult_df_repatch = pl_intr.get_repatch_df(adult_df)
+adult_df_repatch = adult_df_repatch.sort_values(['cell_ID_new', 'treatment'])
+adult_repatch_norm = pl_intr.get_normalized_df(adult_df_repatch)
+
+#plot all parameters 
+pl_intr.plot_param_for_days_slice(adult_df_slice_comparison, op_color_dict)
+#pl_intr.plot_param_for_days_repatch(adult_df_repatch, op_color_dict)
+pl_intr.plot_param_for_days_repatch_all_params(adult_df_repatch, op_color_dict)
+pl_intr.plot_param_for_days_repatch_norm(adult_repatch_norm, op_color_dict)
 
 #%%
 #for connectivity summary plot
@@ -41,31 +63,23 @@ pl_intr.plot_connect_amplitude(connect_QC_passed_VC, 'all_VC_adult')
 # Plot Initial firing frequency and number of APs against injected current
 
 IFF_collected = get_results.collect_IFF_dfs(human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/')
-#adult_df = adult_df[(adult_df['high K concentration'] != '15 mM')]
 
-IFF_adult, IFF_repatch = get_results.get_QC_for_IFF_df(adult_df, IFF_collected) #takes only cell_IDs present in 
-IFF_repatch_firing = get_results.remove_non_firing_cells_D1(IFF_repatch)
+IFF_QC, IFF_repatch = pl_intr.get_QC_for_IFF_df(adult_df, IFF_collected) 
 
-#pl_intr.plot_IFF_distribution(IFF_repatch, 'repatch', 'num_aps') #data_type - all, repatch, repatch firing cells; DV - num_aps or IFF
-#pl_intr.plot_IFF_distribution(IFF_repatch, 'repatch', 'IFF')
+IFF_QC = pl_intr.remove_non_firing_cells_D1(IFF_QC)
+IFF_QC = IFF_QC.loc[IFF_QC['treatment'] != 'TTX']
+IFF_QC_slice = IFF_QC.loc[IFF_QC['repatch'] == 'no']
+IFF_QC_slice_firing = pl_intr.remove_non_firing_cells_D1(IFF_QC_slice)
+IFF_QC_slice_firing = get_precise_treatment(IFF_QC_slice_firing)
 
-pl_intr.plot_IFF_avg_against_current_inj(IFF_repatch, 'repatch', 'num_aps')
-pl_intr.plot_IFF_avg_against_current_inj(IFF_repatch, 'repatch', 'IFF')
+pl_intr.plot_IFF_avg_against_current_inj(IFF_QC_slice_firing, 'slice_firing', 'IFF')
 
 
-IFF_collected = get_results.collect_IFF_dfs(human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/')
+IFF_repatch_firing = pl_intr.remove_non_firing_cells_D1(IFF_repatch)
+IFF_repatch_firing = IFF_repatch_firing.loc[IFF_repatch_firing['treatment'] != 'TTX']
+IFF_repatch_firing = get_precise_treatment(IFF_repatch_firing)
 
-adult_df_8mM = adult_df[(adult_df['high K concentration'] != '15 mM')]
-IFF_adult, IFF_repatch_8mM = get_results.get_QC_for_IFF_df(adult_df_8mM, IFF_collected) #takes only cell_IDs present in 
-
-pl_intr.plot_IFF_avg_against_current_inj(IFF_repatch_8mM, 'repatch_8mM', 'num_aps')
-pl_intr.plot_IFF_avg_against_current_inj(IFF_repatch_8mM, 'repatch_8mM', 'IFF')
-
-# pl_intr.plot_IFF_distribution(IFF_repatch_firing, 'repatch_firing_D1_8mM', 'num_aps') #data_type - all, repatch, repatch firing cells; DV - num_aps or IFF
-# pl_intr.plot_IFF_distribution(IFF_repatch_firing, 'repatch_firing_D1_8mM', 'IFF')
-
-# pl_intr.plot_IFF_avg_against_current_inj(IFF_repatch_firing, 'repatch_firing_D1_8mM', 'num_aps')
-# pl_intr.plot_IFF_avg_against_current_inj(IFF_repatch_firing, 'repatch_firing_D1_8mM', 'IFF')
+pl_intr.plot_IFF_avg_against_current_inj(IFF_repatch_firing, 'repatch_firing', 'IFF')
 
 #%%
 #analysis high K 

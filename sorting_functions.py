@@ -263,6 +263,9 @@ def get_json_meta (human_dir, OP, patcher, file_out): # file_out = '_meta_active
     return json_meta
 
 def get_datetime_from_input (op_time):
+    ''' 
+    op_time - 2020-10-20 10:00:00
+    '''
     # year, month, day, hour, minute = map(int, op_time)
     # cortex_out_time = datetime.datetime(year, month, day, hour, minute)
     cortex_out_time = datetime.datetime.strptime(op_time, "%Y-%m-%d %H:%M:%S")

@@ -4,8 +4,9 @@ import human_characterisation_functions as hcf
 import glob
 
 class slice_meta :
-    def __init__(self, name, treatment, patcher, day, active_chans):
+    def __init__(self, exp_type, name, treatment, patcher, day, active_chans):
 
+        self.exp_type = exp_type
         self.name = name
         self.treatment = treatment
         self.patcher = patcher #Verji, Rosie
@@ -74,8 +75,73 @@ all_slices = sorted(list(set(slice_names)))
 
 cortex_out_time = exp_view['cortex_out'].loc[exp_view['OP'] == OP].tolist()[0]
 
-2
-3
-5
-7
-8
+df_OP = pd.DataFrame(columns=['filename', 'slice', 'cell_ch', 'cell_ID', 'day', 'treatment',
+    'hrs_incubation', 'repatch', 'hrs_after_OP', 'Rs', 'Rin', 'resting_potential', 'max_spikes',
+    'Rheobase', 'AP_heigth', 'TH', 'max_depol', 'max_repol', 'membra_time_constant_tau', 'capacitance'])
+
+for slice_name in all_slices:
+    treatment = input('Treatment (Ctrl, high K, or TTX) for ' + slice_name + ' ' + OP)
+    day = 'D1'
+    if slice_name[-2:] == 'D2': 
+        day = 'D2'
+
+    vc_per_slice = df_slic_fn.iloc[indices_dict['vc']].loc[df_slic_fn['slice'] == slice_name]
+
+    for vc_file in vc_per_slice['files']:
+        active_chans = [int(item) for item in input('Used channels in ' + vc_file + ' ' + OP).split()]
+
+        slice1 = slice_meta(slice_name, treatment, patcher, day, active_chans)
+        slice1.filenames_rec_type (df_slic_fn)
+
+        cell_IDs = slice1.new_cell_IDs(filenames)
+
+        if len(slice1.vc_files[0]) != len(slice1.RMP[0]):
+
+            time_after_op = sort.get_time_after_OP(work_dir + fn_vc, cortex_out_time)
+
+            for i, fn_vc in enumerate(slice1.vc_files[0]):
+                time_after_op = sort.get_time_after_OP(work_dir + fn_vc, cortex_out_time)
+                Rs, Rin = hcf.get_access_resistance(work_dir + fn_vc, active_chans) 
+
+                params1_df = pd.DataFrame({'filename': slice1.vc_files[0][i], 'slice' : slice1.name, 'cell_ch': slice1.channels,
+                'hrs_after_OP' : time_after_op, 'cell_ID': cell_IDs, 'day' : slice1.day , 
+                'treatment': slice1.treatment, 'Rs' : Rs, 'Rin': Rin})
+
+                df_OP = pd.concat([df_OP.loc[:], params1_df]).reset_index(drop=True)
+                df_name = '_VC_props.xlsx'
+            print('Not usual repatch experiments. Saving only a vc dataframe at the end')
+
+        else:
+            #calculate parameters for repatch recordings
+            for i, fn_vc in enumerate(slice1.vc_files[0]):
+                time_after_op = sort.get_time_after_OP(work_dir + fn_vc, cortex_out_time)
+                Rs, Rin = hcf.get_access_resistance(work_dir + fn_vc, active_chans) 
+
+                RMPs = hcf.get_RMP(work_dir + slice1.RMP[0][i], active_channels)
+                params1_df = pd.DataFrame({'filename': slice1.char[0], 'slice' : slice1.name, 'cell_ch': slice1.channels,
+                    'hrs_after_OP' : time_after_op, 'cell_ID': cell_IDs, 'day' : slice1.day , 
+                    'treatment': slice1.treatment, 'Rs' : Rs, 'Rin': Rin, 'resting_potential': RMPs })
+
+                charact_params  = hcf.all_chracterization_params(work_dir + slice1.char[i], active_channels, inj)
+                df_char = pd.DataFrame.from_dict(charact_params)
+
+                df_to_add = pd.concat([params1_df, df_char], axis = 1)
+                df_OP = pd.concat([df_OP.loc[:], df_to_add]).reset_index(drop=True)
+
+                #plotting function
+                plotting_funcs.plot_vc_holding (filename_vc, active_channels)
+                plotting_funcs.plots_for_charact_file(filename_char, active_channels, inj)
+                df_name = '_Intrinsic_and_synaptic_properties.xlsx'
+                print('Intrinsic properties DataFrame for  ' + OP + ' saved successfully. ' + '\n' + 'Exclude recordings if necessary.')
+
+tissue = pd.Series(tissue_source).repeat(len(df_OP))
+OPs = pd.Series(OP).repeat(len(df_OP))
+researcher = pd.Series(patcher).repeat(len(df_OP))
+patient_age = pd.Series(age).repeat(len(df_OP))
+series_df = pd.DataFrame({'tissue_source': tissue, 'OP': OPs, 'patcher': researcher, 'patient_age': patient_age}).reset_index(drop=True)
+
+df_intrinsic = pd.concat([series_df, df_OP], axis = 1)
+
+df_intrinsic.to_excel(work_dir + 'data_tables/TRY_' + OP + df_name, index=False) 
+
+

@@ -70,7 +70,7 @@ def get_intrinsic_properties_df(human_dir, OP, tissue_source, patcher, age, inj)
         filename_vc = work_dir + filenames[vc]
         filename_vm = work_dir + filenames[vm]
         filename_char = work_dir + filenames[char]
-        time_after_op = sort.get_time_after_OP(filename_char, cortex_out_time)
+        #time_after_op = sort.get_time_after_OP(filename_char, cortex_out_time)
         #filename_con_screen = work_dir + filenames[indices_dict['con_screen'][i]]
 
         active_channels = active_chans_meta['active_chans'][i]
@@ -170,7 +170,7 @@ def get_QC_access_resistance_df (human_dir, OP, patcher):
 
     sort.to_json(work_dir, OP, '_meta_active_chans.json', active_chans_meta)
     df_qc.to_excel(work_dir + 'data_tables/' + OP + '_QC_measures_rs.xlsx', index=False) 
-    remove_bad_data(OP, patcher, human_dir)
+    #remove_bad_data(OP, patcher, human_dir)
     #df_qc.to_csv(work_dir + 'data_tables/' + OP[:-1] + '_QC_measures_rs.csv')
 
 def get_con_params_df (human_dir, OP, patcher):
@@ -625,6 +625,8 @@ def get_metadata_for_event_analysis(human_dir, OP, patcher, event_type): # add e
 
     df_meta.to_excel(work_dir + 'data_tables/' + event_type + '_meta_' + OP + '.xlsx', index=False) 
 
+#%%
+# Functions for full analysis (not OP-based)
 
 def prapare_for_event_analysis(human_dir):
     '''
@@ -703,6 +705,18 @@ def collect_intrinsic_df(human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_
     all_intr_props.to_excel('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/data/summary_data_tables/intrinsic_properties/' 
     + date + '_collected.xlsx', index=False)
     return all_intr_props
+
+def save_intr_data(df_intr_props,  QC_data, repatch_data, juv_repatch, adult_repatch):
+    ''' 
+    saves the collected intrinsic data properties in the general data folder
+    '''
+    file_name = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/all_data_human.xlsx'
+    with pd.ExcelWriter(file_name) as writer:  
+        df_intr_props.to_excel(writer, sheet_name='all_data')
+        QC_data.to_excel(writer, sheet_name='QC_data')
+        repatch_data.to_excel(writer, sheet_name='repatch_all')
+        juv_repatch.to_excel(writer, sheet_name='juvenile_data_repatch_QC')
+        adult_repatch.to_excel(writer, sheet_name='adult_repatch_all_QC')
 
 #analysis of intrinsic properties
 def collect_connections_df(human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'):
@@ -820,62 +834,11 @@ def collect_IFF_dfs(human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/d
 
     IFF_all['treatment'].loc[IFF_all['treatment'] == 'high k'] = 'high K'
 
-    date = str(datetime.date.today())
-    IFF_all.to_excel('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/data/initial_firing_freqs/' 
-    + date + '_IFF_collected.xlsx', index=False)
+    #date = str(datetime.date.today())
+    # IFF_all.to_excel('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/data/initial_firing_freqs/' 
+    # + date + '_IFF_collected.xlsx', index=False)
     return IFF_all
 
-
-def get_QC_for_IFF_df(intrinsic_df, IFF_df):
-    ''' 
-    takes cellIDs and repatch info from intrinsic df
-    remove data for which no cell IDs are present (data didn't pass quality check)
-    create a IFF excel sheet with data and sheet1 - all IFF data, sheet2 - repatch IFF
-    '''
-    
-    cell_IDs, repatches, not_in_intrinsic = [], [], []
-    for i in range(len(IFF_df)):
-        OP = IFF_df['OP'][i]
-        patcher = IFF_df['patcher'][i]
-        fn = IFF_df['filename'][i]
-        slic = IFF_df['slice'][i]
-        day = IFF_df['day'][i]
-        cell_ch = IFF_df['cell_ch'][i]
-
-        cell_ID = intrinsic_df['cell_ID_new'][(intrinsic_df['OP'] == OP) & (intrinsic_df['patcher'] == patcher) & \
-        (intrinsic_df['slice'] == slic) & (intrinsic_df['day'] == day) & \
-        (intrinsic_df['cell_ch'] == cell_ch) & (intrinsic_df['filename'] == fn)]
-
-        if len(cell_ID) == 0:
-            cell_ID = hcf.get_new_cell_IDs_fn(fn, slic, [cell_ch], patcher)[0]
-            
-            not_in_intrinsic.append(cell_ID)
-            cell_IDs.append(cell_ID)
-            repatches.append('no')
-            continue
-
-        cell_IDs.append(cell_ID.tolist()[0])
-        repatches.append(intrinsic_df['repatch'][intrinsic_df['cell_ID_new'] == cell_ID.tolist()[0]].tolist()[0])
-    
-
-    IFF_df.insert(7, 'cell_ID_new', cell_IDs)
-    IFF_df.insert(8, 'repatch', repatches)
-
-    #remove cells which are not in the intrinsic_df (not QC passed)
-    not_QC_passed_cells = plot_intr.in_list1_not_in_list2(IFF_df['cell_ID_new'].tolist(), intrinsic_df['cell_ID_new'].tolist())
-    for cell in not_QC_passed_cells :
-        IFF_df = IFF_df.drop(IFF_df.index[IFF_df['cell_ID_new'] == cell])
-    IFF_df.reset_index(inplace = True, drop = True)
-
-    IFF_repatch = plot_intr.get_repatch_df(IFF_df)
-
-    date = str(datetime.date.today())
-    file_name = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/data/initial_firing_freqs/' + date + '_IFF_full_.xlsx'
-    with pd.ExcelWriter(file_name) as writer:  
-        IFF_df.to_excel(writer, sheet_name='Initial_firing_freq_all')
-        IFF_repatch.to_excel(writer, sheet_name='Initial_firing_freq_repatch')
-    
-    return IFF_df, IFF_repatch
 
 def get_num_aps_and_IFF_data_culumns(df):
     num_aps_indx, IFF_indx = [], []
@@ -886,30 +849,8 @@ def get_num_aps_and_IFF_data_culumns(df):
             IFF_indx.append(i)
     return num_aps_indx, IFF_indx
 
-def remove_non_firing_cells_D1 (repatched_IFF_df):
-    '''
-    use this function on the repatch dataframe
-    removes cells that are not firing any APs at any current injecion on day1
-    '''
-    num_aps_indx, IFF_indx = get_num_aps_and_IFF_data_culumns(repatched_IFF_df)
-    
-    not_firing_cells, weird_cells = [], []
-    for i, cell in enumerate(repatched_IFF_df['cell_ID_new']):
-        df = repatched_IFF_df[(repatched_IFF_df['cell_ID_new'] == cell) & (repatched_IFF_df['day'] == 'D1')]
-        if len(df) == 0:
-            weird_cells.append(cell)
-            continue
-
-        df2 = df.iloc[:, num_aps_indx].reset_index(drop=True)
-        list_num_aps = df2.loc[0, :].values.flatten().tolist()
-        if max(list_num_aps) <= 0:
-            not_firing_cells.append(cell)
-
-    for cell in not_firing_cells:
-        repatched_IFF_df = repatched_IFF_df.drop(repatched_IFF_df.index[repatched_IFF_df['cell_ID_new'] == cell])
-    repatched_IFF_df.reset_index(inplace = True, drop = True)
-
-    return repatched_IFF_df
 
 
-2# %%
+
+
+# %%

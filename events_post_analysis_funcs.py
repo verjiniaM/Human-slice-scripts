@@ -5,6 +5,8 @@ import datetime
 import os
 import glob
 import shutil
+import human_characterisation_functions as hcf
+import plot_intrinsic_props as pl_intr
 
 def copy_event_analysis_data_to_analysis_folder(event_type):
     '''
@@ -65,31 +67,40 @@ def post_events_analysis_add_metadata(event_type, human_dir = '/Users/verjim/lap
 
     #remove files where less than 2 min analysis
     for i in reversed(range(len(results_df))):
-        if results_df['# analyzd sweeps'][i] < 12:
+        if results_df['# analyzed sweeps'][i] < 12:
             results_df = results_df.drop([results_df.index[i]])
     results_df.reset_index(inplace = True, drop = True)
 
-    with pd.ExcelWriter(human_dir + '/meta_events/results/' + event_type + '_' + date + '_summary_results.xlsx') as writer:
+    results_df = add_num_events_col(results_df, results)
+
+    with pd.ExcelWriter(human_dir + '/meta_events/results/summaries/' + event_type + '_' + date + '_summary_results.xlsx') as writer:
         results_df.to_excel(writer, sheet_name = "summary", index=False)
 
     return results_df
 
  
-def get_events_numbers(results_df_long):
-    # human_dir + '/meta_events/results/output_algirithm/' + date + '_results.xlsx'
-    num_events = {}
-    for tr in results_df['treatment'].unique().tolist():
-        fns = results_df['Recording filename'][results_df['treatment'] == tr].tolist()
-        chans = results_df['Channel'][results_df['treatment'] == tr].tolist()
-        number_of_events = []
-        for i, fn in enumerate(fns):
-            chan = chans[i]
-            sheet_name = fn[:-4] + '_' + str(chan)
-            fn_df = pd.read_excel(results_path, sheet_name)
-            number_of_events.append(len(fn_df))
-        num_events[tr] = number_of_events
-    return num_events
+def add_num_events_col(results_df, results_long_path):
+    ''' 
+    number of events = len of the sheet in results_long_path
+    results_df - summary results file in human directory
+    results_long_path - full results table in spontan_analysis folder
+    '''
 
+    number_of_events = []
+  
+    for i in range(len(results_df)):
+        dat = results_df.loc[i,:]
+        fn = dat['Recording filename']
+        chan = dat['Channel']
+        sheet_name = fn[:-4] + '_' + str(chan)
+        fn_df = pd.read_excel(results_long_path, sheet_name)
+        number_of_events.append(len(fn_df))
+
+    results_df.insert(16, 'num_events', number_of_events)
+    return results_df
+
+
+## 
 def remove_small_events(df, min_event_size):
     mask = (df['Average amplitude (pA)'] > min_event_size)
     df = df.loc[mask, :]
@@ -126,6 +137,7 @@ def exclude_fn_only_in_QC(df, QC):
     return QC
 
 def get_non_excluded_traces(df, QC):
+
     for i in range(len(QC)):
         if QC.comment[i] == 'exclude':
             fn = QC.recording[i]
@@ -190,7 +202,7 @@ save_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/plots/ev
     Takes the n_nums dictionary for each condition [day x treatemtn]
     scatter plot of the datapoints and median
     '''
-    colors = ['moccasin', 'red', 'moccasin', 'cadetblue', 'moccasin', 'mediumpurple']
+    colors = ['moccasin', '#ff7f00', 'moccasin', '#4daf4a','moccasin','#377eb8']
     title1 = 'Spontaneous EPSCs'
     cmap = plt.cm.get_cmap('tab20')
     op_color_dict = {}
@@ -293,14 +305,76 @@ def post_event_analysis_main(QC, df_orig, min_event_size, min_hrs = 20):
     df_analysis = remove_small_events(df = df_analysis, min_event_size = min_event_size)
     return df_analysis
 
-def remove_high_K_15mM (df):
-    indx1 = sorted(df['OP'].unique()).index('OP220602')
-    exclude_list = sorted(df['OP'].unique())[indx1:]
-    for j in exclude_list:
-        indx = df[df['OP'] == j].index
-        df.drop(indx, axis=0, inplace=True)
-    df.reset_index(inplace = True, drop = True)
-    return df
+def add_high_K_concentration(spontan_df):
+    exp_overview = pd.read_excel('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/2023-05-08_experiments_overview.xlsx')
+
+    dict_higk_K_concentr = {}
+    for OP in spontan_df_orig['OP'].unique():
+        K_concentr = exp_overview['K concentration'][exp_overview['OP'] == OP].tolist()[0]
+        dict_higk_K_concentr[OP] = K_concentr
+
+    K_concentr_all = []
+    OP_list = spontan_df['OP'].tolist()
+    for i in range(len(spontan_df)):
+        OP = OP_list[i]
+        K_concentr_all.append(dict_higk_K_concentr[OP])
+
+    spontan_df['high K concentration'] = K_concentr_all
+    spontan_df['K_concentr_bool'] = K_concentr_all
+
+    spontan_df = spontan_df.replace({'K_concentr_bool': '8 mM'}, 0)
+    spontan_df = spontan_df.replace({'K_concentr_bool': '15 mM'}, 1)
+
+    return spontan_df
+
+
+
+def QC_spontan_with_intrinsic(intrinsic_df, spontan_df):
+    cell_IDs, repatches, not_in_intrinsic = [], [], []
+    for i in range(len(spontan_df)):
+        OP = spontan_df['OP'][i]
+        patcher = spontan_df[' patcher'][i]
+        fn = spontan_df['Recording filename'][i]
+        slic = spontan_df[' slice'][i]
+        day = spontan_df['day'][i]
+        cell_ch = spontan_df['Channel'][i]
+
+        cell_ID = intrinsic_df['cell_ID_new'][(intrinsic_df['OP'] == OP) & (intrinsic_df['patcher'] == patcher) & \
+        (intrinsic_df['slice'] == slic) & (intrinsic_df['day'] == day) & \
+        (intrinsic_df['cell_ch'] == cell_ch)]
+
+        if len(cell_ID) == 0:
+            cell_ID = hcf.get_new_cell_IDs_fn(fn, slic, [cell_ch], patcher)[0]
+            
+            not_in_intrinsic.append(cell_ID)
+            cell_IDs.append(cell_ID)
+            repatches.append('no')
+            continue
+
+        cell_IDs.append(cell_ID.tolist()[0])
+        repatches.append(intrinsic_df['repatch'][intrinsic_df['cell_ID_new'] == cell_ID.tolist()[0]].tolist()[0])
+
+
+    spontan_df.insert(23, 'cell_ID_new', cell_IDs)
+    spontan_df.insert(24, 'repatch', repatches)
+
+    #remove cells which are not in the intrinsic_df (not QC passed)
+    not_QC_passed_cells = pl_intr.in_list1_not_in_list2(spontan_df['cell_ID_new'].tolist(), intrinsic_df['cell_ID_new'].tolist())
+    for cell in not_QC_passed_cells :
+        spontan_df = spontan_df.drop(spontan_df.index[spontan_df['cell_ID_new'] == cell])
+    spontan_df.reset_index(inplace = True, drop = True)
+
+    spontan_repatch = pl_intr.get_repatch_df(spontan_df)
+    return spontan_df, spontan_repatch
+
+# def remove_high_K_15mM (df):
+#     indx1 = sorted(df['OP'].unique()).index('OP220602')
+#     exclude_list = sorted(df['OP'].unique())[indx1:]
+#     for j in exclude_list:
+#         indx = df[df['OP'] == j].index
+#         df.drop(indx, axis=0, inplace=True)
+#     df.reset_index(inplace = True, drop = True)
+#     return df
 
 #%%
 #%%

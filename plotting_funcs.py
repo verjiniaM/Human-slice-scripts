@@ -197,7 +197,7 @@ def plot_spikes (filename, channels, inj):
             plt.close(fig)
             continue
         x = math.ceil(np.sqrt(win))
-        fig, ax = plt.subplots(x,x,sharex=True, sharey=False,figsize=(22,9))
+        fig = plt.figure(figsize=(22,9))
         for i in range(win):
             ax = fig.add_subplot(x,x, i+1)
             if first_spikes[n] + i-1 < np.shape(ch_data)[1]: #plotting for last sweep with no spikes and all following sweeps

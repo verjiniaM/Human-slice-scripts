@@ -7,13 +7,12 @@ import funcs_for_results_tables as get_results
 
 
 #%%
-OP = 'OP230314'
-patcher = 'Verji'
-tissue_source = 'Virchow'
-inj = 'full'
-age = '12'
+# OP = 'OP230426'
+# patcher = 'Verji'
+# tissue_source = 'Hamburg'
+# inj = 'full'
+# age = 'A'
 #%%
-
 #loading the updated experiments_overview and the old summary_data_table
 human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'
 results_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/data/'

@@ -1,17 +1,30 @@
 import pandas as pd
 import events_post_analysis_funcs as event_funcs
 import plot_intrinsic_props as plot_intr
+import datetime
 
+#%%
+#Pre-processing steps
+
+# event_funcs.copy_event_analysis_data_to_analysis_folder('spontan')
+# spontan_new = event_funcs.post_events_analysis_add_metadata('spontan')
+
+#event_funcs.copy_event_analysis_data_to_analysis_folder('minis')
+# mini_new = event_funcs.post_events_analysis_add_metadata('minis')
 
 #%%
 results_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/meta_events/results/'
 
-spontan_1 = pd.read_excel(results_dir + 'spontan_2023-02-07_summary_results_pt1.xlsx', 'summary')
-spontan_2 = pd.read_excel(results_dir + 'spontan_2023-02-07_summary_results_pt2.xlsx', 'summary')
-spontan_df_orig = pd.concat([spontan_1.loc[:], spontan_2]).reset_index(drop=True)
+spontan_old = pd.read_excel(results_dir + 'spontan_all_01.06.2023.xlsx')
+#spontan_df_orig = pd.concat([spontan_old.loc[:], spontan_new]).reset_index(drop=True)
+#date = str(datetime.date.today())
+#spontan_df_orig.to_excel(results_dir + 'spontan_all_' +  date + '.xlsx')
 
 visual_QC_spontan = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/notes/analysis/events_detection/spontan_rough_evaluation_algorithm_all_results_01.02.2023.xlsx'
 QC = pd.read_excel(visual_QC_spontan)
+
+mask = QC['comment_elaboration'] == 'shifted events peaks'
+QC['comment'].loc[mask] = None
 
 spontan_df = event_funcs.post_event_analysis_main(QC, spontan_df_orig, 3) #min_event_size = 3, min_hrs = 20h
 #spontan_8mM = event_funcs.remove_high_K_15mM(spontan_df)
@@ -35,12 +48,15 @@ event_funcs.plot_event_by_day_spontan(repatch_spontan, n_nums_repatch, 'repatch'
 
 results_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/meta_events/results/'
 
-mini_1 = pd.read_excel( results_dir + 'minis_2023-02-14_summary_results_pt1.xlsx', 'summary')
-mini_2 = pd.read_excel( results_dir + 'minis_2023-02-14_summary_results_pt2.xlsx', 'summary')
-mini_df_orig = pd.concat([mini_1.loc[:], mini_2]).reset_index(drop=True)
+date = str(datetime.date.today())
+
+#mini_df_orig = pd.concat([mini_old.loc[:], mini_new]).reset_index(drop=True)
+#mini_df_orig.to_excel(results_dir + 'mini_all_' + date + '.xlsx')
 
 visual_QC_minis = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/notes/analysis/events_detection/minis_rough_evaluation_algorithm_all_results_13.02.2023.xlsx'
 QC = pd.read_excel(visual_QC_minis)
+mask = QC['comment_elaboration'] == 'shifted events peaks'
+QC['comment'].loc[mask] = None
 
 mini_df = event_funcs.post_event_analysis_main(QC, mini_df_orig, min_event_size = 1, min_hrs = 20) #
 #mini_8mM = event_funcs.remove_high_K_15mM(mini_df)
