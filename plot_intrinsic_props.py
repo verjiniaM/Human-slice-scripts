@@ -6,7 +6,7 @@ import datetime
 import numpy as np
 import math
 import human_characterisation_functions as hcf
-import seaborn as sns
+#import seaborn as sns
 
 plt.rcParams['lines.linewidth'] = 2
 plt.rcParams['axes.spines.right'] = False
@@ -52,25 +52,28 @@ def get_QC_data(df):
     mask = (df['Rs'] < 30) & \
         (df['resting_potential'] < -45 ) & (df['resting_potential'] > -90) & \
                 (df['membra_time_constant_tau'] > -25 ) &\
-                    (df['capacitance'] < 900) &  (df['capacitance'] > 10) & \
-                        (df['AP_heigth'] > 30) & \
-                            (df['max_repol'] > -100) & \
-                                (df['Rheobase'] > 0)
+                    (df['capacitance'] < 900) &  (df['capacitance'] > 10)
+    #(df['max_repol'] > -100) 
+    #(df['AP_heigth'] > 30) & \
+    # (df['Rheobase'] > 0) & \                  
 
     #include filter for TH ?
     df = df.loc[mask, :]
     return df
 
-def filter_on_hrs_incubation(df, min_inc_time):
-    mask = (df['hrs_incubation'] == 0) | (df['hrs_incubation'] >= min_inc_time)
+def filter_on_hrs_incubation(df, min_inc_time, max_hrs_incubation):
+    mask = (df['hrs_incubation'] == 0) | (df['hrs_incubation'] >= min_inc_time) 
     df = df.loc[mask, :]
+    if max_hrs_incubation < 50:
+        mask = (df['hrs_incubation'] <= max_hrs_incubation) 
+        df = df.loc[mask, :]
     return df
 
-def filter_adult_hrs_incubation_data(df_intr_props, min_age, hrs_inc, max_age = 151):
+def filter_adult_hrs_incubation_data(df_intr_props, min_age, hrs_inc, max_age = 151, max_hrs_incubation = 50):
     adult_df = patient_age_to_float(df_intr_props, min_age, max_age)
     adult_df = change_to_numeric(adult_df)
     adult_df = get_QC_data(adult_df)
-    adult_df = filter_on_hrs_incubation(adult_df, hrs_inc)
+    adult_df = filter_on_hrs_incubation(adult_df, hrs_inc, max_hrs_incubation)
     return adult_df
 
 def create_new_cell_IDs(df):
@@ -172,7 +175,7 @@ def get_precise_treatment(df):
 
 def dict_for_plotting():
     '''
-    key is the param as in the data column
+    key is the param as in the data table column
     values[0] plot title
     values[1] y asix
     values[2] plot y ticks
@@ -201,7 +204,7 @@ destintaion_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/i
 
     plt.title('AP ' + titles_dict[param][0] + ' time dependency', fontsize = 19)
     ax.set_xlabel('Time after cortex resection (hrs)', fontsize = 15)
-    ax.set_ylabel(titles_dict[param][1], fontsize = 15)
+
 
     date = str(datetime.date.today())
     
@@ -453,7 +456,7 @@ destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/p
         # 'D2 \n Ctrl','D1', 'D2 \n TTX' ,'D1', 'D2 \n 8mM','D2 \n 15mM'], size = 20)
         ax.set_ylabel(titles_dict[param][1], fontsize = 24)
         ax.set_yticks(ticks = titles_dict[param][2])
-        #plt.title(titles_dict[param][0], fontsize = 19, x = 0.5, y = 1)
+        ax.set_title(titles_dict[param][0], fontsize = 14)
 
     fig2.patch.set_facecolor('white')
     fig2.tight_layout()
@@ -468,7 +471,7 @@ destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/p
     
     treatments = ['Ctrl', 'high K']
     #treatments = ['Ctrl', 'TTX', 'high K']
-    titles_dict = pl_intr.dict_for_plotting()   
+    titles_dict = dict_for_plotting()   
 
     titles_dict_norm = {}
     for (key, value) in titles_dict.items():
@@ -491,7 +494,7 @@ destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/p
                 x = np.repeat((k + 0.5), len(df_plot))
                 x_plot.append(x)
 
-            if k in [1,3,5] and 'repatch' in data_type:
+            if k in [1,3,5]:
                 for c, cell in enumerate(df_plot['cell_ID_new']):
                     x1 = [x_plot[0][c], x[c]] 
                     y = df[param][df['cell_ID_new'] == cell]
@@ -1065,3 +1068,162 @@ destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/p
     date = str(datetime.date.today())
     plt.savefig(destination_dir  + date + data_type +'_postsynaptic_responses.png')
     plt.close(fig)
+
+
+###############
+#%%
+# Plots including TTX trreatment
+
+def plot_param_for_days_slice_TTX_incl(df, op_color_dict,
+destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/plots/intrinsic_properties/adult_slice/TTX_incl/'):
+
+    treatments = ['Ctrl', 'TTX', 'high K']
+    titles_dict = dict_for_plotting()
+
+    colors = ['#dede00', '#ff7f00', '#dede00', '#DA67BA', '#dede00', '#7FEE8F','#dede00','#186F25'] #Ctrl, TTX, 8mM Kcl, 15 mM Kcl
+
+    for u, param in enumerate(titles_dict.keys()): 
+        fig2 = plt.figure(figsize=(10,7))
+        ax = plt.subplot(1,1,1)
+        day_label = []
+        num_cels = {}
+        data_boxplot = []
+        for i, tr in enumerate(treatments):
+            for j, day in enumerate(df['day'].unique()):
+                k = j + 2*i 
+                df_plot = df[(df['treatment'] == tr) & (df['day'] == day)]
+                median = df_plot[param].median()
+                x = np.linspace(0.7+k, 1.2+k, len(df_plot))
+                if tr == 'high K' and day == 'D2':
+                    #ax.scatter(x, df_plot[param], alpha = 0.7, s = 40, c = df_plot['high K concentration'], cmap = colormap_K)
+                    y_8mm = df_plot[param].loc[df_plot['high K concentration'] == '8 mM'] 
+                    x_8 = np.linspace(0.7+k, 1.05+k, len(y_8mm))
+                    median_8 = np.median(y_8mm)
+                    y_15mm = df_plot[param].loc[df_plot['high K concentration'] == '15 mM'] 
+                    x_15 = np.linspace(1.1+k, 1.25+k, len(y_15mm))
+                    median_15 = np.median(y_15mm)
+                    ax.scatter(x_8, y_8mm, c = colors[5], s = 60, alpha = 0.5)
+                    ax.scatter(x_15, y_15mm, c = colors[7], s = 60, alpha = 0.5)
+                    ax.boxplot(y_8mm, positions = [k+0.6], notch = True, patch_artist=True, boxprops=dict(facecolor=colors[5], alpha = 0.8),
+                    medianprops = dict(linewidth=2.3, color = 'k'))
+                    ax.boxplot(y_15mm, positions = [k+1.55], notch = True, patch_artist=True, boxprops=dict(facecolor=colors[7], alpha = 0.8),
+                    medianprops = dict(linewidth=2.3, color = 'k'))
+                else:
+                    ax.boxplot(df_plot[param], positions = [k + 0.5], notch = True, patch_artist=True, boxprops=dict(facecolor=colors[k], alpha = 0.8),
+                    medianprops = dict(linewidth=2.3, color = 'k'))    
+                    ax.scatter(x, df_plot[param], c = colors[int(k)], s = 60, alpha = 0.5)
+                
+                # yerr = 1.253*(df_plot[param].std()/(math.sqrt(len(df_plot))))
+                # ax.scatter(1+k, median, color = 'k', marker = '_', s = 2000)
+                # ax.text(0.9+k, (1.05*median), str(round(median,2)), size = 12)
+                day_label.append(day)
+                num_cels[tr + ' ' + day] = len(df_plot)
+                data_boxplot.append(df_plot[param])
+            ax.text(1 + 2*i, int(np.max(df[param])), tr, size = 17, c = colors[2*i+1])
+            ax.text(1.7 + 2*i, int(np.max(df[param])), 'n = ' + str(len(df_plot)), size = 12, c = colors[2*i+1])
+
+        #plt.boxplot(data_boxplot, showbox = False)
+        ax.tick_params(axis='y', labelsize=22)
+        ax.set_xticks(ticks = [0.7, 1.7, 2.7, 3.7, 4.7, 5.8, 6.55], labels = ['D1', 
+        'D2 \n Ctrl', 'D1', 'D2 \n TTX','D1', 'D2 \n 8mM','D2 \n 15mM'], size = 20)
+        #when plotting TTX as well
+        # ax.set_xticks(ticks = [0.6,1.6,2.6,3.55,4.6, 5.6,6.6], labels = ['D1', 
+        # 'D2 \n Ctrl','D1', 'D2 \n TTX' ,'D1', 'D2 \n 8mM','D2 \n 15mM'], size = 20)
+
+        plt.title(titles_dict[param][0], fontsize = 19, x = 0.5, y = 1)
+        ax.set_ylabel(titles_dict[param][1], fontsize = 24)
+        ax.set_yticks(ticks = titles_dict[param][2])
+
+        plt.subplots_adjust(hspace=0.35)
+        fig2.patch.set_facecolor('white')
+        fig2.tight_layout()
+
+        date = str(datetime.date.today())
+        plt.savefig(destination_dir  + date + '_plot_' + param + '.pdf')
+        plt.close(fig2)
+
+def plot_param_for_days_repatch_plus_TTX(df, op_color_dict,
+destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/plots/intrinsic_properties/adult_repatch/TTX_included/'):
+    
+    treatments = ['Ctrl', 'TTX', 'high K']
+    titles_dict = dict_for_plotting()
+        
+    colors = ['#dede00', '#ff7f00', '#dede00', '#DA67BA', '#dede00', '#7FEE8F','#dede00','#186F25'] #Ctrl, TTX, 8mM Kcl, 15 mM Kcl
+    for u, param in enumerate(titles_dict.keys()): 
+        fig2 = plt.figure(figsize=(9,7))
+        ax = plt.subplot(1,1,1)
+        day_label = []
+        num_cels = {}
+        for i, tr in enumerate(treatments):
+            x_plot =[]
+            
+            for j, day in enumerate(df['day'].unique()):
+                k = j + 2*i  
+                df_plot = df[(df['treatment'] == tr) & (df['day'] == day)]
+                df_plot.reset_index(drop=True, inplace=True)
+                median = df_plot[param].median()
+                x = np.linspace(0.7+k, 1.3+k, len(df_plot))
+                x_plot.append(x)
+
+                if tr == 'high K' and day == 'D2':
+                    y_8mm = df_plot.loc[df_plot['high K concentration'] == '8 mM']
+                    x_8 = np.linspace(0.8+k, 1.05+k, len(y_8mm))
+                    #x_8 = x[:len(y_8mm)]
+                    median_8 = np.median(y_8mm[param])
+                    y_15mm = df_plot.loc[df_plot['high K concentration'] == '15 mM'] 
+                    x_15 = np.linspace(1.4+k, 1.65+k, len(y_15mm))
+                    #x_15 = x[-len(y_15mm):]
+                    median_15 = np.median(y_15mm[param])
+                    ax.scatter(x_8, y_8mm[param], c = colors[5], s = 80, zorder = 2, alpha = 0.8)
+                    ax.scatter(x_15, y_15mm[param], c = colors[7], s = 80, zorder = 2, alpha = 0.8)
+                    ax.plot([0.7+k, 1+k], [median_8, median_8], c = 'k', linestyle = 'solid')
+                    ax.plot([1.3+k, 1.6+k], [median_15, median_15], c = 'k', linestyle = 'solid')
+                    ax.text(k+0.65, median_8 + 0.5, str(round(median_8, 2)), size = 15)
+                    ax.text(k+1.25, median_15 + 0.5, str(round(median_15, 2)), size = 15)
+                    df_plot.insert(0, 'x', np.concatenate([x_15, x_8]))
+
+                    for c, cell in enumerate(df_plot['cell_ID_new']):
+                        #indx = index_s[c]
+                        x_K = df_plot['x'].loc[df_plot['cell_ID_new'] == cell].tolist()[0]
+                        x1 = [x_plot[0][c], x_K]
+                        y = df[param][df['cell_ID_new'] == cell]
+                        op = df_plot['OP'][df_plot['cell_ID_new'] == cell].tolist()[0]
+                        plt.plot(x1, y, '-', color = op_color_dict[op], alpha = 0.5, linewidth = 2, zorder = 1)
+
+                else:
+                    ax.scatter(x, df_plot[param], c = colors[int(k)], s = 80, zorder = 2, alpha = 0.8)
+                    ax.scatter(1+k, median, color = 'k', marker = '_', s = 2000, zorder = 2, alpha = 0.8)
+                    ax.text(0.75+k, (1.05*median), str(round(median,2)), size = 15)
+                    x_plot.append(x)
+                    if k in [1,3,5]:
+                        for c, cell in enumerate(df_plot['cell_ID_new']):
+                            #indx = index_s[c]
+                            x1 = [x_plot[0][c], x[c]] 
+                            y = df[param][df['cell_ID_new'] == cell]
+                            op = df_plot['OP'][df_plot['cell_ID_new'] == cell].tolist()[0]
+                            plt.plot(x1, y, '-', color = op_color_dict[op], alpha = 0.45, linewidth = 2, zorder = 1)
+
+                day_label.append(day)
+                num_cels[tr + ' ' + day] = len(df_plot)
+
+                # ax.text(1 + 2*i, int(np.max(df[param])), tr, size = 17, c = colors[2*i+1])
+                # ax.text(1.7 + 2*i, int(np.max(df[param])), 'n = ' + str(len(y_8mm)), size = 12, c = colors[2*i+1])
+    
+        ax.tick_params(axis='y', labelsize=22) 
+        ax.set_xticks(ticks = [1, 2, 3, 4, 5, 5.8, 6.55], labels = ['D1', 
+        'D2 \n Ctrl', 'D1', 'D2 \n TTX','D1', 'D2 \n 8mM','D2 \n 15mM'], size = 20)
+        #when plotting TTX as well
+        # ax.set_xticks(ticks = [0.6,1.6,2.6,3.55,4.6, 5.6,6.6], labels = ['D1', 
+        # 'D2 \n Ctrl','D1', 'D2 \n TTX' ,'D1', 'D2 \n 8mM','D2 \n 15mM'], size = 20)
+        ax.set_ylabel(titles_dict[param][1], fontsize = 24)
+        ax.set_yticks(ticks = titles_dict[param][2])
+        #plt.title(titles_dict[param][0], fontsize = 19, x = 0.5, y = 1)
+
+        fig2.patch.set_facecolor('white')
+        fig2.tight_layout()
+
+        date = str(datetime.date.today())
+        plt.savefig(destination_dir + date + '_plot_' + param + '.pdf')
+        plt.close(fig2)
+
+# %%

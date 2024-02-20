@@ -6,12 +6,12 @@ import sorting_functions as sort
 import funcs_for_results_tables as get_results
 
 
-#%%
-# OP = 'OP230426'
-# patcher = 'Verji'
-# tissue_source = 'Hamburg'
-# inj = 'full'
-# age = 'A'
+# #%%
+OP = 'OP231123'
+patcher = 'Verji'
+tissue_source = 'Bielefeld'
+inj = 'full'
+age = 40
 #%%
 #loading the updated experiments_overview and the old summary_data_table
 human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'
@@ -58,8 +58,30 @@ for OP in op_to_analyse:
     get_results.create_IFF_data_table(OP, patcher, '_meta_active_chans.json', inj, human_dir)
 
 
+#%%
+#run after QC checked df has been manually compared to the Onsets and the AP_prop plots
+#checks if somewhhre the capacitance was not calculated properly 
+#or if some reaptched cells are wrongly labeled
+
+work_dir = sort.get_work_dir(human_dir, OP, patcher)
+results_df = pd.read_excel(glob.glob(work_dir + '/data_tables/' + '*QC_passed' + '*.xlsx')[0])
+
+mask = (results_df['capacitance'] > 900) | (results_df['capacitance'] < 10) | (results_df['capacitance'].isnull())
+cap_mistakes = results_df.loc[mask, :]
+if len(cap_mistakes) > 0:
+    print(cap_mistakes.filename)
+
+repatch_df = results_df[results_df['repatch'] == 'yes']
+repatch_df.reset_index(inplace = True, drop = True)
+
+not_repatched_cells = []
+for cell in repatch_df['cell_ID'].unique():
+    if len(repatch_df[repatch_df['cell_ID'] == cell]) < 2:
+        not_repatched_cells.append(cell)
+if len(not_repatched_cells) > 0:
+    print(not_repatched_cells)
 
 #%%
 
-get_results.prapare_for_event_analysis(human_dir)
-connections_IC, connections_VC = get_results.collect_connections_df(human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/')
+# get_results.prapare_for_event_analysis(human_dir)
+# connections_IC, connections_VC = get_results.collect_connections_df(human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/')

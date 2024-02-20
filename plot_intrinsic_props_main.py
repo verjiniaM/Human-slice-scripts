@@ -32,9 +32,34 @@ adult_repatch_norm = pl_intr.get_normalized_df(adult_df_repatch)
 
 #plot all parameters 
 pl_intr.plot_param_for_days_slice(adult_df_slice_comparison, op_color_dict)
+pl_intr.plot_param_for_days_slice_TTX_incl(adult_df_slice_comparison, op_color_dict)
 #pl_intr.plot_param_for_days_repatch(adult_df_repatch, op_color_dict)
+pl_intr.plot_param_for_days_repatch_plus_TTX(adult_df_repatch, op_color_dict)
 pl_intr.plot_param_for_days_repatch_all_params(adult_df_repatch, op_color_dict)
-pl_intr.plot_param_for_days_repatch_norm(adult_repatch_norm, op_color_dict)
+#pl_intr.plot_param_for_days_repatch_norm(adult_repatch_norm, op_color_dict)
+
+###########################################################################################
+#%%
+###### Plot 3 h incubation data
+results_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/plots/intrinsic_properties/'
+
+adult_df_short = pl_intr.filter_adult_hrs_incubation_data(df_intr_props, min_age = 18, hrs_inc = 0, max_age = 151, max_hrs_incubation = 5) # QC criteria 
+#adult_df_short = adult_df_short[adult_df_short['area'] == 'temporal']
+op_color_dict = pl_intr.get_op_color_dict(adult_df)
+adult_df_short = pl_intr.create_new_cell_IDs(adult_df_short)
+#adult_df = pl_intr.get_precise_treatment(adult_df)
+
+#create slice comparison and repatch dataframes
+adult_df_slice_comparison_short = adult_df_short.loc[adult_df_short['repatch'] == 'no']
+adult_df_repatch_short = pl_intr.get_repatch_df(adult_df_short)
+adult_df_repatch_short = adult_df_repatch_short.sort_values(['cell_ID_new', 'treatment'])
+adult_repatch_norm_short = pl_intr.get_normalized_df(adult_df_repatch_short)
+
+#plot all parameters 
+pl_intr.plot_param_for_days_slice(adult_df_slice_comparison_short, op_color_dict, results_dir + 'adult_slice/3h_inc/')
+pl_intr.plot_param_for_days_repatch(adult_df_repatch_short, op_color_dict,results_dir + 'adult_repatch/3h_inc/')
+pl_intr.plot_param_for_days_repatch_all_params(adult_df_repatch_short, op_color_dict, results_dir + 'adult_repatch/3h_inc/')
+pl_intr.plot_param_for_days_repatch_norm(adult_repatch_norm_short, op_color_dict,results_dir + 'adult_repatch/3h_inc/')
 
 #%%
 #for connectivity summary plot

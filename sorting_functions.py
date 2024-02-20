@@ -5,6 +5,8 @@ import numpy as np
 import json
 import datetime
 import human_characterisation_functions as hcf
+import plotting_funcs
+import matplotlib as mpl
 
 #this function opens the alerady existing experiments_overview file and adds the latest OP info
 #patcher and op_folder have to be strings; so with " "
@@ -57,14 +59,14 @@ def add_cortex_out_time(human_dir, exp_view):
     date = str(datetime.date.today())
     exp_view.to_excel(human_dir + date + '_experiments_overview.xlsx', index = False)
 
-def get_sorted_file_list (dir):
+def get_sorted_file_list(dir):
     '''
     returns sorted file list
     '''
     file_list = sorted(os.listdir(dir))
     return file_list
 
-def get_lab_book (OP_dir):
+def get_lab_book(OP_dir):
     '''
     returns a pandas data frame of the (.xlsx) file from the OP dir
     '''
@@ -73,7 +75,7 @@ def get_lab_book (OP_dir):
         df_rec = pd.read_excel(lab_book_path, header = 1)
     return df_rec
 
-def get_abf_files (file_list):
+def get_abf_files(file_list):
     filenames = []
     for file in range(len(file_list)):
         #pclamp files
@@ -91,14 +93,14 @@ def sort_protocol_names (file_list, df_rec):
     def_slice_names = df_rec['slice'][slice_indx].tolist()
     
     index_dict = {}
-    dict_keys = ['vc', 'resting', 'freq analyse', 'ramp','con_screen', 'con_screen_VC',
-    'spontan','vc_end', 'vc_mini', 'minis', 'vc_mini_end', 'resting long']
+    dict_keys = ['vc', 'resting', 'freq analyse', 'characterization' ,'ramp',
+    'con_screen', 'con_screen_VC',
+    'spontan','vc_end', 'vc_mini', 'minis', 'vc_mini_end', 'resting_long']
     for key in dict_keys:
         index = df_rec.index[df_rec['protocol'] == key].tolist()
         #df_rec['protocol'][index] = np.nan
         index_dict[key] = index
         
-
     ic_indices = []
     for i in range(len(df_rec['protocol'])):
         name = df_rec['protocol'][i]
@@ -113,6 +115,10 @@ def sort_protocol_names (file_list, df_rec):
 #df_rec['protocol'][other_indices]
 
 def fix_slice_names (def_slice_names, slice_indx):
+    '''
+    makes a continuous list of the slice names
+    indexing it with a file index shows the slices this files belongs to
+    '''
     new_slice_names = []
     for i in range(len(def_slice_names)):
         if i < len(def_slice_names)-1:
@@ -122,10 +128,12 @@ def fix_slice_names (def_slice_names, slice_indx):
     slice_names  = [x for xs in new_slice_names for x in xs]
     return slice_names
 
-def get_work_dir(human_dir, OP, patcher):
+def get_work_dir(human_dir, OP, patcher: str):
     OP_folder = OP + '/'
     if patcher == 'Verji': 
         work_dir = human_dir + 'data_verji/'+ OP_folder
+    elif patcher == '':
+        work_dir = human_dir + OP_folder
     else:
         work_dir = human_dir + 'data_rosie/'+ OP_folder 
     return work_dir
@@ -133,9 +141,16 @@ def get_work_dir(human_dir, OP, patcher):
 def get_OP_metadata (human_dir, OP, patcher):
     work_dir = get_work_dir(human_dir, OP, patcher)
     file_list = get_sorted_file_list(work_dir)
+    jsons = get_json_files(file_list)
     df_rec = get_lab_book(work_dir)
     filenames = get_abf_files(file_list)
     slice_indx, def_slice_names, indices_dict = sort_protocol_names(file_list, df_rec)
+
+    if OP + '_indices_dict.json' in jsons:
+        indices_dict = from_json(work_dir, OP, '_indices_dict.json')
+    else: 
+        to_json(work_dir, OP, '_indices_dict.json', indices_dict)
+
     slice_names = fix_slice_names(def_slice_names, slice_indx)
     return work_dir, filenames, indices_dict, slice_names
 
@@ -146,6 +161,19 @@ def make_dir_if_not_existing(working_dir, new_dir):
     path = os.path.join(working_dir, new_dir)
     if os.path.isdir(path) == False: os.mkdir(path)
     return path
+
+def plot_trace_if_not_done(work_dir, dir_plots, filenames):
+    '''
+    check if the traces dir is empty and
+    only then plot the middle sweep for each filename
+    '''
+    traces_folder =  os.path.join(dir_plots, "traces/")
+    if os.path.isdir(traces_folder) == 0 :
+        for rec in range(len(filenames)):
+            filename = work_dir + filenames[rec]
+            plotting_funcs.plot_middle_sweep(filename)
+    else:
+            print("skipping plotting")
 
 def to_json (work_dir, OP, file_out, out_data):
     '''
@@ -345,3 +373,93 @@ def get_json_meta_high_K (human_dir, OP, patcher, file_out): # file_out = '_meta
     to_json(work_dir, OP, file_out, [vc_meta, charact_meta, resting_meta, resting_long_meta])
     json_meta = from_json(work_dir, OP, file_out)
     return json_meta
+
+
+#########
+# used for EPSP manual analysis
+
+def concat_dfs_in_folder(folder_path):
+    '''
+    reads all the excels files from the folder 
+    example input(str): verji_dir + 'OP*' + '/data_tables/'  + '*RMP_high_K' + '*.xlsx'
+    output: pandas datafframe with all excels concatinated
+
+    '''
+    if folder_path[-5:] == '.xlsx':
+        df_paths = sorted(glob.glob(folder_path))
+    else:
+        df_paths = sorted(glob.glob(folder_path + '*.xlsx'))
+    df_combined = pd.DataFrame()
+    for path in df_paths:
+        df = pd.read_excel(path)
+        df_combined = pd.concat([df_combined[:], df]).reset_index(drop=True)
+    return df_combined
+
+def create_full_results_df(meta_keep_path, results_QC_path, verji_dir):
+    '''
+    takes one mate df where all files need to be kept
+    takes a results df with summary sheet and a results sheet for each recording
+    collects all RMP_high_K datatables from verji_dir
+    adds metadata from them to the results_keep dataframe
+    
+    '''
+
+    meta_keep = pd.read_excel(meta_keep_path)
+
+    meta_keep_IDs = []
+    for i in range(len(meta_keep)):
+        meta_keep_IDs.append(meta_keep['Name of recording'][i][:-4] + '_' + str(meta_keep['Channels to use'][i]))
+
+    #results
+    results_df = pd.read_excel(results_QC_path + 'complete_QC_results.xlsx')
+    results_file = pd.ExcelFile(results_QC_path + 'complete_QC_results.xlsx')
+
+    results_IDs = []
+    for j in range(len(results_df)):
+        results_IDs.append(results_df['Recording filename'][j][:-4] + '_' + str(results_df['Channel'][j]))
+
+    missing_file_lines = list(set(results_file.sheet_names) - set(results_IDs))
+    in_meta_not_in_results = list(set(meta_keep_IDs) - set(results_IDs))
+    results_exclude = list(set(results_IDs) - set(meta_keep_IDs))
+
+    #if all of the above 3 lists are empy continue with a piece of heart
+
+    #take more metadata from the tables in the data folders of the recordings
+    RMP_high_K_all = concat_dfs_in_folder(verji_dir + 'OP*' + '/data_tables/'  + '*RMP_high_K' + '*.xlsx')
+
+    OPs, hrs_incub, cell_ID, recording_time, resting_potential, holding_minus_70_y_o_n, incubation_solution, \
+        recording_in, tissue_source, patient_age, K_concentration,  temp = [],[], [], [], [], [], [], [], [], [], [], []
+    #adding metadata columns 
+    for i, fn in enumerate(results_df['Recording filename']):
+        chan = results_df['Channel'][i]
+        dat_to_add = RMP_high_K_all[(RMP_high_K_all['filename'] == fn) & 
+                    (RMP_high_K_all['cell_ch'] == chan)]
+        if len(dat_to_add) == 0:
+            results_df =  results_df.drop(i)
+            continue
+        
+        OPs.append(dat_to_add['OP'].item())
+        hrs_incub.append(dat_to_add['hrs_incubation'].item())
+        cell_ID.append(dat_to_add['cell_ID'].item())
+        recording_time.append(dat_to_add['recording_time'].item())
+        list_restings = dat_to_add['resting_potential'].item()[1:-1].split(',') 
+        RMP = np.mean([float(i) for i in list_restings ])
+        resting_potential.append(RMP)
+        holding_minus_70_y_o_n.append(dat_to_add['holding_minus_70_y_o_n'].item())
+        incubation_solution.append(dat_to_add['incubation_solution'].item())
+        recording_in.append(dat_to_add['recording_in'].item())
+        tissue_source.append(dat_to_add['tissue_source'].item())
+        patient_age.append(dat_to_add['patient_age'].item())
+        K_concentration.append(dat_to_add['K concentration'].item())
+        temp.append(dat_to_add['temperature'].item())
+
+    list_of_lists = [OPs, hrs_incub, cell_ID, recording_time, resting_potential, holding_minus_70_y_o_n, incubation_solution, \
+        recording_in, tissue_source, patient_age, K_concentration, temp]
+    list_col_names = ['OP', 'hrs_incub', 'cell_ID', 'recording_time', 'resting_potential', 'holding_minus_70_y_o_n', 'incubation_solution', \
+        'recording_in', 'tissue_source', 'patient_age', 'K_concentration', 'temperature']
+
+    #columns_to_include = list(set(list(RMP_high_K_all.columns)) - set(list(results_df.columns)))
+    for i, col in enumerate(list_of_lists):
+        results_df.insert(i, list_col_names[i], col)
+    
+    return results_df

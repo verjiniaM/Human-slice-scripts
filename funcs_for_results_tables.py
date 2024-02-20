@@ -19,27 +19,12 @@ def get_intrinsic_properties_df(human_dir, OP, tissue_source, patcher, age, inj)
     '''
     work_dir, filenames, indices_dict, slice_names = sort.get_OP_metadata(human_dir, OP, patcher)
 
-    # if not already existing, creates an indices dict .json file
-    # useful when indices were fixed by hand so that the rest of the analysis could run smoothly
-    file_list = sort.get_sorted_file_list(work_dir)
-    jsons = sort.get_json_files(file_list)
-    if OP + '_indices_dict.json' in jsons:
-        indices_dict = sort.from_json(work_dir, OP, '_indices_dict.json')
-    else: 
-        sort.to_json(work_dir, OP, '_indices_dict.json', indices_dict)
-
     #creating a dir to save plots and data_tables (if not existing)
     dir_plots = sort.make_dir_if_not_existing (work_dir, 'plots')
     sort.make_dir_if_not_existing (work_dir, 'data_tables')
 
-    #check if the traces dir is empty and only then plot the mimiddle sweep for each filename
-    traces_folder =  os.path.join(dir_plots, "traces/")
-    if os.path.isdir(traces_folder) == 0 :
-        for rec in range(len(filenames)):
-            filename = work_dir + filenames[rec]
-            plotting_funcs.plot_middle_sweep(filename)
-    else:
-         print("skipping plotting")
+    #check if the traces dir is empty and only then plot the middle sweep for each filename
+    sort.plot_trace_if_not_done(work_dir, dir_plots, filenames)
 
     #Correct indices if needed
     [print(key,':',value) for key, value in indices_dict.items()]
@@ -55,12 +40,14 @@ def get_intrinsic_properties_df(human_dir, OP, tissue_source, patcher, age, inj)
     #creating the dataframe
     df_OP = pd.DataFrame(columns=['filename', 'slice', 'cell_ch', 'cell_ID', 'day', 'treatment', 
     'hrs_incubation', 'repatch', 'hrs_after_OP', 'Rs', 'Rin', 'resting_potential', 'max_spikes', 
-    'Rheobase', 'AP_heigth', 'TH', 'max_depol', 'max_repol', 'membra_time_constant_tau', 'capacitance'])
+    'Rheobase', 'AP_heigth', 'TH', 'max_depol', 'max_repol', 'membra_time_constant_tau', 'capacitance', 
+    'Rheobse_ramp', 'AP_halfwidth'])
 
     for i in range(len(indices_dict['vc'])):
         vc = indices_dict['vc'][i]
         vm = indices_dict['resting'][i]
         char = indices_dict['freq analyse'][i]
+        ramp = indices_dict['ramp'][i]
         slic = slice_names[vc]
         treatment = active_chans_meta['treatment'][i]
         day = 'D1'
@@ -70,6 +57,7 @@ def get_intrinsic_properties_df(human_dir, OP, tissue_source, patcher, age, inj)
         filename_vc = work_dir + filenames[vc]
         filename_vm = work_dir + filenames[vm]
         filename_char = work_dir + filenames[char]
+        filename_ramp = work_dir + filenames[ramp]
         #time_after_op = sort.get_time_after_OP(filename_char, cortex_out_time)
         #filename_con_screen = work_dir + filenames[indices_dict['con_screen'][i]]
 
@@ -79,19 +67,23 @@ def get_intrinsic_properties_df(human_dir, OP, tissue_source, patcher, age, inj)
         time_after_op = sort.get_time_after_OP(filename_char, cortex_out_time)
         Rs, Rin = hcf.get_access_resistance(filename_vc, active_channels) 
         RMPs = hcf.get_RMP(filename_vm, active_channels)
+
+        rheos, THs, THs_in_trace, swps = hcf.get_rheobase_from_ramp(filename_ramp, active_channels)
         params1_df = pd.DataFrame({'filename': filenames[char], 'slice' : slic, 'cell_ch': active_channels,
-        'hrs_after_OP' : time_after_op,
-        'cell_ID':cell_IDs, 'day' : day , 'treatment': treatment, 'Rs' : Rs, 'Rin': Rin, 'resting_potential': RMPs })
+        'hrs_after_OP' : time_after_op, 'cell_ID':cell_IDs, 'day' : day , 'treatment': treatment, 
+        'Rs' : Rs, 'Rin': Rin, 'resting_potential': RMPs})
 
         charact_params  = hcf.all_chracterization_params(filename_char, active_channels, inj)
         df_char = pd.DataFrame.from_dict(charact_params)
 
         df_to_add = pd.concat([params1_df, df_char], axis = 1)
+        df_to_add.insert(len(df_to_add.columns), 'Rheobse_ramp', rheos)
         df_OP = pd.concat([df_OP.loc[:], df_to_add]).reset_index(drop=True)
 
         #plotting function
         plotting_funcs.plot_vc_holding (filename_vc, active_channels)
         plotting_funcs.plots_for_charact_file(filename_char, active_channels, inj)
+        plotting_funcs.plot_rheobase_trace(filename_ramp, active_channels)
         #plotting_funcs.plot_connect(filename_con_screen, active_channels)
      
     tissue = pd.Series(tissue_source).repeat(len(df_OP))
@@ -110,11 +102,6 @@ def get_intrinsic_properties_df(human_dir, OP, tissue_source, patcher, age, inj)
 def get_QC_access_resistance_df (human_dir, OP, patcher):
     work_dir, filenames, indices_dict, slice_names = sort.get_OP_metadata(human_dir, OP, patcher)
     
-    file_list = sort.get_sorted_file_list(work_dir)
-    jsons = sort.get_json_files(file_list)
-    if OP + '_indices_dict.json' in jsons:
-        indices_dict = sort.from_json(work_dir, OP, '_indices_dict.json')
-
     if indices_dict['vc_end'] == []:
         return "no VC end files found; skipping"
         
@@ -170,17 +157,11 @@ def get_QC_access_resistance_df (human_dir, OP, patcher):
 
     sort.to_json(work_dir, OP, '_meta_active_chans.json', active_chans_meta)
     df_qc.to_excel(work_dir + 'data_tables/' + OP + '_QC_measures_rs.xlsx', index=False) 
-    #remove_bad_data(OP, patcher, human_dir)
+    remove_bad_data(OP, patcher, human_dir)
     #df_qc.to_csv(work_dir + 'data_tables/' + OP[:-1] + '_QC_measures_rs.csv')
 
 def get_con_params_df (human_dir, OP, patcher):
     work_dir, filenames, indices_dict, slice_names = sort.get_OP_metadata(human_dir, OP, patcher)
-
-    file_list = sort.get_sorted_file_list(work_dir)
-    jsons = sort.get_json_files(file_list)
-    if OP + '_indices_dict.json' in jsons:
-        indices_dict = sort.from_json(work_dir, OP, '_indices_dict.json')
-
     json_meta = sort.get_json_meta(human_dir, OP, patcher, '_meta_active_chans.json')
     
     active_chans_screen, vc_indx  = [], []
@@ -267,12 +248,6 @@ def get_con_params_df (human_dir, OP, patcher):
 
 def get_con_screen_VC (human_dir, OP, patcher):
     work_dir, filenames, indices_dict, slice_names = sort.get_OP_metadata(human_dir, OP, patcher)
-
-    file_list = sort.get_sorted_file_list(work_dir)
-    jsons = sort.get_json_files(file_list)
-    if OP + '_indices_dict.json' in jsons:
-        indices_dict = sort.from_json(work_dir, OP, '_indices_dict.json')
-
     json_meta = sort.get_json_meta(human_dir, OP, patcher, '_meta_active_chans.json')
     
     add_pre_post_chans = input('Do you need to add pre and post channels in con_screen_VC? ( y / n)')
@@ -346,11 +321,7 @@ def get_con_screen_VC (human_dir, OP, patcher):
 
 def get_spontan_QC(human_dir, OP, patcher):
     work_dir, filenames, indices_dict, slice_names = sort.get_OP_metadata(human_dir, OP, patcher)
-    file_list = sort.get_sorted_file_list(work_dir)
-    jsons = sort.get_json_files(file_list)
-    if OP + '_indices_dict.json' in jsons:
-        indices_dict = sort.from_json(work_dir, OP, '_indices_dict.json')
-        
+    
     active_chans_meta = sort.get_json_meta(human_dir, OP, patcher, '_meta_active_chans.json')
     if len(indices_dict['spontan']) == len(indices_dict['vc']):
         active_chans_meta[0]['active_chans_spontan'] = active_chans_meta[0]['active_chans']
@@ -380,7 +351,7 @@ def get_spontan_QC(human_dir, OP, patcher):
         treatment = active_chans_meta[3][slic[:2]]
         #treatment = active_chans_meta[0]['treatment'][i]
 
-        spontan_QC = hcf.rec_stability (filename_spontan, active_channels , 60)
+        spontan_QC = hcf.rec_stability(filename_spontan, active_channels , 60)
         df_QC = pd.DataFrame(spontan_QC).T
         df_QC['cell_ch'] = df_QC.index 
         df_QC.insert(0, 'cell_ch', df_QC.pop('cell_ch'))
@@ -392,17 +363,21 @@ def get_spontan_QC(human_dir, OP, patcher):
         df_QC.insert(len(df_QC),'treatment', treatment)
 
         record_sorting = pd.concat([record_sorting.loc[:], df_QC]).reset_index(drop=True)
-    
+    #remove cells where no swps to analyse
+    if len(record_sorting) > 0:
+        mask = []
+        for i in record_sorting.swps_to_analyse:
+            if len(i) <= 0:
+                mask.append(False)
+                continue
+            mask.append(True)
+        record_sorting = record_sorting.loc[mask,:]
     sort.to_json(work_dir, OP, '_meta_active_chans.json', active_chans_meta)
     record_sorting.to_excel(work_dir + 'data_tables/' + OP + '_QC_measures_spontan.xlsx', index=False) 
     #record_sorting.to_csv(work_dir + 'data_tables/' + OP + '_QC_measures_spontan.csv')
 
 def get_minis_QC(human_dir, OP, patcher):
     work_dir, filenames, indices_dict, slice_names = sort.get_OP_metadata(human_dir, OP, patcher)
-    file_list = sort.get_sorted_file_list(work_dir)
-    jsons = sort.get_json_files(file_list)
-    if OP + '_indices_dict.json' in jsons:
-        indices_dict = sort.from_json(work_dir, OP, '_indices_dict.json')
 
     #indices_dict = sort.from_json(work_dir, OP, '_indices_dict.json')[0]
     active_chans_meta = sort.get_json_meta(human_dir, OP, patcher, '_meta_active_chans.json')
@@ -453,23 +428,12 @@ def get_intrinsic_properties_df_no_VM_file (human_dir, OP, tissue_source, patche
     '''
     work_dir, filenames, indices_dict, slice_names = sort.get_OP_metadata(human_dir, OP, patcher)
    
-    file_list = sort.get_sorted_file_list(work_dir)
-    jsons = sort.get_json_files(file_list)
-    if OP + '_indices_dict.json' in jsons:
-        indices_dict = sort.from_json(work_dir, OP, '_indices_dict.json')
-
     #creating a dir to save plots and data_tables (if not existing)
     dir_plots = sort.make_dir_if_not_existing (work_dir, 'plots')
     sort.make_dir_if_not_existing (work_dir, 'data_tables')
 
     #check if the traces dir is empty and only then plot the mimiddle sweep for each filename
-    traces_folder =  os.path.join(dir_plots, "traces/")
-    if os.path.isdir(traces_folder) == 0 :
-        for rec in range(len(filenames)):
-            filename = work_dir + filenames[rec]
-            plotting_funcs.plot_middle_sweep(filename)
-    else:
-         print("skipping plotting")
+    sort.plot_trace_if_not_done(work_dir, dir_plots, filenames)
 
     #Correct indices if needed
     [print(key,':',value) for key, value in indices_dict.items()]
@@ -491,7 +455,7 @@ def get_intrinsic_properties_df_no_VM_file (human_dir, OP, tissue_source, patche
     #creating the dataframe
     df_OP = pd.DataFrame(columns=['filename', 'slice', 'cell_ch', 'cell_ID', 'day', 'treatment', 
     'hrs_incubation', 'repatch', 'hrs_after_OP', 'Rs', 'Rin', 'resting_potential', 'max_spikes', 'Rheobase', 
-    'AP_heigth', 'TH', 'max_depol', 'max_repol', 'membra_time_constant_tau', 'capacitance'])
+    'AP_heigth', 'TH', 'max_depol', 'max_repol', 'membra_time_constant_tau', 'capacitance', 'AP_halfwidth'])
 
     for i in range(len(indices_dict['vc'])):
         vc = indices_dict['vc'][i]
@@ -588,47 +552,80 @@ def check_cell_IDs (human_dir, OP, patcher):
 
 
 # following functions for data organization adn collection preceeding automatic event analysis
-def get_metadata_for_event_analysis(human_dir, OP, patcher, event_type): # add event_type 
+def get_metadata_for_event_analysis(human_dir, OP, patcher:str, event_type): # add event_type 
     '''
-    event_type = 'minis', 'spontan'
+    event_type = 'minis', 'spontan', 'EPSPs'
     '''
     work_dir = sort.get_work_dir(human_dir, OP, patcher)
+
     if event_type == 'minis':
         df_events = pd.read_excel(work_dir + 'data_tables/' + OP + '_QC_measures_minis.xlsx')
+        df_meta = pd.DataFrame({
+            'Name of recording': df_events['filename'],  
+            'Channels to use': df_events['cell_ch'], 
+            'Sampling rate (Hz)': 20_000,
+            'Analysis start at sweep (number)' : 1,
+            'Cut sweeps first part (ms)' : 5_500,
+            'Cut sweeps last part (ms)' : 0,
+            'Analysis length (min)' : 2,
+            'swps_to_analyse' : df_events['swps_to_analyse'],
+            'OP': df_events['OP'],
+            'event_type' : event_type, 
+            'treatment' : df_events['treatment'], 
+            'hrs_incubation' : df_events['hrs_incubation'][-1:],
+            'slice' : df_events['slice'],
+            'patcher' : patcher
+            })
+
     elif event_type == 'spontan':
         df_events = pd.read_excel(work_dir + 'data_tables/' + OP + '_QC_measures_spontan.xlsx')
         df_intrinsic = pd.read_excel(glob.glob(work_dir + 'data_tables/' + 'QC_passed_' + '*.xlsx')[0])
+
+        df_meta = pd.DataFrame({
+            'Name of recording': df_events['filename'],  
+            'Channels to use': df_events['cell_ch'], 
+            'Sampling rate (Hz)': 20_000,
+            'Analysis start at sweep (number)' : 1,
+            'Cut sweeps first part (ms)' : 5_500,
+            'Cut sweeps last part (ms)' : 0,
+            'Analysis length (min)' : 2,
+            'swps_to_analyse' : df_events['swps_to_analyse'],
+            'OP': df_events['OP'],
+            'event_type' : event_type,
+            'cell_ID' : df_events['cell_ID'],
+            'hrs_incubation': df_intrinsic['hrs_incubation'][-1:],
+            'treatment' : df_events['treatment'], 
+            'slice' : df_events['slice'],
+            'patcher' : patcher
+            })
+
+    elif event_type == 'EPSPs':
+        df_events = pd.read_excel(work_dir + 'data_tables/RMP_high_K_' + OP + '.xlsx')
+        #df_intrinsic = pd.read_excel(glob.glob(work_dir + 'data_tables/' + 'QC_passed_' + '*.xlsx')[0])
+
+        df_meta = pd.DataFrame({
+            'Name of recording': df_events['filename'],  
+            'Channels to use': df_events['cell_ch'], 
+            'Sampling rate (Hz)': 20_000,
+            'Analysis start at sweep (number)' : 1,
+            'Cut from datapoint' : 0,
+            'Cut to datapoint' : 0,
+            'swps_to_delete' : None,
+            'OP': df_events['OP'],
+            'event_type' : event_type, 
+            'recording_in' : df_events['recording_in'], 
+            'slice' : df_events['slice'],
+            'patcher' : patcher
+            })
     else: 
         print('Please enter a valid event type')
-
-    df_meta = pd.DataFrame({
-        'Name of recording': df_events['filename'],  
-        'Channels to use': df_events['cell_ch'], 
-        'Sampling rate (Hz)': 20_000,
-        'Analysis start at sweep (number)' : 1,
-        'Cut sweeps first part (ms)' : 5_500,
-        'Cut sweeps last part (ms)' : 0,
-        'Analysis length (min)' : 2,
-        'swps_to_analyse' : df_events['swps_to_analyse'],
-        'OP': df_events['OP'],
-        'event_type' : event_type, 
-        'treatment' : df_events['treatment'], 
-        'slice' : df_events['slice'],
-        'patcher' : patcher, 
-        })
-
-    if event_type == 'spontan':
-        df_meta.insert(10, 'cell_ID', df_events['cell_ID'])
-        df_meta.insert(11, 'hrs_incubation', df_intrinsic['hrs_incubation'][-1:])
-    if event_type == 'minis':
-        df_meta.insert(11, 'hrs_incubation', df_events['hrs_incubation'][-1:])
 
     df_meta.to_excel(work_dir + 'data_tables/' + event_type + '_meta_' + OP + '.xlsx', index=False) 
 
 #%%
 # Functions for full analysis (not OP-based)
 
-def prapare_for_event_analysis(human_dir):
+def prapare_for_event_analysis(human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'):
     '''
     checks mini or spontan experiments surgery in the '*experiments_overview.xlsx'
     puts all files to be analyzed in human_dir + '/meta_events/[spontan/mini]_files/'
@@ -636,19 +633,20 @@ def prapare_for_event_analysis(human_dir):
     '''
     exp_view = pd.read_excel(glob.glob(human_dir + '*experiments_overview.xlsx')[0]) 
     date = str(datetime.date.today())
-
-    #op_to_analyse = exp_view['OP'][exp_view['analysed_minis'] == 'no']
-    meta_df_mini, meta_df_spontan = pd.DataFrame(), pd.DataFrame()
+    
+    op_to_analyse = ['OP230914', 'OP231005', 'OP231109', 'OP231123', 'OP231130']
+    meta_df_mini, meta_df_spontan, meta_df_EPSPs = pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
     for i in range(len(exp_view)): #ran to range 22
-
         if exp_view['minis'][i] == 'yes':    
             patcher =  exp_view['patcher'][i]
             OP = exp_view['OP'][i]
             get_metadata_for_event_analysis(human_dir, OP, patcher, 'minis') 
             work_dir_mini = sort.get_work_dir(human_dir, OP, patcher)
             df_mini = pd.read_excel(work_dir_mini + 'data_tables/minis_meta_' + OP + '.xlsx') 
+            #moving files directly to the recordings folder in event analysis
             for f in df_mini['Name of recording']:
-                shutil.copy(os.path.join(work_dir_mini, f), human_dir + '/meta_events/mini_files/')
+                shutil.copy(os.path.join(work_dir_mini, f), '/Users/verjim/spontaneous-postsynaptic-currents-detection/recordings/')
+            #     shutil.copy(os.path.join(work_dir_mini, f), human_dir + '/meta_events/mini_files/')
             meta_df_mini = pd.concat([meta_df_mini.loc[:], df_mini]).reset_index(drop=True)
 
         if exp_view['spontaneous'][i] == 'yes':    
@@ -657,9 +655,19 @@ def prapare_for_event_analysis(human_dir):
             get_metadata_for_event_analysis(human_dir, OP, patcher, 'spontan') 
             work_dir_spontan = sort.get_work_dir(human_dir, OP, patcher)
             df_spontan = pd.read_excel(work_dir_spontan + 'data_tables/spontan_meta_' + OP + '.xlsx') 
+            #moving files directly to the recordings folder in event analysis
             for f in df_spontan['Name of recording']:
-                shutil.copy(os.path.join(work_dir_spontan, f), human_dir + '/meta_events/spontan_files/')
+                shutil.copy(os.path.join(work_dir_spontan, f), '/Users/verjim/spontaneous-postsynaptic-currents-detection/recordings/')
+            #     shutil.copy(os.path.join(work_dir_spontan, f), human_dir + '/meta_events/spontan_files/')
             meta_df_spontan = pd.concat([meta_df_spontan.loc[:], df_spontan]).reset_index(drop=True)
+
+        if exp_view['EPSPs_highK'][i] == 'yes':  
+            patcher = exp_view['patcher'][i]
+            OP = exp_view['OP'][i]
+            get_metadata_for_event_analysis(human_dir, OP, patcher, 'EPSPs') 
+            work_dir_EPSPs = sort.get_work_dir(human_dir, OP, patcher)
+            df_EPSPs = pd.read_excel(work_dir_EPSPs + 'data_tables/EPSPs_meta_' + OP + '.xlsx') 
+            meta_df_EPSPs = pd.concat([meta_df_EPSPs.loc[:], df_EPSPs]).reset_index(drop=True)
 
     #remove any files where there's nothing to analyse
     meta_df_mini.reset_index(inplace = True, drop = True)
@@ -671,10 +679,16 @@ def prapare_for_event_analysis(human_dir):
     for i in reversed(range(len(meta_df_spontan))):
         if meta_df_spontan['swps_to_analyse'][i] == '[]':
             meta_df_spontan = meta_df_spontan.drop([meta_df_spontan.index[i]])
+    
+    # meta_df_EPSPs.reset_index(inplace = True, drop = True)
+    # for i in reversed(range(len(meta_df_EPSPs))):
+    #     if meta_df_EPSPs['swps_to_analyse'][i] == '[]':
+    #         meta_df_EPSPs = meta_df_EPSPs.drop([meta_df_EPSPs.index[i]])
 
     #save data 
     meta_df_mini.to_excel(human_dir + '/meta_events/meta_files_to_analyse/' + date + 'minis_meta.xlsx',index=False)
     meta_df_spontan.to_excel(human_dir + '/meta_events/meta_files_to_analyse/' + date + 'spontan_meta.xlsx',index=False)
+    meta_df_EPSPs.to_excel(human_dir + '/meta_events/EPSPs/meta_dfs/' + date + 'EPSPs_meta.xlsx',index=False)
     print('Meta data for events is saved. Files are copied to desired folders. Ready to proceed with event analysis. ')
 
 
@@ -850,7 +864,75 @@ def get_num_aps_and_IFF_data_culumns(df):
     return num_aps_indx, IFF_indx
 
 
+#### For manual EPSP analysis post-processing
+
+def add_sheets_from_df_to_QC_checked_df():
+    '''
+
+    '''
+    results_all_path = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/meta_events/EPSPs/results_df/complete/'
+    df_name = 'results_EPSPs_21.12.2023_manualy_modified.xlsx'
+
+    results_df_QC = pd.read_excel(results_all_path[:-9] + 'QC_ed/QC_' + df_name)
+
+    result_IDs_QC = []
+    for j in range(len(results_df_QC)): #for each filename
+        result_IDs_QC.append(results_df_QC['Recording filename'][j][:-4] + '_' + str(results_df_QC['Channel'][j]))
+
+    results_df = load_workbook(results_all_path + df_name)
+    old_file = load_workbook(results_all_path[:-9] + 'QC_ed/QC_' + df_name)
+
+    writer = pd.ExcelWriter(results_all_path[:-9] + 'QC_ed/QC_' + df_name, engine = 'openpyxl')
+    writer.book = old_file 
+
+    for i in result_IDs_QC:
+        df = pd.read_excel(results_all_path +  df_name, sheet_name = i)
+        df.to_excel(writer, sheet_name = i)
+    writer.close()
+
+    # if you want to check if it worked
+    # df_check = pd.ExcelFile(results_all_path[:-9] + 'QC_ed/QC_' + df_name)
+    # missing_data = sorted(list(set(result_IDs_QC) - set(df_check.sheet_names)))
+    # print(missing_data)
+
+def check_if_data_missing_in_results_df ():
+    meta_dfs_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/meta_events/EPSPs/meta_dfs/original_/'
+    meta_all = sort.concat_dfs_in_folder(meta_dfs_dir) 
+
+    #find the duplicated rows
+    duplicates_meta = meta_all.loc[meta_all.duplicated()].sort_values(['Name of recording', 'Channels to use']).reset_index(drop = True)
+
+    meta_keep = meta_all.loc[meta_all['comment'] == 'keep'].reset_index(drop = True)
+
+    meta_keep_IDs = []
+    for i in range(len(meta_keep)):
+        meta_keep_IDs.append(meta_keep['Name of recording'][i][:-4] + '_' + str(meta_keep['Channels to use'][i]))
 
 
+    results_all_path = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/meta_events/EPSPs/results_df/complete/'
+    df_name = 'results_12.01.2024_all.xlsx'
 
-# %%
+    results_file = pd.ExcelFile(results_all_path + df_name)
+    results_df = pd.read_excel(results_all_path +  df_name)
+
+    result_IDs_all = []
+    for j in range(len(results_df)):
+        result_IDs_all.append(results_df['Recording filename'][j][:-4] + '_' + str(results_df['Channel'][j]))
+
+    results_exclude = list(set(result_IDs_all) - set(meta_keep_IDs))
+
+    if results_exclude != []:
+        for k in results_exclude:
+            fn = k[:-2] + '.abf'
+            chan = np.int64(k[-1])
+            indx = results_df.loc[(results_df['Recording filename'] == fn) & \
+                (results_df['Channel'] == chan)].index
+            results_df.drop(indx, axis=0, inplace=True)
+        results_df.reset_index(inplace = True, drop = True)
+
+    result_IDs_keep = []
+    for g in range(len(results_df)):
+        result_IDs_keep.append(results_df['Recording filename'][g][:-4] + '_' + str(results_df['Channel'][g]))
+
+    missing_data = sorted(list(set(result_IDs_keep) - set(results_file.sheet_names)))
+    print(missing_data)

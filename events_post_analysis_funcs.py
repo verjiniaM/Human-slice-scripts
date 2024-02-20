@@ -18,8 +18,8 @@ def copy_event_analysis_data_to_analysis_folder(event_type):
     date = str(datetime.date.today())
 
     human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'
-    shutil.copy(results, human_dir + '/meta_events/results/output_algirithm/' + event_type + '_' + date + '_results.xlsx')
-    shutil.copy(metadata, human_dir + '/meta_events/analyzed_metadata/' + event_type + '_' + date + '_metadata.xlsx')
+    shutil.copy(results, human_dir + 'meta_events/results/output_algirithm/' + event_type + '_' + date + '_results.xlsx')
+    shutil.copy(metadata, human_dir + 'meta_events/analyzed_metadata/' + event_type + '_' + date + '_metadata.xlsx')
 
 def post_events_analysis_add_metadata(event_type, human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/',
     results = '/Users/verjim/spontaneous-postsynaptic-currents-detection/results/results.xlsx',
@@ -168,15 +168,15 @@ def remove_noisy_traces(df):
     df.reset_index(inplace = True, drop = True)
     return df
 
-def get_n_nums_per_day(df):
-    treatments = ['Ctrl', 'TTX', 'high K']
-    days = df['day'].unique() 
-    
-    n_nums_dict = {}
-    for tr in treatments:
-        for day in days:
-            n_nums_dict[day + ' ' + tr] = len(df[(df['day'] == day) & (df['treatment'] == tr)])
-    return n_nums_dict
+    def get_n_nums_per_day(df):
+        treatments = ['Ctrl', 'TTX', 'high K']
+        days = df['day'].unique() 
+        
+        n_nums_dict = {}
+        for tr in treatments:
+            for day in days:
+                n_nums_dict[day + ' ' + tr] = len(df[(df['day'] == day) & (df['treatment'] == tr)])
+        return n_nums_dict
 
 def get_repatched_cells(df):
     '''
@@ -202,7 +202,9 @@ save_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/plots/ev
     Takes the n_nums dictionary for each condition [day x treatemtn]
     scatter plot of the datapoints and median
     '''
-    colors = ['moccasin', '#ff7f00', 'moccasin', '#4daf4a','moccasin','#377eb8']
+
+    colors = ['#dede00', '#ff7f00', '#dede00', '#DA67BA', '#dede00', '#7FEE8F'] #Ctrl, TTX, 8mM Kcl, 15 mM Kcl
+
     title1 = 'Spontaneous EPSCs'
     cmap = plt.cm.get_cmap('tab20')
     op_color_dict = {}
@@ -225,7 +227,7 @@ save_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/plots/ev
         x_plot.append(x)
         y = plot_df['Average amplitude (pA)']
         median = np.median(y)
-        ax.scatter(x, y, alpha = 0.8, c = colors[k], s = 40)
+        ax.scatter(x, y, alpha = 0.7, c = colors[k], s = 40)
         ax.plot([0.8+k, 1.2+k], [median, median], c = 'k', linestyle = 'solid', linewidth = 2)
         day_label.append(comb)
         ax.text(k+0.85, median + 0.5, str(round(median, 2)), size = 15)
@@ -235,7 +237,7 @@ save_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/plots/ev
                 x1 = [x_plot[0][c], x[c]] 
                 y = df['Average amplitude (pA)'][df['cell_ID'] == cell]
                 op = plot_df['OP'][plot_df['cell_ID'] == cell].tolist()[0]
-                plt.plot(x1, y, '-', color = op_color_dict[op], alpha = 0.5, label = op)
+                plt.plot(x1, y, '-', color = op_color_dict[op], alpha = 0.6, label = op)
             title1 = 'Spontaneous EPSCs (repatch)'
             x_plot = []
 
@@ -252,7 +254,7 @@ save_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/plots/ev
     fig.tight_layout()
     fig.patch.set_facecolor('white')
     #plt.show(fig)
-    plt.savefig(save_dir  + data_type + '_spontan_min_amplitude_' + min_amplitude + '_min_hrs_incubation_' + min_h_incubation + '_avg_amplitude_not_excluded.png')
+    plt.savefig(save_dir  + data_type + '_spontan_min_amplitude_' + min_amplitude + '_min_hrs_incubation_' + min_h_incubation + '_avg_amplitude_not_excluded.pdf')
     plt.close(fig)
 
 def plot_event_by_day_mini(df, n_nums, save_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/plots/event_analysis/'):
@@ -260,7 +262,9 @@ def plot_event_by_day_mini(df, n_nums, save_dir = '/Users/verjim/laptop_D_17.01.
     Takes the n_nums dictionary for each condition 
     scatter plot of the datapoints and median
     '''
-    colors = ['red', 'cadetblue', 'mediumpurple']
+    #colors = ['red', 'cadetblue', 'mediumpurple']
+    colors = ['#ff7f00',  '#DA67BA', '#7FEE8F', '#186F25'] #Ctrl, TTX, 8mM Kcl, 15 mM Kcl
+
     fig = plt.figure(figsize=(10,5))
     ax = plt.subplot(1,1,1)
     tr_label = []
@@ -379,29 +383,145 @@ def QC_spontan_with_intrinsic(intrinsic_df, spontan_df):
 #%%
 #%%
 
-# fig,axarr = plt.subplots(1,1, figsize=(8,8))
-# fig.patch.set_facecolor('white')
-# for tr in results_df['treatment'].unique().tolist():
-#     plot_data = results_df[results_df['treatment'] == tr]
+def plot_event_by_day_mini_2_IEI(df, n_nums,
+save_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/plots/event_analysis/lab_seminar_september_2023/'):
+    colors = ['#ff7f00', '#DA67BA','#186F25','#7FEE8F'] #Ctrl, TTX, 8mM Kcl,15 mM Kcl
 
-#     count, bins_count = np.histogram(plot_data['Average amplitude (pA)'], bins = 15)
-#     pdf = count / sum(count) #probabily distribution function
-#     cdf = np.cumsum(pdf) #cumulative distribution function
-#     plt.plot(bins_count[1:], cdf, label = tr)
-# plt.figlegend()
+    title1 = 'Mini EPSCs in slice'
 
-# labels = results_df['treatment'].unique().tolist()
-# fig,axarr = plt.subplots(1,1, figsize=(8,8))
-# fig.patch.set_facecolor('white')
-# for tr in results_df['treatment'].unique().tolist():
-#     plot_data = results_df[results_df['treatment'] == tr]
-#     sorted_plot_data = plot_data.sort_values('Average amplitude (pA)')
+    cmap = plt.cm.get_cmap('tab20')
+    op_color_dict = {}
+    for h, op in enumerate(df['OP'].unique()):
+        op_color_dict[op] = cmap((h+1)/10)
 
-#     sorted_plot_data['cum_sum'] = sorted_plot_data['Average amplitude (pA)'].cumsum()
-#     #calculate cumulative percentage of column (rounded to 2 decimal places)
-#     sorted_plot_data['cum_percent'] = round(100 * sorted_plot_data.cum_sum / sorted_plot_data['Average amplitude (pA)'].sum(),2)
-#     plt.plot(sorted_plot_data['Average amplitude (pA)'], sorted_plot_data['cum_percent'])
+    fig = plt.figure(figsize=(7,7))
+    ax = plt.subplot(1,1,1)
+    tr_label = []
 
-    #plt.plot(base[:-1], len(data)-cumulative, c='green') #survival function
+    min_h_incubation = str(min(df['hrs_incubation']))
+    min_amplitude = str(min(df['Average amplitude (pA)']))[:4]
+    day_label = []
+    x_plot = []
+    for i, comb in enumerate(n_nums.keys()):
+        k = 0 + i
 
-#%%
+        treatment = comb[3:]
+        plot_df = df[df['treatment'] == treatment]
+        x = np.linspace(0.8+k, 1.35+k, len(plot_df))
+        x_plot.append(x)
+        y = plot_df['Average interevent interval (ms)']
+        median = np.median(y)
+        if treatment == 'high K':   
+            y_8mm = plot_df['Average interevent interval (ms)'].loc[plot_df['high K concentration'] == '8 mM'] 
+            x_8 = np.linspace(0.8+k, 1.05+k, len(y_8mm))
+            median_8 = np.median(y_8mm)
+            y_15mm = plot_df['Average interevent interval (ms)'].loc[plot_df['high K concentration'] == '15 mM'] 
+            x_15 = np.linspace(1.10+k, 1.35+k, len(y_15mm))
+            median_15 = np.median(y_15mm)
+            ax.scatter(x_8, y_8mm, alpha = 0.9, c = colors[2], s = 80)
+            ax.scatter(x_15, y_15mm, alpha = 0.9, c = colors[3], s = 80)
+            ax.boxplot(y_8mm, positions = [k+0.65], notch = True, patch_artist=True, boxprops=dict(facecolor=colors[2], alpha = 0.75),
+            medianprops = dict(linewidth=2.3, color = 'k'))
+            ax.boxplot(y_15mm, positions = [k+1.55], notch = True, patch_artist=True, boxprops=dict(facecolor=colors[3], alpha = 0.75),
+            medianprops = dict(linewidth=2.3, color = 'k'))
+            # ax.text(k+0.65, int(np.max(df['Average interevent interval (ms)'])+1), 'n = ' + str(len(y_8mm)), size = 15, color = colors[1])
+            # ax.text(k+1.15, int(np.max(df['Average interevent interval (ms)'])+1), 'n = ' + str(len(y_15mm)), size = 15, color = colors[2])
+
+        else:
+            ax.boxplot(y, positions = [k + 0.7], notch = True, patch_artist=True, boxprops=dict(facecolor=colors[k], alpha = 0.75),
+            medianprops = dict(linewidth=2.3, color = 'k'))
+            y = plot_df['Average interevent interval (ms)']
+            ax.scatter(x, y, alpha = 0.9, c = colors[k], s = 80)
+            #ax.plot([0.9+k, 1.1+k], [median, median], c = 'k', linestyle = 'solid', linewidth = 1)
+            #ax.text(k+0.85, median + 0.5, str(round(median, 2)), size = 15)
+            day_label.append(comb)
+            #ax.text(k+0.85, int(np.max(df['Average interevent interval (ms)'])+1), 'n = ' + str(n_nums[comb]), size = 15,color = colors[0])
+
+    #ax.boxplot([[1,4],[2,5],[3,6]], positions=[2,4,5.5])
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.set_xticks(ticks = [0.7, 1.7, 2.7, 3.55], labels = ['Ctrl aCSF \n incub.', 
+    'aCSF + \n 1 um TTX', 'aCSF + \n 8 mM KCL', 'aCSF + \n 15 mM KCL'], size = 15)
+    plt.title(title1, fontsize = 19, x = 0.5, y = 1)
+    #ax.set_xlabel('Condition', fontsize = 15)
+    ax.set_ylabel('Average interevent interval (ms)', fontsize = 24)
+    #ax.set_yticks([5,10, 15,20,25,30])
+    ax.tick_params(axis='y', labelsize=22)
+
+    plt.figlegend(loc = 'upper right',  bbox_to_anchor=(1, 1))
+    fig.tight_layout()
+    fig.patch.set_facecolor('white')
+    plt.savefig(save_dir + 'minis_IEI_plot.pdf')
+
+
+
+
+def plot_event_by_day_mini_2_amp(df, n_nums,
+save_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/plots/event_analysis/lab_seminar_september_2023/'):
+    colors = ['#ff7f00', '#DA67BA','#186F25','#7FEE8F'] #Ctrl, TTX, 8mM Kcl,15 mM Kcl
+
+    title1 = 'Mini EPSCs in slice'
+
+    cmap = plt.cm.get_cmap('tab20')
+    op_color_dict = {}
+    for h, op in enumerate(df['OP'].unique()):
+        op_color_dict[op] = cmap((h+1)/10)
+
+    fig = plt.figure(figsize=(7,7))
+    ax = plt.subplot(1,1,1)
+    tr_label = []
+
+    min_h_incubation = str(min(df['hrs_incubation']))
+    min_amplitude = str(min(df['Average amplitude (pA)']))[:4]
+    x_plot = []
+    for i, comb in enumerate(n_nums.keys()):
+        k = 0 + i
+
+        treatment = comb[3:]
+        plot_df = df[df['treatment'] == treatment]
+        x = np.linspace(0.8+k, 1.35+k, len(plot_df))
+        x_plot.append(x)
+        y = plot_df['Average amplitude (pA)']
+        median = np.median(y)
+        if treatment == 'high K':   
+            y_8mm = plot_df['Average amplitude (pA)'].loc[plot_df['high K concentration'] == '8 mM'] 
+            x_8 = np.linspace(0.8+k, 1.05+k, len(y_8mm))
+            median_8 = np.median(y_8mm)
+            y_15mm = plot_df['Average amplitude (pA)'].loc[plot_df['high K concentration'] == '15 mM'] 
+            x_15 = np.linspace(1.10+k, 1.35+k, len(y_15mm))
+            median_15 = np.median(y_15mm)
+            ax.scatter(x_8, y_8mm, alpha = 0.9, c = colors[2], s = 80)
+            ax.scatter(x_15, y_15mm, alpha = 0.9, c = colors[3], s = 80)
+            ax.boxplot(y_8mm, positions = [k+0.65], notch = True, patch_artist=True, boxprops=dict(facecolor=colors[2], alpha = 0.75),
+            medianprops = dict(linewidth=2.3, color = 'k'))
+            ax.boxplot(y_15mm, positions = [k+1.55], notch = True, patch_artist=True, boxprops=dict(facecolor=colors[3], alpha = 0.75),
+            medianprops = dict(linewidth=2.3, color = 'k'))
+            ax.text(k+0.65, int(np.max(df['Average amplitude (pA)'])+1), 'n = ' + str(len(y_8mm)), size = 15, color = colors[2])
+            ax.text(k+1.15, int(np.max(df['Average amplitude (pA)'])+1), 'n = ' + str(len(y_15mm)), size = 15, color = colors[3])
+
+        else:
+            ax.boxplot(y, positions = [k + 0.7], notch = True, patch_artist=True, boxprops=dict(facecolor=colors[k], alpha = 0.75),
+            medianprops = dict(linewidth=2.3, color = 'k'))
+            y = plot_df['Average amplitude (pA)']
+            ax.scatter(x, y, alpha = 0.9, c = colors[k], s = 80)
+            #ax.plot([0.9+k, 1.1+k], [median, median], c = 'k', linestyle = 'solid', linewidth = 1)
+            #ax.text(k+0.85, median + 0.5, str(round(median, 2)), size = 15)
+            day_label.append(comb)
+            ax.text(k+0.85, int(np.max(df['Average amplitude (pA)'])+1), 'n = ' + str(n_nums[comb]), size = 15,color = colors[k])
+
+    #ax.boxplot([[1,4],[2,5],[3,6]], positions=[2,4,5.5])
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.set_xticks(ticks = [0.7, 1.7, 2.7, 3.55], labels = ['Ctrl aCSF \n incub.', 
+    'aCSF + \n 1 um TTX', 'aCSF + \n 8 mM KCL', 'aCSF + \n 15 mM KCL'], size = 15)
+    #plt.title(title1, fontsize = 19, x = 0.5, y = 1)
+    #ax.set_xlabel('Condition', fontsize = 15)
+    ax.set_ylabel('Average amplitude (pA)', fontsize = 24)
+    ax.set_yticks([5,10, 15,20,25,30])
+    ax.tick_params(axis='y', labelsize=22)
+
+    plt.figlegend(loc = 'upper right',  bbox_to_anchor=(1, 1))
+    fig.tight_layout()
+    fig.patch.set_facecolor('white')
+    plt.savefig(save_dir + '/mini_slice_avg_amp.pdf')
+

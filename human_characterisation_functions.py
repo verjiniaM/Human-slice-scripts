@@ -5,6 +5,8 @@ import numpy as np
 from detect_peaks import detect_peaks
 import math
 import sorting_functions as sort
+import pyabf
+import matplotlib.pyplot as plt
 
 #%%
 # =============================================================================
@@ -71,6 +73,39 @@ def read_inj(inj):
         600,700,800,900,1000,1100,1200,1300,1400]
     else:
         inj = inj
+    return inj
+
+def find_charact_onset_offset(char_fn):
+    ''' 
+    returrs offset and onset of the charact steps
+    '''
+    trace = pyabf.ABF(char_fn)
+    trace.setSweep(sweepNumber = 0, channel = 0)
+
+    onset = np.where(trace.sweepC != 0)[0][0] - 1
+    offset = np.where(trace.sweepC != 0)[0][-1]
+     
+    return onset, offset
+
+def get_inj_current_steps(fn):
+    '''
+    loads the characterization fn
+    returns the steps currents used
+    assuming the same steps were given to all channels
+    '''
+    char = pyabf.ABF(fn)
+
+    if char.userList is None:
+        inj = []
+        for swp in range(char.sweepCount):
+            char.setSweep(swp)
+            if len(np.unique(char.sweepC)) == 1:
+                inj.append(np.unique(char.sweepC)[0])
+                continue
+            inj.append(np.unique(char.sweepC[char.sweepC != 0])[0])
+            #plotting_funcs.plot_trace(fn, swp, 2)
+    else:
+        inj = char.userList
     return inj
 
 def load_traces(filename):
@@ -163,7 +198,19 @@ def get_RMP (vmfile, channels):
         resting_mems.append(np.median(ch1[:,0]))
     return resting_mems
 
-def get_hyperpolar_param(charact_data, channels, inj, onset = 2624, offset = 22624, mc = np.ndarray([5,3])):
+def find_charact_onset_offset(char_fn):
+    ''' 
+    returrs offset and onset of the charact steps
+    '''
+    trace = pyabf.ABF(char_fn)
+    trace.setSweep(sweepNumber = 0, channel = 0)
+
+    onset = np.where(trace.sweepC != 0)[0][0] - 1
+    offset = np.where(trace.sweepC != 0)[0][-1]
+     
+    return onset, offset
+
+def get_hyperpolar_param(charact_data, channels, inj, onset = 2624, offset = 22624,mc = np.ndarray([5,3])):
     '''
     returns 5 lists with length channels
     '''
@@ -219,7 +266,7 @@ def get_max_spikes(charact_data, channels):
         max_spikes_all.append(max_spikes)
     return max_spikes_all 
 
-def get_ap_param (charact_data, channels, inj, max_spikes):
+def get_ap_param(charact_data, channels, inj, max_spikes):
     '''
     returns a nd.array with inj, peak loc, sweep num
     spike_counts for each inj
@@ -276,7 +323,7 @@ def get_ap_param (charact_data, channels, inj, max_spikes):
             print('MAX number of AP = 1 for ' + key)
             first_spiking_sweep = np.where(spike_counts[:,1]==1)[0][0]
         else:
-            first_spiking_sweep=np.where(spike_counts[:,1]>1)[0][0] #where there is more than 1 AP
+            first_spiking_sweep = np.where(spike_counts[:,1]>1)[0][0] #where there is more than 1 AP
         
         if np.max(spike_counts[:,1]) == 1:
             ap = 0
@@ -310,17 +357,69 @@ def get_ap_param (charact_data, channels, inj, max_spikes):
 
     return Rheobase_all, AP_all, THloc_all, TH_all, APheight_all, max_depol_all, max_repol_all 
 
+def get_AP_HW(channels, AP_all, APheight_all, TH_all):
+    '''
+    returns AP halfwidt in ms at 1/2 of the AP amplitude,
+    measured from AP threshold to AP peak
+    '''
+    AP_HWs = []
+    for i, ch in enumerate(channels):
+        if len(AP_all[i]) == 0:
+            AP_HWs.append(math.nan)
+            continue
 
-def all_chracterization_params (filename, channels, inj, onset = 2624, offset = 22624):
+        half_amp = TH_all[i] + APheight_all[i]/2
+
+        t30 = TH_all[i] + APheight_all[i]*0.3
+        t70 = TH_all[i] + APheight_all[i]*0.7
+
+        rise_start = np.where(AP_all[i] > t30)[0][0]
+        rise_end = np.where(AP_all[i] > t70)[0][0]
+
+        x = range(rise_start, rise_end)
+        y = AP_all[i][rise_start:rise_end]
+         
+        model_rise = np.polyfit(x, y, 1)
+        hw1 = (half_amp - model_rise[1])/model_rise[0] 
+
+        fall_start = np.where(AP_all[i] > t30)[0][-1]
+        fall_end = np.where(AP_all[i] > t70)[0][-1]
+
+        x_fall = range(fall_end, fall_start)
+        y_fall = AP_all[i][fall_end:fall_start]
+
+        model_fall = np.polyfit(x_fall, y_fall, 1)
+        hw2 = (half_amp - model_fall[1])/model_fall[0]
+
+        AP_HWs.append((hw2-hw1)/20) #conversion to ms
+
+        # predict_rise = np.poly1d(model_rise)
+        # rise_prediction = predict_rise(np.linspace(rise_start, rise_end, 30))
+        # difference_array = np.absolute(np.linspace(rise_start, rise_end, 30)-hw1)
+        # index_rise = difference_array.argmin()
+        # hw1_y = rise_prediction[index_rise]
+
+        # predict_fall = np.poly1d(model_fall)
+        # fall_prediction = predict_fall(np.linspace(fall_end, fall_start, 30))
+        # difference_array = np.absolute(np.linspace(fall_end, fall_start, 30)-hw2)
+        # index_fall = difference_array.argmin()
+        # hw2_y = fall_prediction[index_fall]
+
+    return AP_HWs #rise_start, rise_end, rise_prediction, fall_end, fall_start, fall_prediction, hw1, hw2, hw1_y, hw2_y
+
+def all_chracterization_params(filename, channels):
     charact_dict = load_traces(filename)
+    onset, offset = find_charact_onset_offset(filename)
+
     inj = read_inj(inj)
 
-    tau_all, capacitance_all, mc_all, V65_all, RMPs_char = get_hyperpolar_param(charact_dict, channels, inj)
+    tau_all, capacitance_all, mc_all, V65_all, RMPs_char = get_hyperpolar_param(charact_dict, channels, inj, onset, offset)
     max_spikes_all = get_max_spikes(charact_dict, channels)
-    Rheobase_all, AP_all, THloc_all, TH_all, APheight_all, max_depol_all, max_repol_all = get_ap_param (charact_dict, channels, inj, max_spikes_all)
+    Rheobase_all, AP_all, THloc_all, TH_all, APheight_all, max_depol_all, max_repol_all = get_ap_param(charact_dict, channels, inj, max_spikes_all)
+    AP_HWs = get_AP_HW(channels, AP_all, APheight_all, TH_all)
 
-    keys = ['max_spikes', 'Rheobase', 'AP_heigth', 'TH', 'max_depol', 'max_repol', 'membra_time_constant_tau', 'capacitance']
-    vals = [max_spikes_all, Rheobase_all, APheight_all, TH_all, max_depol_all, max_repol_all, tau_all, capacitance_all]
+    keys = ['max_spikes', 'Rheobase', 'AP_heigth', 'TH', 'max_depol', 'max_repol', 'membra_time_constant_tau', 'capacitance', 'AP_halfwidth']
+    vals = [max_spikes_all, Rheobase_all, APheight_all, TH_all, max_depol_all, max_repol_all, tau_all, capacitance_all, AP_HWs]
     params_dict = {}
     for i, param in enumerate(vals):
         key = keys[i]
@@ -373,6 +472,71 @@ def get_ap_param_for_plotting (charact_data, channels, inj, max_spikes):
         for i, param in enumerate(params):
             param.append(ch_params[i])
     return first_spike_all, peaks_all, spike_counts_all, first_spiking_sweep_all
+
+
+def get_rheobase_from_ramp(fn, chans):
+    ''' 
+    finds where dv/dt > 20 mv/ms
+    finds the first 
+    '''
+    ramp_dict = load_traces(fn)
+    num_swps = np.shape(ramp_dict['Ch' + str(chans[0])][0])[1]
+    swp = 0
+    rheos, THs, THs_in_trace, swps = [], [], [], []
+    for ch in chans:
+        key = 'Ch' + str(ch)
+        ramp = ramp_dict[key][0][:, swp]        
+        AP1_peak = detect_peaks(ramp, mph = 20, mpd = 30)
+        if len(AP1_peak) == 0:
+            #runs through the rest of the swps to find peaks
+            swp, AP1_peak = try_other_swps(num_swps, ramp_dict, key)
+        if swp == num_swps-1 and len(AP1_peak) == 0:
+            print('not possible to find rheobase, no APs fired')
+            rheos.append(math.nan)
+            THs.append(math.nan)
+            THs_in_trace.append(math.nan)
+            swps.append(math.nan)
+            continue
+            
+        search_frame = np.arange(AP1_peak[0] - 300,AP1_peak[0])
+        AP1 = ramp[search_frame]
+        d1_AP1 = np.diff(AP1)*20
+        THloc = np.where(d1_AP1[:295] > 20)
+        if len(THloc[0]) < 1:
+            print('trying 10 mV/ms. APs seems slow')
+            THloc = np.where(d1_AP1[:295] > 10)
+            if len(THloc[0]) < 1 :
+                print('No Rheobase found')
+                rheos.append(math.nan)
+                THs.append(math.nan)
+                THs_in_trace.append(math.nan)
+                swps.append(math.nan)
+                continue
+
+        TH = AP1[THloc[0][0]-1]
+        THloc_in_trace = np.where(ramp == TH)[0][0]
+
+        ramp_abf = pyabf.ABF(fn)
+        ramp_abf.setSweep(sweepNumber = swp, channel = 0) #because the stimulus is the same for all channels
+        rheobase = ramp_abf.sweepC[THloc_in_trace-1]
+
+        rheos.append(rheobase)
+        THs.append(TH)
+        THs_in_trace.append(THloc_in_trace)
+        swps.append(swp)
+    return rheos, THs, THs_in_trace, swps
+
+def try_other_swps(num_swps, ramp_dict, key):
+    '''
+    to be used when no firing on the first sweep
+    or the first AP is slow/ not picked up
+    '''
+    for swp in range(1,num_swps):
+        ramp = ramp_dict[key][0][:, swp] 
+        AP1_peak = detect_peaks(ramp, mph = 20, mpd = 30)
+        if len(AP1_peak) > 0:
+            return swp, AP1_peak
+    return swp, AP1_peak
 
 
 #quality control step, deciding whether spontaneous or mini recording is going to be analyzed
@@ -435,7 +599,6 @@ def get_RMP_over_time(filename, channels):
     for ch in channels:
         key = 'Ch' + str(ch)
         ch1 = data_dict[key][0]
-
         num_swps = np.shape(ch1)[1]
         
         RMP_all = []
