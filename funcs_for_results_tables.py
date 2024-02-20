@@ -1,17 +1,19 @@
 import os
 import shutil
 import pandas as pd
-import sorting_functions as sort
+import funcs_sorting as sort
 import numpy as np
-import human_characterisation_functions as hcf
-import plotting_funcs
-import connection_parameters as con_param
+import funcs_human_characterisation as hcf
+import funcs_plotting as plotting_funcs
+import funcs_con_screen as con_param
 import json
 import math
 import datetime
 import shutil
 import glob
-import plot_intrinsic_props as plot_intr
+import funcs_plot_intrinsic_props as plot_intrinsic_props
+from openpyxl import load_workbook
+
 
 def get_intrinsic_properties_df(human_dir, OP, tissue_source, patcher, age, inj):
     '''

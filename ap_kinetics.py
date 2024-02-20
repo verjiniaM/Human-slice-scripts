@@ -1,13 +1,12 @@
 #%%
-import human_characterisation_functions as hchf
 from detect_peaks import detect_peaks
 import matplotlib.pyplot as plt
 import numpy as np
 import os
 import math
 import pandas as pd
-import sorting_functions as sort
-import human_characterisation_functions as hcf
+import funcs_sorting as sort
+import funcs_human_characterisation as hcf
 import glob
 
 
