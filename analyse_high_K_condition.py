@@ -1,19 +1,17 @@
-import sorting_functions as sort
+import funcs_sorting as sort
 import pandas as pd
-import human_characterisation_functions as hcf
-import plotting_funcs
-import plot_intrinsic_props
-
-OP_list = [, 'OP231005', 'OP231109', 'OP231123']
+import funcs_human_characterisation as hcf
+import funcs_plotting as plotting_funcs
+import funcs_ as plot_intrinsic_props
 
 
 def main():
     human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'
 
-    OP = 'OP231130'
+    OP = 'OP231207'
     patcher = 'Verji'
     tissue_source = 'Bielefeld'
-    patient_age = 39
+    patient_age = 23
 
     get_data_high_K(human_dir, OP, patcher, tissue_source, patient_age)
     input('Press enter when AP props and VC data_tables have been manually checked')

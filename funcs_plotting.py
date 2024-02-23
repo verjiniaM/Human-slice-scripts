@@ -8,6 +8,7 @@ import funcs_con_screen as con_param
 import funcs_sorting as sort
 import funcs_human_characterisation as hcf
 import pyabf
+import matplotlib as mpl
 
 # plots the middle sweep for each channel
 # check the traces to see which channels were active or if the protocol names are enetered correctly

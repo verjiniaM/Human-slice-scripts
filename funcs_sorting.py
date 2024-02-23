@@ -4,7 +4,6 @@ import glob
 import numpy as np
 import json
 import datetime
-import matplotlib as mpl
 import funcs_human_characterisation as hcf
 import funcs_plotting as plotting_funcs
 

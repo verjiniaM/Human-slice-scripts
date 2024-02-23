@@ -408,11 +408,15 @@ def get_AP_HW(channels, AP_all, APheight_all, TH_all):
 
     return AP_HWs #rise_start, rise_end, rise_prediction, fall_end, fall_start, fall_prediction, hw1, hw2, hw1_y, hw2_y
 
-def all_chracterization_params(filename, channels):
+def all_chracterization_params(filename, channels, inj):
     charact_dict = load_traces(filename)
     onset, offset = find_charact_onset_offset(filename)
 
-    inj = read_inj(inj)
+    inj = get_inj_current_steps(filename)
+    inj2 = read_inj(inj)
+    if inj != inj2:
+        print('fail to read inj from fn')
+        inj = inj2
 
     tau_all, capacitance_all, mc_all, V65_all, RMPs_char = get_hyperpolar_param(charact_dict, channels, inj, onset, offset)
     max_spikes_all = get_max_spikes(charact_dict, channels)

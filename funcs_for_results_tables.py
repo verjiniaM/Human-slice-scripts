@@ -137,7 +137,7 @@ def get_QC_access_resistance_df (human_dir, OP, patcher):
         Rs, Rin = hcf.get_access_resistance(filename_vc, active_channels)
 
         if indices_dict['vc_end'][i] == 'nan':
-            data_to_add = pd.DataFrame({'OP':OP[:-1], 'patcher':patcher, 'filename':filenames[vc], 'slice':slic, 
+            data_to_add = pd.DataFrame({'OP':OP, 'patcher':patcher, 'filename':filenames[vc], 'slice':slic, 
             'cell_ID': cell_IDs, 'cell_ch': active_channels, 'Rs_start': Rs, 'Rin_start': Rin, 
             'Rs_end': float('nan'), 'Rin_end': float('nan'), 'chagne_rs': float('nan'), 'change_rin':float('nan')})
             df_qc = pd.concat([df_qc.loc[:], data_to_add]).reset_index(drop=True)
@@ -152,7 +152,7 @@ def get_QC_access_resistance_df (human_dir, OP, patcher):
         Rs_diff = [x - y for x,y in zip(Rs, Rs_end)]
         Rin_diff = [x - y for x,y in zip(Rin, Rin_end)]
 
-        data_to_add = pd.DataFrame({'OP':OP[:-1], 'patcher':patcher, 'filename':filenames[vc], 'slice':slic, 
+        data_to_add = pd.DataFrame({'OP':OP, 'patcher':patcher, 'filename':filenames[vc], 'slice':slic, 
             'cell_ID': cell_IDs, 'cell_ch':active_channels, 'Rs_start': Rs, 'Rin_start': Rin, 
             'Rs_end': Rs_end, 'Rin_end': Rin_end, 'chagne_rs': Rs_diff, 'change_rin':Rin_diff})
         df_qc = pd.concat([df_qc.loc[:], data_to_add]).reset_index(drop=True)
