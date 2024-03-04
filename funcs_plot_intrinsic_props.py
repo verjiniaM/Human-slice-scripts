@@ -74,7 +74,7 @@ def filter_on_hrs_incubation(df, min_inc_time, max_hrs_incubation):
 def filter_adult_hrs_incubation_data(df_intr_props, min_age, hrs_inc, max_age = 151, max_hrs_incubation = 50):
     adult_df = patient_age_to_float(df_intr_props, min_age, max_age)
     adult_df = change_to_numeric(adult_df)
-    adult_df = get_QC_data(adult_df)
+    #adult_df = get_QC_data(adult_df)
     adult_df = filter_on_hrs_incubation(adult_df, hrs_inc, max_hrs_incubation)
     return adult_df
 

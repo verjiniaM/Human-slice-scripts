@@ -7,11 +7,11 @@ import funcs_for_results_tables as get_results
 
 
 # #%%
-OP = 'OP240201'
+OP = 'OP240221'
 patcher = 'Verji'
-tissue_source = 'Mitte'
+tissue_source = 'Bielefeld'
 inj = 'full'
-age = 39
+age = 37
 #%%
 #loading the updated experiments_overview and the old summary_data_table
 human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'
@@ -67,9 +67,10 @@ work_dir = sort.get_work_dir(human_dir, OP, patcher)
 results_df = pd.read_excel(glob.glob(work_dir + '/data_tables/' + '*QC_passed' + '*.xlsx')[0])
 
 mask = (results_df['capacitance'] > 900) | (results_df['capacitance'] < 10) | (results_df['capacitance'].isnull())
-cap_mistakes = results_df.loc[mask, :]
+cap_mistakes = results_df.loc[mask, :].reset_index()
 if len(cap_mistakes) > 0:
-    print(cap_mistakes.filename)
+    for i in range(len(cap_mistakes)):
+        print('capacitance manual for '+ cap_mistakes.filename[i] + ' Ch' +str(cap_mistakes.cell_ch[i]))
 
 repatch_df = results_df[results_df['repatch'] == 'yes']
 repatch_df.reset_index(inplace = True, drop = True)
@@ -79,7 +80,7 @@ for cell in repatch_df['cell_ID'].unique():
     if len(repatch_df[repatch_df['cell_ID'] == cell]) < 2:
         not_repatched_cells.append(cell)
 if len(not_repatched_cells) > 0:
-    print(not_repatched_cells)
+    print('Not repatched cells ' + str(not_repatched_cells)[1:-1])
 
 #%%
 

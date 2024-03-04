@@ -715,7 +715,7 @@ def plot_trace(fn, sweep, channel):
     ax[1].set_xlabel(trace.sweepLabelX)
     ax[1].set_ylabel(trace.sweepLabelC)
 
-    channel_name = 'Ch' + str(channel)
+    #channel_name = 'Ch' + str(channel)
     fig.suptitle('{0}, sweep num {1} , channel {2}'.format(fn[end_fn:], str(sweep),channel_name))
 
     plt.show()

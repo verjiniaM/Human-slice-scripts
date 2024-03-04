@@ -1,6 +1,7 @@
 import funcs_for_results_tables as get_results
 import pandas as pd
 import glob
+import funcs_plot_intrinsic_props as pl_intr
 
 human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'
 exp_view = pd.read_excel(glob.glob(human_dir + '*experiments_overview.xlsx')[0]) 
@@ -17,7 +18,7 @@ df_intr_props = get_results.collect_intrinsic_df()
 #     df_op_info = pd.concat([df_op_info.loc[:], df_op_add]).reset_index(drop=True)
   
 #filter on age and hrs incubation
-adult_df = pl_intr.filter_adult_hrs_incubation_data(df_intr_props, min_age = 18, hrs_inc = 18, max_age = 151) # QC criteria 
+adult_df = pl_intr.filter_adult_hrs_incubation_data(df_intr_props, min_age = 18, hrs_inc = 16, max_age = 151) # QC criteria 
 adult_df = adult_df[adult_df['area'] == 'temporal']
 op_color_dict = pl_intr.get_op_color_dict(adult_df)
 adult_df = pl_intr.create_new_cell_IDs(adult_df)
@@ -32,7 +33,7 @@ adult_repatch_norm = pl_intr.get_normalized_df(adult_df_repatch)
 #plot all parameters 
 pl_intr.plot_param_for_days_slice(adult_df_slice_comparison, op_color_dict)
 pl_intr.plot_param_for_days_slice_TTX_incl(adult_df_slice_comparison, op_color_dict)
-#pl_intr.plot_param_for_days_repatch(adult_df_repatch, op_color_dict)
+pl_intr.plot_param_for_days_repatch(adult_df_repatch, op_color_dict)
 pl_intr.plot_param_for_days_repatch_plus_TTX(adult_df_repatch, op_color_dict)
 pl_intr.plot_param_for_days_repatch_all_params(adult_df_repatch, op_color_dict)
 #pl_intr.plot_param_for_days_repatch_norm(adult_repatch_norm, op_color_dict)
