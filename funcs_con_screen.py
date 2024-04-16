@@ -22,7 +22,7 @@ def presynaptic_screen(con_screen_file, pre_cell_chan):
 
     pre_sig = con_screen_data[chan_name][0]
     sweep_count = np.shape(pre_sig)[1]
-    vmO = np.mean(pre_sig[:,0][0:4000]) #from column 0, 0:4000
+    vmO = np.mean(pre_sig[:,0][0:4000]) #baseline 10 ms 
 
     es = []
     for i in range(sweep_count): #intrasweep control for excessively depolarised
@@ -68,9 +68,12 @@ def postsynaptic_screen(con_screen_file, post_cell_chan, es):
     es2 = []
     for i in range(0,sweep_count): #intrasweep control for excessively depolarised
     #cells (above -50mV) or a drift in Vm of more than 10% from start to end of sweep
-        vm1 = np.mean(post_sig[:,i][0:4000])
+        vm1 = np.mean(post_sig[:,i][0:4000]) #baseline 
         vm2 = np.mean(post_sig[:,i][197999:199999])
+        post_amp = np.max(post_sig[:,i]) - np.min(post_sig[:,i])  
         if (vm1 > -50) or vm1 - (vm1 * -0.1) > vm2 or vm2 > vm1 + (vm1 * -0.1):
+            es2.append(i)
+        elif vm1 < -80:
             es2.append(i)
         elif vmO-(vmO*-0.1)>vm1 or vm1>vmO+(vmO*-0.1):
             es2.append(i)

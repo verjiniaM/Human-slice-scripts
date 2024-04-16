@@ -51,7 +51,7 @@ def change_to_numeric(df):
     return df
 
 def get_QC_data(df):
-    mask = (df['Rs'] < 30) & \
+    mask = (df['Rs'] < 40) & \
         (df['resting_potential'] < -45 ) & (df['resting_potential'] > -90) & \
                 (df['membra_time_constant_tau'] > -25 ) &\
                     (df['capacitance'] < 900) &  (df['capacitance'] > 10)
@@ -74,7 +74,7 @@ def filter_on_hrs_incubation(df, min_inc_time, max_hrs_incubation):
 def filter_adult_hrs_incubation_data(df_intr_props, min_age, hrs_inc, max_age = 151, max_hrs_incubation = 50):
     adult_df = patient_age_to_float(df_intr_props, min_age, max_age)
     adult_df = change_to_numeric(adult_df)
-    #adult_df = get_QC_data(adult_df)
+    adult_df = get_QC_data(adult_df)
     adult_df = filter_on_hrs_incubation(adult_df, hrs_inc, max_hrs_incubation)
     return adult_df
 
@@ -226,6 +226,27 @@ def get_op_color_dict(df):
         op_color_dict[op] = cmap((h+1)/len(OP_list))
     return op_color_dict
 
+
+def get_age_color_dict(df):
+    '''
+    input should be adult df with all OPs
+    assigns a color to each OP in the list
+    '''
+    cmap = plt.cm.get_cmap('copper')
+    num_patient_age = []
+    for i in range(len(df)):
+        if df['patient_age'].tolist()[i] == 'A':
+            num_patient_age.append(151)
+        else:
+            num_patient_age.append(df['patient_age'].tolist()[i])
+    df.insert(len(df.columns), 'patient_age_num', num_patient_age)
+
+    age_color_dict = {}
+    age_list = sorted(list(df.patient_age_num.unique()))
+    for h, years in enumerate(age_list):
+       age_color_dict[years] = cmap((h+1)/len(age_list))
+    return df, age_color_dict
+
 def plot_param_for_days_slice(df, op_color_dict,
 destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/plots/intrinsic_properties/adult_slice/'):
 
@@ -342,7 +363,12 @@ destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/p
                         x1 = [x_plot[0][c], x_K]
                         y = df[param][df['cell_ID_new'] == cell]
                         op = df_plot['OP'][df_plot['cell_ID_new'] == cell].tolist()[0]
-                        plt.plot(x1, y, '-', color = op_color_dict[op], alpha = 0.5, linewidth = 2, zorder = 1)
+                        age = df_plot['patient_age_num'][df_plot['cell_ID_new'] == cell].tolist()[0]
+                        if str([type(k) for k in op_color_dict.keys()][0]) == "<class 'numpy.int64'>" :
+                            plt.plot(x1, y, '-', color = op_color_dict[age], alpha = 0.5, linewidth = 2, zorder = 1)
+                        else:
+                            plt.plot(x1, y, '-', color = op_color_dict[op], alpha = 0.5, linewidth = 2, zorder = 1)
+
 
                 else:
                     ax.scatter(x, df_plot[param], c = colors[int(k)], s = 80, zorder = 2)
@@ -355,7 +381,11 @@ destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/p
                             x1 = [x_plot[0][c], x[c]] 
                             y = df[param][df['cell_ID_new'] == cell]
                             op = df_plot['OP'][df_plot['cell_ID_new'] == cell].tolist()[0]
-                            plt.plot(x1, y, '-', color = op_color_dict[op], alpha = 0.4, linewidth = 2, zorder = 1)
+                            age = df_plot['patient_age_num'][df_plot['cell_ID_new'] == cell].tolist()[0]
+                            if str([type(k) for k in op_color_dict.keys()][0]) == "<class 'numpy.int64'>" :
+                                plt.plot(x1, y, '-', color = op_color_dict[age], alpha = 0.4, linewidth = 2, zorder = 1)
+                            else:
+                                plt.plot(x1, y, '-', color = op_color_dict[op], alpha = 0.4, linewidth = 2, zorder = 1)
 
                 day_label.append(day)
                 num_cels[tr + ' ' + day] = len(df_plot)
@@ -379,6 +409,89 @@ destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/p
         date = str(datetime.date.today())
         plt.savefig(destination_dir + date + '_plot_' + param + '.pdf')
         plt.close(fig2)
+    
+
+def plot_param_for_days_repatch_no_15mM(df, op_color_dict,
+destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/plots/intrinsic_properties/adult_repatch/'):
+    
+    treatments = ['Ctrl', 'high K']
+    #treatments = ['Ctrl', 'TTX', 'high K']
+    titles_dict = dict_for_plotting()
+        
+    colors = ['#dede00', '#ff7f00', '#dede00', '#4daf4a','#dede00','#984ea3'] #Ctrl, 8mM Kcl, 15 mM Kcl
+    for u, param in enumerate(titles_dict.keys()): 
+        fig2 = plt.figure(figsize=(7,7))
+        ax = plt.subplot(1,1,1)
+        day_label = []
+        num_cels = {}
+        for i, tr in enumerate(treatments):
+            x_plot =[]
+            
+            for j, day in enumerate(df['day'].unique()):
+                k = j + 2*i 
+                df_plot = df[(df['treatment'] == tr) & (df['day'] == day)]
+                df_plot.reset_index(drop=True, inplace=True)
+                median = df_plot[param].median()
+                x = np.linspace(0.7+k, 1.3+k, len(df_plot))
+                x_plot.append(x)
+
+                if tr == 'high K' and day == 'D2':
+                    y_8mm = df_plot.loc[df_plot['high K concentration'] == '8 mM']
+                    x_8 = np.linspace(0.8+k, 1.3+k, len(y_8mm))
+                    median_8 = np.median(y_8mm[param])
+                    ax.scatter(x_8, y_8mm[param], c = colors[3], s = 80, zorder = 2)
+                    ax.plot([0.7+k, 1.3+k], [median_8, median_8], c = 'k', linestyle = 'solid')
+                    ax.text(k+0.75, median_8 + 0.5, str(round(median_8, 2)), size = 15)
+                    df_plot.insert(0, 'x', x_8)
+
+                    for c, cell in enumerate(df_plot['cell_ID_new']):
+                        x_K = df_plot['x'].loc[df_plot['cell_ID_new'] == cell].tolist()[0]
+                        x1 = [x_plot[0][c], x_K]
+                        y = df[param][df['cell_ID_new'] == cell]
+                        op = df_plot['OP'][df_plot['cell_ID_new'] == cell].tolist()[0]
+                        age = df_plot['patient_age_num'][df_plot['cell_ID_new'] == cell].tolist()[0]
+                        if str([type(k) for k in op_color_dict.keys()][0]) == "<class 'numpy.int64'>" :
+                            plt.plot(x1, y, '-', color = op_color_dict[age], alpha = 0.5, linewidth = 2, zorder = 1)
+                        else:
+                            plt.plot(x1, y, '-', color = op_color_dict[op], alpha = 0.5, linewidth = 2, zorder = 1)
+
+
+                else:
+                    ax.scatter(x, df_plot[param], c = colors[int(k)], s = 80, zorder = 2)
+                    ax.scatter(1+k, median, color = 'k', marker = '_', s = 2000, zorder = 2)
+                    ax.text(0.75+k, (1.05*median), str(round(median,2)), size = 15)
+                    x_plot.append(x)
+                    if k in [1,3,5]:
+                        for c, cell in enumerate(df_plot['cell_ID_new']):
+                            #indx = index_s[c]
+                            x1 = [x_plot[0][c], x[c]] 
+                            y = df[param][df['cell_ID_new'] == cell]
+                            op = df_plot['OP'][df_plot['cell_ID_new'] == cell].tolist()[0]
+                            age = df_plot['patient_age_num'][df_plot['cell_ID_new'] == cell].tolist()[0]
+                            if str([type(k) for k in op_color_dict.keys()][0]) == "<class 'numpy.int64'>" :
+                                plt.plot(x1, y, '-', color = op_color_dict[age], alpha = 0.4, linewidth = 2, zorder = 1)
+                            else:
+                                plt.plot(x1, y, '-', color = op_color_dict[op], alpha = 0.4, linewidth = 2, zorder = 1)
+
+                day_label.append(day)
+                num_cels[tr + ' ' + day] = len(df_plot)
+
+                # ax.text(1 + 2*i, int(np.max(df[param])), tr, size = 17, c = colors[2*i+1])
+                # ax.text(1.7 + 2*i, int(np.max(df[param])), 'n = ' + str(len(y_8mm)), size = 12, c = colors[2*i+1])
+    
+        ax.tick_params(axis='y', labelsize=22) 
+        ax.set_xticks(ticks = [1,2,3,4], labels = ['D1', 
+        'D2 \n Ctrl', 'D1', 'D2 \n 8mM'], size = 20)
+        ax.set_ylabel(titles_dict[param][1], fontsize = 24)
+        ax.set_yticks(ticks = titles_dict[param][2])
+
+        fig2.patch.set_facecolor('white')
+        fig2.tight_layout()
+
+        date = str(datetime.date.today())
+        plt.savefig(destination_dir + date + '_plot_' + param + '.pdf')
+        plt.close(fig2)
+
 
 def plot_param_for_days_repatch_all_params(df, op_color_dict,
 destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/plots/intrinsic_properties/adult_repatch/'):
@@ -428,8 +541,13 @@ destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/p
                         x_K = df_plot['x'].loc[df_plot['cell_ID_new'] == cell].tolist()[0]
                         x1 = [x_plot[0][c], x_K]
                         y = df[param][df['cell_ID_new'] == cell]
-                        op = df_plot['OP'][df_plot['cell_ID_new'] == cell].tolist()[0]
-                        ax.plot(x1, y, '-', color = op_color_dict[op], alpha = 0.5, linewidth = 2, zorder = 1)
+                        op = df_plot['OP'][df_plot['cell_ID_new'] == cell].tolist()[0]                        
+                        age = df_plot['patient_age_num'][df_plot['cell_ID_new'] == cell].tolist()[0]
+                        if str([type(k) for k in op_color_dict.keys()][0]) == "<class 'numpy.int64'>" :
+                            ax.plot(x1, y, '-', color = op_color_dict[age], alpha = 0.5, linewidth = 2, zorder = 1)
+                        else:
+                            ax.plot(x1, y, '-', color = op_color_dict[op], alpha = 0.5, linewidth = 2, zorder = 1)
+
 
                 else:
                     ax.scatter(x, df_plot[param], c = colors[int(k)], s = 80, zorder = 2)
@@ -442,7 +560,12 @@ destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/p
                             x1 = [x_plot[0][c], x[c]] 
                             y = df[param][df['cell_ID_new'] == cell]
                             op = df_plot['OP'][df_plot['cell_ID_new'] == cell].tolist()[0]
-                            ax.plot(x1, y, '-', color = op_color_dict[op], alpha = 0.4, linewidth = 2, zorder = 1)
+                            age = df_plot['patient_age_num'][df_plot['cell_ID_new'] == cell].tolist()[0]
+                            if str([type(k) for k in op_color_dict.keys()][0]) == "<class 'numpy.int64'>" :
+                                ax.plot(x1, y, '-', color = op_color_dict[age], alpha = 0.4, linewidth = 2, zorder = 1)
+                            else:
+                                ax.plot(x1, y, '-', color = op_color_dict[op], alpha = 0.4, linewidth = 2, zorder = 1)
+
 
                 day_label.append(day)
                 num_cels[tr + ' ' + day] = len(df_plot)
@@ -501,8 +624,11 @@ destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/p
                     x1 = [x_plot[0][c], x[c]] 
                     y = df[param][df['cell_ID_new'] == cell]
                     op = df_plot['OP'][df_plot['cell_ID_new'] == cell].tolist()[0]
-                    plt.plot(x1, y, '-', color = op_color_dict[op], alpha = 0.9, linewidth = 2)
-
+                    age = df_plot['patient_age_num'][df_plot['cell_ID_new'] == cell].tolist()[0]
+                    if str([type(k) for k in op_color_dict.keys()][0]) == "<class 'numpy.int64'>" :
+                        plt.plot(x1, y, '-', color = op_color_dict[age], alpha = 0.4, linewidth = 2, zorder = 1)
+                    else:
+                        plt.plot(x1, y, '-', color = op_color_dict[op], alpha = 0.4, linewidth = 2, zorder = 1)
 
         ax.tick_params(axis='y', labelsize=22)
         ax.set_xticks(ticks = [0.5,1.5,2.5,3.5], labels = ['D1', 
@@ -520,7 +646,7 @@ destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/p
         plt.close(fig2)
 
 
-def plot_param_for_hrs_incubation(df, data_type,
+def plot_param_for_hrs_incubation(df, data_type, op_color_dict,
 destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/plots/intrinsic_properties/time_dependencies/'):
 
     treatments = ['Ctrl', 'TTX', 'high K']
@@ -529,9 +655,9 @@ destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/p
     #destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/intrinsic_properties/'
     colors = [ 'red', 'cadetblue','mediumpurple']
     cmap = plt.cm.get_cmap('tab20')
-    op_color_dict = {}
-    for h, op in enumerate(df['OP'].unique()):
-        op_color_dict[op] = cmap((h+1)/10)
+    # op_color_dict = {}
+    # for h, op in enumerate(df['OP'].unique()):
+    #     op_color_dict[op] = cmap((h+1)/10)
 
     for param in titles_dict.keys(): 
         fig2 = plt.figure(figsize=(10,5))
@@ -901,7 +1027,8 @@ def plot_IFF_distribution(IFF_df, data_type, DV):
         plt.close(fig)
 
 
-def plot_IFF_avg_against_current_inj(IFF_df, data_type, DV):
+def plot_IFF_avg_against_current_inj(IFF_df, data_type, DV, 
+destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/plots/IFF/'):
 
     ''' 
     data_type - all, repatch, repatch firing cells D1
@@ -914,7 +1041,6 @@ def plot_IFF_avg_against_current_inj(IFF_df, data_type, DV):
     treatments = ['Ctrl', '8 mM', '15 mM']
     #treatments = ['Ctrl', 'TTX', 'high K']
     date = str(datetime.date.today())
-    destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/plots/IFF/'
 
     colors_dict = {'D1' : ['#dede00','#dede00','#dede00'], 'D2': ['#ff7f00', '#4daf4a','#984ea3']}
     DV_dict = {'IFF' : [IFF_indx, 'Initial firing frequency (AP#1 to AP#2)',  'Instantaneous firing frequency (Hz)'], 
@@ -1006,18 +1132,19 @@ def get_amps_lats_columns(df):
             lats.append(i)
     return amps, lats
 
-def plot_connect_amplitude(df, data_type,
+def plot_connect_amplitude(df, data_type, op_color_dict,
 destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/plots/connectivity/'):
 
-    treatments = ['Ctrl', 'TTX', 'high K']
+    treatments = ['Ctrl', 'high K']
     amps, lats = get_amps_lats_columns(df)
     plot_amps = df.columns[amps[0]:amps[3]+1]
 
-    colors = ['moccasin', 'red', 'moccasin', 'cadetblue', 'moccasin', 'mediumpurple']
+
+    colors = ['#dede00', '#ff7f00', '#dede00', '#4daf4a', '#dede00', 'mediumpurple']
     cmap = plt.cm.get_cmap('tab20')
-    op_color_dict = {}
-    for h, op in enumerate(df['OP'].unique()):
-        op_color_dict[op] = cmap((h+1)/10)  
+    # op_color_dict = {}
+    # for h, op in enumerate(df['OP'].unique()):
+    #     op_color_dict[op] = cmap((h+1)/10)  
 
     fig, ax = plt.subplots(2,2, figsize = (10,10))
     ax = ax.flatten()
@@ -1034,7 +1161,7 @@ destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/p
                 median = df_plot[amp].median()
                 x = np.linspace(0.65+k, 1.35+k, len(df_plot))
                 x_plot.append(x)
-                ax[a].scatter(x, df_plot[amp], alpha = 0.8, c = colors[int(k)], s = 40)
+                ax[a].scatter(x, df_plot[amp], alpha = 0.9, c = colors[int(k)], s = 60)
                 if len(df_plot) == 0:
                     continue
                 yerr = 1.253*(df_plot[amp].std()/(math.sqrt(len(df_plot))))
@@ -1045,12 +1172,16 @@ destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/p
                 #data_boxplot.append(df_plot[amp)
             ax[a].text(1 + 2*i, int(np.max(df['Amp 1'])+0.6), tr, size = 17, c = colors[2*i+1])
             ax[a].text(1.7 + 2*i, int(np.max(df['Amp 1'])-0.3), 'n = ' + str(len(df_plot)), size = 10, c = colors[2*i+1])
-            # if k in [1,3,5]:
-            #     for c, cell in enumerate(df_plot['cell_ID_new']):
-            #         x1 = [x_plot[0][c], x[c]] 
-            #         y = df[param][df['cell_ID_new'] == cell]
-            #         op = df_plot['OP'][df_plot['cell_ID_new'] == cell].tolist()[0]
-            #         plt.plot(x1, y, '-', color = op_color_dict[op], alpha = 0.5)
+            if k in [1,3,5]:
+                for c, cell in enumerate(df_plot['connection_ID']):
+                    x1 = [x_plot[0][c], x[c]] 
+                    y = df[amp][df['connection_ID'] == cell]
+                    op = df_plot['OP'][df_plot['connection_ID'] == cell].tolist()[0]
+                    #age = df_plot['_new'][df_plot['connection_ID'] == cell].tolist()[0]
+                    if str([type(k) for k in op_color_dict.keys()][0]) == "<class 'numpy.int64'>" :
+                        ax[a].plot(x1, y, '-', color = op_color_dict[age], alpha = 0.5, linewidth = 2, zorder = -1)
+                    else:
+                        ax[a].plot(x1, y, '-', color = op_color_dict[op], alpha = 0.5, linewidth = 2, zorder = -1)
 
         #plt.boxplot(data_boxplot, showbox = False)
         ax[a].spines['top'].set_visible(False)
@@ -1060,7 +1191,7 @@ destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/p
             ax[a].set_ylabel('Amplitude (pA)', fontsize = 15)
         else:
             ax[a].set_ylabel('Amplitude (mV)', fontsize = 15)
-        ax[a].set_xticks(ticks = list(range(1,7)), labels = day_label) 
+        ax[a].set_xticks(ticks = list(range(1,4)), labels = day_label) 
         #ax[a].set_title('#' + str(a+1), fontsize = 15)
         ax[a].set_xlabel('Day', fontsize = 15)
         
@@ -1190,7 +1321,12 @@ destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/p
                         x1 = [x_plot[0][c], x_K]
                         y = df[param][df['cell_ID_new'] == cell]
                         op = df_plot['OP'][df_plot['cell_ID_new'] == cell].tolist()[0]
-                        plt.plot(x1, y, '-', color = op_color_dict[op], alpha = 0.5, linewidth = 2, zorder = 1)
+                        age = df_plot['patient_age_num'][df_plot['cell_ID_new'] == cell].tolist()[0]
+                        if str([type(k) for k in op_color_dict.keys()][0]) == "<class 'numpy.int64'>" :
+                            plt.plot(x1, y, '-', color = op_color_dict[age], alpha = 0.5, linewidth = 2, zorder = 1)
+                        else:
+                            plt.plot(x1, y, '-', color = op_color_dict[op], alpha = 0.5, linewidth = 2, zorder = 1)
+
 
                 else:
                     ax.scatter(x, df_plot[param], c = colors[int(k)], s = 80, zorder = 2, alpha = 0.8)
@@ -1203,7 +1339,12 @@ destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/p
                             x1 = [x_plot[0][c], x[c]] 
                             y = df[param][df['cell_ID_new'] == cell]
                             op = df_plot['OP'][df_plot['cell_ID_new'] == cell].tolist()[0]
-                            plt.plot(x1, y, '-', color = op_color_dict[op], alpha = 0.45, linewidth = 2, zorder = 1)
+                            age = df_plot['patient_age_num'][df_plot['cell_ID_new'] == cell].tolist()[0]
+                            if str([type(k) for k in op_color_dict.keys()][0]) == "<class 'numpy.int64'>" :
+                                plt.plot(x1, y, '-', color = op_color_dict[age], alpha = 0.45, linewidth = 2, zorder = 1)
+                            else:
+                                plt.plot(x1, y, '-', color = op_color_dict[op], alpha = 0.45, linewidth = 2, zorder = 1)
+
 
                 day_label.append(day)
                 num_cels[tr + ' ' + day] = len(df_plot)

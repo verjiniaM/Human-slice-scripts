@@ -144,15 +144,15 @@ def get_abf_info(filename, cell_chan, sweep_count, sweep_len):
         for ch in range(all_chans_len):
             chan_name = int(block.segments[0].analogsignals[ch].name[-1])
             active_channels.append(chan_name)
-        chan_index = active_channels.index(cell_chan)
+        chan_index = active_channels.index(int(cell_chan))
         #have to find the index of this chan in all chans
         sampl_rate = block.segments[middle_swp_num].analogsignals[chan_index].sampling_rate
         units = block.segments[middle_swp_num].analogsignals[chan_index].units
         times = np.linspace(0,sweep_len,sweep_len)/sampl_rate
         return sampl_rate, units, times
     #signal = block.segments[middle_swp_num].analogsignals[cell_chan-1].view(np.recarray).reshape(sweep_len).tolist()
-    sampl_rate = block.segments[middle_swp_num].analogsignals[cell_chan-1].sampling_rate
-    units = block.segments[middle_swp_num].analogsignals[cell_chan-1].units
+    sampl_rate = block.segments[middle_swp_num].analogsignals[int(cell_chan)-1].sampling_rate
+    units = block.segments[middle_swp_num].analogsignals[int(cell_chan)-1].units
     times = np.linspace(0,sweep_len,sweep_len)/sampl_rate
     return sampl_rate, units, times
 

@@ -19,7 +19,7 @@ def get_intrinsic_properties_df(human_dir, OP, tissue_source, patcher, age, inj)
     '''
     saves a pandas dataframe with intrinsic cell peoperties for OP
     '''
-    work_dir, filenames, indices_dict, slice_names = sort.get_OP_metadata(human_dir, OP, patcher)
+    work_dir, filenames, indices_dict, slice_names, pre_chans, post_chans = sort.get_OP_metadata(human_dir, OP, patcher)
 
     #creating a dir to save plots and data_tables (if not existing)
     dir_plots = sort.make_dir_if_not_existing (work_dir, 'plots')
@@ -33,7 +33,7 @@ def get_intrinsic_properties_df(human_dir, OP, tissue_source, patcher, age, inj)
     if len(indices_dict['freq analyse']) != len(indices_dict['vc']): 
         print('Fix protocol names. Unequal number of VC and freq analyse protocols')
         input('Press enter when indices have been fixed')
-        work_dir, filenames, indices_dict, slice_names = sort.get_OP_metadata(human_dir, OP, patcher)
+        work_dir, filenames, indices_dict, slice_names, pre_chans, post_chans = sort.get_OP_metadata(human_dir, OP, patcher)
         [print(key,':',value) for key, value in indices_dict.items()]
  
     active_chans_meta = sort.get_json_meta(human_dir, OP, patcher, '_meta_active_chans.json')[0]  
@@ -102,7 +102,7 @@ def get_intrinsic_properties_df(human_dir, OP, tissue_source, patcher, age, inj)
     print('Intrinsic properties DataFrame for  ' + OP + ' saved successfully. ' + '\n' + 'Exclude recordings if necessary.')
 
 def get_QC_access_resistance_df (human_dir, OP, patcher):
-    work_dir, filenames, indices_dict, slice_names = sort.get_OP_metadata(human_dir, OP, patcher)
+    work_dir, filenames, indices_dict, slice_names, pre_chans, post_chans = sort.get_OP_metadata(human_dir, OP, patcher)
     
     if indices_dict['vc_end'] == []:
         return "no VC end files found; skipping"
@@ -163,7 +163,7 @@ def get_QC_access_resistance_df (human_dir, OP, patcher):
     #df_qc.to_csv(work_dir + 'data_tables/' + OP[:-1] + '_QC_measures_rs.csv')
 
 def get_con_params_df (human_dir, OP, patcher):
-    work_dir, filenames, indices_dict, slice_names = sort.get_OP_metadata(human_dir, OP, patcher)
+    work_dir, filenames, indices_dict, slice_names, pre_chans, post_chans = sort.get_OP_metadata(human_dir, OP, patcher)
     json_meta = sort.get_json_meta(human_dir, OP, patcher, '_meta_active_chans.json')
     
     active_chans_screen, vc_indx  = [], []
@@ -249,7 +249,7 @@ def get_con_params_df (human_dir, OP, patcher):
     con_data.to_excel(work_dir + '/data_tables/' + OP + '_connected_cell_properties.xlsx', index=False) 
 
 def get_con_screen_VC (human_dir, OP, patcher):
-    work_dir, filenames, indices_dict, slice_names = sort.get_OP_metadata(human_dir, OP, patcher)
+    work_dir, filenames, indices_dict, slice_names, pre_chans, post_chans = sort.get_OP_metadata(human_dir, OP, patcher)
     json_meta = sort.get_json_meta(human_dir, OP, patcher, '_meta_active_chans.json')
     
     add_pre_post_chans = input('Do you need to add pre and post channels in con_screen_VC? ( y / n)')
@@ -322,7 +322,7 @@ def get_con_screen_VC (human_dir, OP, patcher):
     con_data.to_excel(work_dir + '/data_tables/' + OP + '_connected_cell_properties_post_in_VC.xlsx', index=False) 
 
 def get_spontan_QC(human_dir, OP, patcher):
-    work_dir, filenames, indices_dict, slice_names = sort.get_OP_metadata(human_dir, OP, patcher)
+    work_dir, filenames, indices_dict, slice_names, pre_chans, post_chans = sort.get_OP_metadata(human_dir, OP, patcher)
     
     active_chans_meta = sort.get_json_meta(human_dir, OP, patcher, '_meta_active_chans.json')
     if len(indices_dict['spontan']) == len(indices_dict['vc']):
@@ -379,7 +379,7 @@ def get_spontan_QC(human_dir, OP, patcher):
     #record_sorting.to_csv(work_dir + 'data_tables/' + OP + '_QC_measures_spontan.csv')
 
 def get_minis_QC(human_dir, OP, patcher):
-    work_dir, filenames, indices_dict, slice_names = sort.get_OP_metadata(human_dir, OP, patcher)
+    work_dir, filenames, indices_dict, slice_names, pre_chans, post_chans = sort.get_OP_metadata(human_dir, OP, patcher)
 
     #indices_dict = sort.from_json(work_dir, OP, '_indices_dict.json')[0]
     active_chans_meta = sort.get_json_meta(human_dir, OP, patcher, '_meta_active_chans.json')
@@ -428,7 +428,7 @@ def get_intrinsic_properties_df_no_VM_file (human_dir, OP, tissue_source, patche
     '''
     saves a pandas dataframe with intrinsic cell peoperties for OP
     '''
-    work_dir, filenames, indices_dict, slice_names = sort.get_OP_metadata(human_dir, OP, patcher)
+    work_dir, filenames, indices_dict, slice_names, pre_chans, post_chans = sort.get_OP_metadata(human_dir, OP, patcher)
    
     #creating a dir to save plots and data_tables (if not existing)
     dir_plots = sort.make_dir_if_not_existing (work_dir, 'plots')
@@ -442,7 +442,7 @@ def get_intrinsic_properties_df_no_VM_file (human_dir, OP, tissue_source, patche
     if len(indices_dict['freq analyse']) != len(indices_dict['vc']): 
         print('Fix protocol names. Unequal number of VC and freq analyse protocols')
         input('Press enter when indices have been fixed')
-        work_dir, filenames, indices_dict, slice_names = sort.get_OP_metadata(human_dir, OP, patcher)
+        work_dir, filenames, indices_dict, slice_names, pre_chans, post_chans = sort.get_OP_metadata(human_dir, OP, patcher)
         [print(key,':',value) for key, value in indices_dict.items()]
         # index_vc_in = [int(item) for item in input('Vc files corresponding to characterization files for ' + OP +' (input with spaces in between)').split()]
         # #saved the original indices
@@ -513,7 +513,7 @@ def get_intrinsic_properties_df_no_VM_file (human_dir, OP, tissue_source, patche
 
 
 def remove_bad_data (OP, patcher, human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'):
-    work_dir, filenames, indices_dict, slice_names = sort.get_OP_metadata(human_dir, OP, patcher)
+    work_dir, filenames, indices_dict, slice_names, pre_chans, post_chans = sort.get_OP_metadata(human_dir, OP, patcher)
 
     intr_df = pd.read_excel(work_dir + 'data_tables/' + OP + '_Intrinsic_and_synaptic_properties.xlsx')
     df_vc_qc =  pd.read_excel(work_dir + 'data_tables/' + OP + '_QC_measures_rs.xlsx')
@@ -574,7 +574,7 @@ def get_metadata_for_event_analysis(human_dir, OP, patcher:str, event_type): # a
             'OP': df_events['OP'],
             'event_type' : event_type, 
             'treatment' : df_events['treatment'], 
-            'hrs_incubation' : df_events['hrs_incubation'][-1:],
+            'hrs_incubation' : df_events['hrs_incubation'],
             'slice' : df_events['slice'],
             'patcher' : patcher
             })
@@ -595,7 +595,7 @@ def get_metadata_for_event_analysis(human_dir, OP, patcher:str, event_type): # a
             'OP': df_events['OP'],
             'event_type' : event_type,
             'cell_ID' : df_events['cell_ID'],
-            'hrs_incubation': df_intrinsic['hrs_incubation'][-1:],
+            'hrs_incubation': df_intrinsic['hrs_incubation'],
             'treatment' : df_events['treatment'], 
             'slice' : df_events['slice'],
             'patcher' : patcher
@@ -627,7 +627,7 @@ def get_metadata_for_event_analysis(human_dir, OP, patcher:str, event_type): # a
 #%%
 # Functions for full analysis (not OP-based)
 
-def prapare_for_event_analysis(human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'):
+def prapare_for_event_analysis(op_to_analyse, human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'):
     '''
     checks mini or spontan experiments surgery in the '*experiments_overview.xlsx'
     puts all files to be analyzed in human_dir + '/meta_events/[spontan/mini]_files/'
@@ -636,7 +636,7 @@ def prapare_for_event_analysis(human_dir = '/Users/verjim/laptop_D_17.01.2022/Sc
     exp_view = pd.read_excel(glob.glob(human_dir + '*experiments_overview.xlsx')[0]) 
     date = str(datetime.date.today())
     
-    op_to_analyse = ['OP230914', 'OP231005', 'OP231109', 'OP231123', 'OP231130']
+    #op_to_analyse = ['OP230914', 'OP231005', 'OP231109', 'OP231123', 'OP231130']
     meta_df_mini, meta_df_spontan, meta_df_EPSPs = pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
     for i in range(len(exp_view)): #ran to range 22
         if exp_view['minis'][i] == 'yes':    
@@ -660,7 +660,6 @@ def prapare_for_event_analysis(human_dir = '/Users/verjim/laptop_D_17.01.2022/Sc
             #moving files directly to the recordings folder in event analysis
             for f in df_spontan['Name of recording']:
                 shutil.copy(os.path.join(work_dir_spontan, f), '/Users/verjim/spontaneous-postsynaptic-currents-detection/recordings/')
-            #     shutil.copy(os.path.join(work_dir_spontan, f), human_dir + '/meta_events/spontan_files/')
             meta_df_spontan = pd.concat([meta_df_spontan.loc[:], df_spontan]).reset_index(drop=True)
 
         if exp_view['EPSPs_highK'][i] == 'yes':  
@@ -789,7 +788,7 @@ def collect_connections_df(human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmit
 def create_IFF_data_table(OP, patcher, file_out = '_meta_active_chans.json', inj = 'full',
 human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'):
 
-    work_dir, filenames, indices_dict, slice_names = sort.get_OP_metadata(human_dir, OP, patcher)
+    work_dir, filenames, indices_dict, slice_names, pre_chans, post_chans = sort.get_OP_metadata(human_dir, OP, patcher)
     OP_meta = sort.from_json(work_dir, OP, file_out)
 
     treatments = OP_meta[0]['treatment']

@@ -1,6 +1,6 @@
 import pandas as pd
 import funcs_sorting as sort
-import fnucs_plotting as plotting_funcs
+import funcs_plotting as plotting_funcs
 
 #ANALYSIS MAIN
 
@@ -9,11 +9,12 @@ results_QC_path = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/meta
 verji_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/data_verji/'
 
 results_df = sort.create_full_results_df(meta_keep_path, results_QC_path, verji_dir)
+results_df  = sort.get_time_of_recording_sweeps(results_df)
 
-results_df_plot = plotting_funcs.QC_filter_for_plotting(results_df, holding = 'no', temp = 'no', min_age = 18)
+results_df_plot = plotting_funcs.QC_filter_for_plotting(results_df, holding = 'no', temp = 'no', min_age = 10)
 results_df_plot = plotting_funcs.QC_RMP_Ctrl(results_df_plot, max_allowed_RMP_Ctrl = -50)
 
-plotting_funcs.plot_ (results_df_plot, 'age > 18, no holding, no temp, RMP Ctrl < -50 mV')
+plotting_funcs.plot_ (results_df_plot, 'age > 18, no holding, no temp, RMP Ctrl < -50 mV', params = ['Average amp (positive)', 'Average interevent interval (ms)', 'resting_potential'])
 
 #%%
 '''
@@ -23,7 +24,7 @@ Ctrl_first = pd.read_excel('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/h
 Ctrl_plot = plotting_funcs.QC_filter_for_plotting(Ctrl_first, holding = 'no', temp = 'no')
 Ctrl_plot = plotting_funcs.QC_RMP_Ctrl(Ctrl_plot, max_allowed_RMP_Ctrl = -50)
 
-plotting_funcs.plot_ (Ctrl_plot, 'Ctrl aCSF --> High K, age > 18, no temp, RMP Ctrl < -50 mV')
+plotting_funcs.plot_ (Ctrl_plot, 'Ctrl aCSF --> High K, age > 18, no temp, RMP Ctrl < -50 mV', params = ['Average amp (positive)', 'Average interevent interval (ms)', 'resting_potential'])
 
 
 high_K_first = pd.read_excel('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/meta_events/EPSPs/results_df/QC_ed/high_k_then_ctrl_aCSF.xlsx')
@@ -31,7 +32,7 @@ high_K_plot = plotting_funcs.QC_filter_for_plotting(high_K_first, holding = 'no'
 high_K_plot = plotting_funcs.QC_RMP_Ctrl(high_K_plot, max_allowed_RMP_Ctrl = -50)
 
 
-plotting_funcs.plot_(high_K_plot, 'high K --> Ctrl aCSF, age > 18, no temp, RMP Ctrl < -50 mV')
+plotting_funcs.plot_(high_K_plot, 'high K --> Ctrl aCSF, age > 18, no temp, RMP Ctrl < -50 mV', params = ['Average amp (positive)', 'Average interevent interval (ms)', 'resting_potential'])
 
 
 #%%
@@ -40,13 +41,7 @@ plotting_funcs.plot_(high_K_plot, 'high K --> Ctrl aCSF, age > 18, no temp, RMP 
 df_MEA = pd.read_excel('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/data/EPSPs_highK/MEA_Overview_MIchael_sns.xlsx')
 df_MEA_Ctrl_storage = df_MEA[df_MEA['Storage'] == 'CTRL']
 
-sns_plot_MEA_data(df_MEA_Ctrl_storage, 'Absolute change in detected spikes')
-
-
-
-
-    
-
+plotting_funcs.sns_plot_MEA_data(df_MEA, 'Absolute change in detected spikes')
 
 
 

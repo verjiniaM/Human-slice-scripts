@@ -6,6 +6,7 @@ import json
 import datetime
 import funcs_human_characterisation as hcf
 import funcs_plotting as plotting_funcs
+import pyabf
 
 #this function opens the alerady existing experiments_overview file and adds the latest OP info
 #patcher and op_folder have to be strings; so with " "
@@ -72,7 +73,7 @@ def get_lab_book(OP_dir):
     lab_book_path = glob.glob(OP_dir + '*.xlsx' )[0]
     if lab_book_path != '~$':
         df_rec = pd.read_excel(lab_book_path, header = 1)
-    return df_rec
+    return df_rec, lab_book_path
 
 def get_abf_files(file_list):
     filenames = []
@@ -82,7 +83,7 @@ def get_abf_files(file_list):
             filenames.append(file_list[file])
     return filenames
 
-def sort_protocol_names (file_list, df_rec):
+def sort_protocol_names (file_list, df_rec, lab_book_path):
     '''
     takes a file list (contents of a folder) and pandas data frame (lab notebook)
     returns indices for all recording types
@@ -109,8 +110,25 @@ def sort_protocol_names (file_list, df_rec):
             ic_indices.append(i)
     index_dict['IC_files'] = ic_indices
 
+    rec_file = pd.ExcelFile(lab_book_path)
+    num_slices = rec_file.sheet_names[1:]
+    
+    pre_chans, post_chans = [], []
+    for slice_ in num_slices:
+        con_screen_matrix = pd.read_excel(lab_book_path, slice_, index_col=0)
+
+        pre_cells, post_cells = [], []
+        for col in con_screen_matrix.columns:
+            post_ = con_screen_matrix[col][con_screen_matrix[col] == 1].index.tolist()
+
+            if len(post_) > 0:
+                for i in post_:
+                    pre_cells.append(i[-1])
+                    post_cells.append(col[-1])
+        pre_chans.append(pre_cells)
+        post_chans.append(post_cells)
     #other_indices = df_rec.index[df_rec['protocol'].isnull() == 0].tolist()
-    return slice_indx, def_slice_names, index_dict
+    return slice_indx, def_slice_names, index_dict, pre_chans, post_chans
 #df_rec['protocol'][other_indices]
 
 def fix_slice_names (def_slice_names, slice_indx):
@@ -141,9 +159,9 @@ def get_OP_metadata (human_dir, OP, patcher):
     work_dir = get_work_dir(human_dir, OP, patcher)
     file_list = get_sorted_file_list(work_dir)
     jsons = get_json_files(file_list)
-    df_rec = get_lab_book(work_dir)
+    df_rec, lab_book_path = get_lab_book(work_dir)
     filenames = get_abf_files(file_list)
-    slice_indx, def_slice_names, indices_dict = sort_protocol_names(file_list, df_rec)
+    slice_indx, def_slice_names, indices_dict, pre_chans, post_chans = sort_protocol_names(file_list, df_rec, lab_book_path)
 
     if OP + '_indices_dict.json' in jsons:
         indices_dict = from_json(work_dir, OP, '_indices_dict.json')
@@ -151,7 +169,7 @@ def get_OP_metadata (human_dir, OP, patcher):
         to_json(work_dir, OP, '_indices_dict.json', indices_dict)
 
     slice_names = fix_slice_names(def_slice_names, slice_indx)
-    return work_dir, filenames, indices_dict, slice_names
+    return work_dir, filenames, indices_dict, slice_names, pre_chans, post_chans
 
 def make_dir_if_not_existing(working_dir, new_dir):
     '''
@@ -201,7 +219,7 @@ def get_json_files (file_list):
     return jsons
 
 def get_json_meta (human_dir, OP, patcher, file_out): # file_out = '_meta_active_chans.json'
-    work_dir, filenames, indices_dict, slice_names = get_OP_metadata(human_dir, OP, patcher)
+    work_dir, filenames, indices_dict, slice_names, pre_chans, post_chans = get_OP_metadata(human_dir, OP, patcher)
     exp_view = pd.read_excel(glob.glob(human_dir + '*experiments_overview.xlsx')[0]) 
 
     file_list = get_sorted_file_list(work_dir)
@@ -242,8 +260,8 @@ def get_json_meta (human_dir, OP, patcher, file_out): # file_out = '_meta_active
     pre_chans_all, post_chans_all, treatments = [], [], [] 
     for indx in indices_dict['con_screen']:
         #treatment = input('Treatment (Ctrl, high K, or TTX) for ' + OP + ' ' + slice_names[indx])
-        pre_chans = [int(item) for item in input('Pre channels in ' + filenames[indx]).split()]
-        post_chans = [int(item) for item in input('Post channels in ' + filenames[indx]).split()]
+        # pre_chans = [int(item) for item in input('Pre channels in ' + filenames[indx]).split()]
+        # post_chans = [int(item) for item in input('Post channels in ' + filenames[indx]).split()]
         pre_chans_all.append(pre_chans)
         post_chans_all.append(post_chans)
         treatments.append(treatment_dict[slice_names[indx][:2]])
@@ -251,8 +269,8 @@ def get_json_meta (human_dir, OP, patcher, file_out): # file_out = '_meta_active
         'OP_time' : op_time,
         'con_screen_file_indices' : indices_dict['con_screen'],
         'treatment' : treatments,
-        'pre_chans' : pre_chans_all,
-        'post_chans' : post_chans_all
+        'pre_chans' : pre_chans,
+        'post_chans' : post_chans
     }
 
     pre_chans_all_IC, post_chans_all_VC, treatments = [], [], []
@@ -426,8 +444,8 @@ def create_full_results_df(meta_keep_path, results_QC_path, verji_dir):
     #take more metadata from the tables in the data folders of the recordings
     RMP_high_K_all = concat_dfs_in_folder(verji_dir + 'OP*' + '/data_tables/'  + '*RMP_high_K' + '*.xlsx')
 
-    OPs, hrs_incub, cell_ID, recording_time, resting_potential, holding_minus_70_y_o_n, incubation_solution, \
-        recording_in, tissue_source, patient_age, K_concentration,  temp = [],[], [], [], [], [], [], [], [], [], [], []
+    sweeps, OPs, hrs_incub, cell_ID, recording_time, resting_potential, holding_minus_70_y_o_n, incubation_solution, \
+        recording_in, tissue_source, patient_age, K_concentration,  temp = [],[],[], [], [], [], [], [], [], [], [], [], []
     #adding metadata columns 
     for i, fn in enumerate(results_df['Recording filename']):
         chan = results_df['Channel'][i]
@@ -436,7 +454,10 @@ def create_full_results_df(meta_keep_path, results_QC_path, verji_dir):
         if len(dat_to_add) == 0:
             results_df =  results_df.drop(i)
             continue
+        meta_keep_data =  meta_keep['swps_to_analyse'][(meta_keep['Name of recording'] == fn) & \
+             (meta_keep['Channels to use'] == chan)].item()
         
+        sweeps.append(meta_keep_data)
         OPs.append(dat_to_add['OP'].item())
         hrs_incub.append(dat_to_add['hrs_incubation'].item())
         cell_ID.append(dat_to_add['cell_ID'].item())
@@ -452,9 +473,9 @@ def create_full_results_df(meta_keep_path, results_QC_path, verji_dir):
         K_concentration.append(dat_to_add['K concentration'].item())
         temp.append(dat_to_add['temperature'].item())
 
-    list_of_lists = [OPs, hrs_incub, cell_ID, recording_time, resting_potential, holding_minus_70_y_o_n, incubation_solution, \
+    list_of_lists = [sweeps, OPs, hrs_incub, cell_ID, recording_time, resting_potential, holding_minus_70_y_o_n, incubation_solution, \
         recording_in, tissue_source, patient_age, K_concentration, temp]
-    list_col_names = ['OP', 'hrs_incub', 'cell_ID', 'recording_time', 'resting_potential', 'holding_minus_70_y_o_n', 'incubation_solution', \
+    list_col_names = ['analyzed_swps' ,'OP', 'hrs_incub', 'cell_ID', 'recording_time', 'resting_potential', 'holding_minus_70_y_o_n', 'incubation_solution', \
         'recording_in', 'tissue_source', 'patient_age', 'K_concentration', 'temperature']
 
     #columns_to_include = list(set(list(RMP_high_K_all.columns)) - set(list(results_df.columns)))
@@ -462,3 +483,82 @@ def create_full_results_df(meta_keep_path, results_QC_path, verji_dir):
         results_df.insert(i, list_col_names[i], col)
     
     return results_df
+
+
+def get_h_m_s_from_timedelta(time_delta_obj):
+    h = int(time_delta_obj.seconds/3600)
+    m = int((time_delta_obj.seconds/3600 - int(time_delta_obj.seconds/3600))*60)
+    s = time_delta_obj.seconds - h*3600 - m*60
+    if s == 60:
+        s = 0
+        m = m+1
+    return h, m, s
+
+
+def get_time_of_recording_sweeps(results_df):
+    '''
+    takes the results df from the manually analyzed results
+    adds columne with infor for the time  of the recordings
+    relative to the starting time of recording for each slice
+    and for the time withing the recording
+    '''
+
+    verji_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/data_verji/'
+    vc_times = pd.read_excel('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/meta_events/EPSPs/vc_files_times.xlsx')
+
+    slice_start_times_list, swp1_starts, swp2_starts, times_after_rec_slice_start_swp1, times_after_rec_slice_start_swp2 = [], [], [], [], []
+    for i in range(len(results_df)):
+        fn = verji_dir + results_df['OP'][i] + '/' + results_df['Recording filename'][i]
+        rec_time = hcf.get_recording_time(fn)
+
+        swps = [int(x) for x in results_df['analyzed_swps'][i][1:-1].split(',')]
+
+        abf_fn = pyabf.ABF(fn)
+        rec_time_time = datetime.timedelta(days = 0, seconds = (rec_time.hour*3600 + rec_time.minute*60 + rec_time.second))
+        swp_time1 =  datetime.timedelta(days = 0, seconds = abf_fn.sweepLengthSec * (swps[0] - 1))
+        swp_time2 =  datetime.timedelta(days = 0, seconds = abf_fn.sweepLengthSec * (swps[1] - 1))
+
+        # h1, m1, s1 = get_h_m_s_from_timedelta(rec_time_time + swp_time1)
+        # h2, m2, s2 = get_h_m_s_from_timedelta(rec_time_time + swp_time2)
+
+        swp1_starts.append(rec_time_time.seconds + swp_time1.seconds)
+        swp2_starts.append(rec_time_time.seconds + swp_time2.seconds)
+
+        fn_results =  results_df['Recording filename'][i]
+        for j, fn in enumerate(vc_times['fn'][vc_times['OP'] == results_df['OP'][i]]):
+            if int(fn[5:8]) < int(fn_results[5:8])  and j + 1 == len(vc_times['fn'][vc_times['OP'] == results_df['OP'][i]]):
+                slice_start_times_list.append(vc_times['rec_time'][vc_times['fn'] == fn].item())
+            elif int(fn[5:8]) < int(fn_results[5:8]) and \
+                int(vc_times['fn'][vc_times['OP'] == results_df['OP'][i]].tolist()[j+1][5:8]) > int(fn_results[5:8]): 
+                slice_start_times_list.append(vc_times['rec_time'][vc_times['fn'] == fn].item())
+
+        rec_timedelta = datetime.timedelta(days = 0, seconds = slice_start_times_list[i].time().hour*3600 + \
+            slice_start_times_list[i].time().minute*60 + slice_start_times_list[i].time().second) 
+        
+        times_after_rec_slice_start_swp1.append(swp1_starts[i] - rec_timedelta.seconds)
+        times_after_rec_slice_start_swp2.append(swp2_starts[i] - rec_timedelta.seconds)
+        
+    results_df.insert(len(results_df.columns), 'sweep1_time_within_rec (sec)', swp1_starts)
+    results_df.insert(len(results_df.columns), 'sweep2_time_within_rec (sec)', swp2_starts)
+    results_df.insert(len(results_df.columns), 'slice_rec_start', slice_start_times_list)
+    results_df.insert(len(results_df.columns), 'time_after_rec_slice_start_swp1 (sec)', times_after_rec_slice_start_swp1)
+    results_df.insert(len(results_df.columns), 'time_after_rec_slice_start_swp2 (sec)', times_after_rec_slice_start_swp2)
+    #results_df.to_excel('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/meta_events/EPSPs/DEL_240305-results_df_complete.xlsx')
+    return results_df 
+
+#%%
+
+# to get the vc starting time - starting time of a recording 
+
+# human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'
+# vc_times_all = pd.DataFrame(columns=['fn', 'rec_time'])
+# for OP in results_df.OP.unique():
+
+#     work_dir, filenames, indices_dict, slice_names = sort.get_OP_metadata(human_dir, OP, 'Verji')
+
+#     vc_times = {}
+#     for j in indices_dict['vc']:
+#         fn = human_dir + 'data_verji/' + OP + '/' + filenames[j]
+#         vc_times[filenames[j]] = [hcf.get_recording_time(fn)]
+#         vc_times_df = pd.DataFrame.from_dict(vc_times).T
+#     vc_times_all = pd.concat([vc_times_all, vc_times_df], axis = 1)

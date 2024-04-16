@@ -1,16 +1,19 @@
 import pandas as pd
 import funcs_events_post_analysis as event_funcs
 import funcs_plot_intrinsic_props as plot_intr
+import funcs_for_results_tables as get_results
 import datetime
 import glob
 
-
+#%%
+# might need some manual intervention
+# get_results.prapare_for_event_analysis(op_to_alayze) --> can be used to prepare for event analysis,
 
 #%%
 #Pre-processing steps
 
-#event_funcs.copy_event_analysis_data_to_analysis_folder('spontan')
-#spontan_new = event_funcs.post_events_analysis_add_metadata('spontan')
+event_funcs.copy_event_analysis_data_to_analysis_folder('spontan')
+spontan_new = event_funcs.post_events_analysis_add_metadata('spontan')
 
 #%%
 results_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/meta_events/results/'

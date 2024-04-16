@@ -6,6 +6,7 @@ import funcs_plot_intrinsic_props as pl_intr
 human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'
 exp_view = pd.read_excel(glob.glob(human_dir + '*experiments_overview.xlsx')[0]) 
 
+dest_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/plots/for_lab_seminar_13.03.24/'
 #collect all QC intrinsic datatables
 df_intr_props = get_results.collect_intrinsic_df()
 #add patient info
@@ -20,7 +21,9 @@ df_intr_props = get_results.collect_intrinsic_df()
 #filter on age and hrs incubation
 adult_df = pl_intr.filter_adult_hrs_incubation_data(df_intr_props, min_age = 18, hrs_inc = 16, max_age = 151) # QC criteria 
 adult_df = adult_df[adult_df['area'] == 'temporal']
+#adult_df = adult_df[adult_df['high K concentration'] == '8 mM']
 op_color_dict = pl_intr.get_op_color_dict(adult_df)
+adult_df, age_color_dict = pl_intr.get_age_color_dict(adult_df)
 adult_df = pl_intr.create_new_cell_IDs(adult_df)
 #adult_df = pl_intr.get_precise_treatment(adult_df)
 
@@ -31,12 +34,24 @@ adult_df_repatch = adult_df_repatch.sort_values(['cell_ID_new', 'treatment'])
 adult_repatch_norm = pl_intr.get_normalized_df(adult_df_repatch)
 
 #plot all parameters 
-pl_intr.plot_param_for_days_slice(adult_df_slice_comparison, op_color_dict)
-pl_intr.plot_param_for_days_slice_TTX_incl(adult_df_slice_comparison, op_color_dict)
-pl_intr.plot_param_for_days_repatch(adult_df_repatch, op_color_dict)
-pl_intr.plot_param_for_days_repatch_plus_TTX(adult_df_repatch, op_color_dict)
-pl_intr.plot_param_for_days_repatch_all_params(adult_df_repatch, op_color_dict)
+pl_intr.plot_param_for_days_slice(adult_df_slice_comparison, op_color_dict, dest_dir + 'slice/')
+pl_intr.plot_param_for_days_slice_TTX_incl(adult_df_slice_comparison, op_color_dict, dest_dir  + 'slice/with_TTX/')
+pl_intr.plot_param_for_days_repatch(adult_df_repatch, op_color_dict, dest_dir + 'repatch/')
+pl_intr.plot_param_for_days_repatch_plus_TTX(adult_df_repatch, op_color_dict, dest_dir + 'repatch/with_TTX/')
+pl_intr.plot_param_for_days_repatch_all_params(adult_df_repatch, op_color_dict, dest_dir)
 #pl_intr.plot_param_for_days_repatch_norm(adult_repatch_norm, op_color_dict)
+
+#same but color on age not OP
+pl_intr.plot_param_for_days_slice(adult_df_slice_comparison, age_color_dict, dest_dir + 'slice_age/')
+pl_intr.plot_param_for_days_slice_TTX_incl(adult_df_slice_comparison, age_color_dict, dest_dir  + 'slice_age/with_TTX/')
+pl_intr.plot_param_for_days_repatch(adult_df_repatch, age_color_dict, dest_dir + 'repatch_age/')
+pl_intr.plot_param_for_days_repatch_plus_TTX(adult_df_repatch, age_color_dict, dest_dir + 'repatch_age/with_TTX/')
+pl_intr.plot_param_for_days_repatch_all_params(adult_df_repatch, age_color_dict, dest_dir + 'age') 
+#pl_intr.plot_param_for_days_repatch_norm(adult_repatch_norm, age_color_dict)
+
+#same but color on age not OP
+pl_intr.plot_param_for_days_repatch_no_15mM(adult_df_repatch, age_color_dict, dest_dir + 'repatch_age/')
+
 
 ###########################################################################################
 #%%
@@ -75,12 +90,17 @@ all_cons_IC.reset_index(inplace = True, drop = True)
 all_cons_VC.reset_index(inplace = True, drop = True)
 
 connect_QC_passed = pl_intr.get_QC_connectivity_df(all_cons_IC)
-pl_intr.plot_connect_amplitude(connect_QC_passed, 'all_IC_adult')
+pl_intr.plot_connect_amplitude(connect_QC_passed, 'all_IC_adult', \
+    age_color_dict, '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/plots/for_lab_seminar_13.03.24/connectivity_plots/')
+
 repatch_connect = pl_intr.get_repatch_connectivity_df(connect_QC_passed)
-pl_intr.plot_connect_amplitude(repatch_connect, 'repatch_IC_adult')
+pl_intr.plot_connect_amplitude(repatch_connect, 'repatch_IC_adult', \
+    age_color_dict,  '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/plots/for_lab_seminar_13.03.24/connectivity_plots/')
 
 connect_QC_passed_VC = pl_intr.get_QC_connectivity_VC(all_cons_VC)
-pl_intr.plot_connect_amplitude(connect_QC_passed_VC, 'all_VC_adult')
+pl_intr.plot_connect_amplitude(connect_QC_passed_VC, 'all_VC_adult',\
+     age_color_dict,  '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/plots/for_lab_seminar_13.03.24/connectivity_plots/')
+
 # repatch_connect_VC = pl_intr.get_repatch_connectivity_df(connect_QC_passed_VC)
 # pl_intr.plot_connect_amplitude(repatch_connect_VC, 'repatch_VC')
 
@@ -95,16 +115,19 @@ IFF_QC = pl_intr.remove_non_firing_cells_D1(IFF_QC)
 IFF_QC = IFF_QC.loc[IFF_QC['treatment'] != 'TTX']
 IFF_QC_slice = IFF_QC.loc[IFF_QC['repatch'] == 'no']
 IFF_QC_slice_firing = pl_intr.remove_non_firing_cells_D1(IFF_QC_slice)
-IFF_QC_slice_firing = get_precise_treatment(IFF_QC_slice_firing)
+IFF_QC_slice_firing = pl_intr.get_precise_treatment(IFF_QC_slice_firing)
 
-pl_intr.plot_IFF_avg_against_current_inj(IFF_QC_slice_firing, 'slice_firing', 'IFF')
+
+pl_intr.plot_IFF_avg_against_current_inj(IFF_QC_slice_firing, 'slice_firing', 'IFF',
+destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/plots/for_lab_seminar_13.03.24/IFF/')
 
 
 IFF_repatch_firing = pl_intr.remove_non_firing_cells_D1(IFF_repatch)
 IFF_repatch_firing = IFF_repatch_firing.loc[IFF_repatch_firing['treatment'] != 'TTX']
-IFF_repatch_firing = get_precise_treatment(IFF_repatch_firing)
+IFF_repatch_firing = pl_intr.get_precise_treatment(IFF_repatch_firing)
 
-pl_intr.plot_IFF_avg_against_current_inj(IFF_repatch_firing, 'repatch_firing', 'IFF')
+pl_intr.plot_IFF_avg_against_current_inj(IFF_repatch_firing, 'repatch_firing', 'IFF',
+destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/plots/for_lab_seminar_13.03.24/IFF/')
 
 #%%
 #analysis high K 

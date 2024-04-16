@@ -170,15 +170,15 @@ def remove_noisy_traces(df):
     df.reset_index(inplace = True, drop = True)
     return df
 
-    def get_n_nums_per_day(df):
-        treatments = ['Ctrl', 'TTX', 'high K']
-        days = df['day'].unique() 
-        
-        n_nums_dict = {}
-        for tr in treatments:
-            for day in days:
-                n_nums_dict[day + ' ' + tr] = len(df[(df['day'] == day) & (df['treatment'] == tr)])
-        return n_nums_dict
+def get_n_nums_per_day(df, treatments = ['Ctrl', 'high K']):
+    
+    days = df['day'].unique() 
+    
+    n_nums_dict = {}
+    for tr in treatments:
+        for day in days:
+            n_nums_dict[day + ' ' + tr] = len(df[(df['day'] == day) & (df['treatment'] == tr)])
+    return n_nums_dict
 
 def get_repatched_cells(df):
     '''
@@ -239,20 +239,21 @@ save_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/plots/ev
                 x1 = [x_plot[0][c], x[c]] 
                 y = df['Average amplitude (pA)'][df['cell_ID'] == cell]
                 op = plot_df['OP'][plot_df['cell_ID'] == cell].tolist()[0]
-                plt.plot(x1, y, '-', color = op_color_dict[op], alpha = 0.6, label = op)
+                plt.plot(x1, y, '-', color = op_color_dict[op], alpha = 0.6, label = op, zorder = 0)
             title1 = 'Spontaneous EPSCs (repatch)'
             x_plot = []
 
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
-    ax.set_xticks(ticks = list(range(1,7)), labels = day_label, size = 15)
+    ax.set_xticks(ticks = list(range(1,5)), labels = day_label, size = 15)
     ax.set_yticks(range(int(np.min(df['Average amplitude (pA)'])),
                         int(np.max(df['Average amplitude (pA)'])+4),5), size = 15) 
     plt.title(title1, fontsize = 19, x = 0.5, y = 1)
     ax.set_xlabel('Condition', fontsize = 15)
     ax.set_ylabel('Average amplitude (pA)', fontsize = 15)
+    fig.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
     
-    plt.figlegend(loc = 'upper right',  bbox_to_anchor=(1, 1))
+    #plt.figlegend(loc = 'upper right',  bbox_to_anchor=(1, 1))
     fig.tight_layout()
     fig.patch.set_facecolor('white')
     #plt.show(fig)
@@ -303,12 +304,53 @@ def plot_event_by_day_mini(df, n_nums, save_dir = '/Users/verjim/laptop_D_17.01.
 
 
 def post_event_analysis_main(QC, df_orig, min_event_size, min_hrs = 20):
+    ''' 
+    
+    '''
     QC_analyzed = exclude_fn_only_in_QC(df_orig, QC)
     df_analysis = get_non_excluded_traces(df_orig, QC_analyzed)
     df_analysis = add_day_of_recording_column(df_analysis)
     df_analysis = filter_min_hrs_incubation(df_analysis, min_hrs)
     df_analysis = remove_noisy_traces(df_analysis)
     df_analysis = remove_small_events(df = df_analysis, min_event_size = min_event_size)
+    return df_analysis
+
+def get_meta_data(results_df, meta_df):
+    '''
+    gets in
+    '''
+
+    event_types,cell_IDs, treatments, keep, exclusion_reasons = [],[],[], [], []
+    for i, fn in enumerate(results_df['Recording filename']):
+        chan = results_df['Channel'][i]
+        dat_to_add = meta_df[(meta_df['Name of recording'] == fn) & 
+                    (meta_df['Channels to use'] == chan)]
+
+        event_types.append(dat_to_add['event_type'].item())
+        cell_IDs.append(dat_to_add['cell_ID'].item())
+        #treatments.append(dat_to_add['treatment'].item())
+        keep.append(dat_to_add['comment'].item())
+        exclusion_reasons.append(dat_to_add['exclusion_reason'].item())
+
+    list_of_lists = [event_types, cell_IDs, keep, exclusion_reasons]
+    list_col_names = ['event_type', 'cell_ID', 'comment', 'exclusion_reason']
+
+    #columns_to_include = list(set(list(RMP_high_K_all.columns)) - set(list(results_df.columns)))
+    for i, col in enumerate(list_of_lists):
+        results_df.insert(i, list_col_names[i], col)
+    
+    return results_df
+
+def QC_post_event_analysis (df_analysis, meta_df, min_event_size, min_hrs = 16):
+    ''' 
+    QC for manually analyzed events
+    '''
+    df_analysis = get_meta_data(df_analysis, meta_df)
+    df_analysis = add_day_of_recording_column(df_analysis)
+    df_analysis = filter_min_hrs_incubation(df_analysis, min_hrs)
+    #df_analysis = remove_noisy_traces(df_analysis) # removes traces with more noise than 1.5*SDs
+    df_analysis = remove_small_events(df = df_analysis, min_event_size = min_event_size)
+
     return df_analysis
 
 def add_high_K_concentration(spontan_df):

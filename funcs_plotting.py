@@ -9,6 +9,7 @@ import funcs_sorting as sort
 import funcs_human_characterisation as hcf
 import pyabf
 import matplotlib as mpl
+import seaborn as sns
 
 # plots the middle sweep for each channel
 # check the traces to see which channels were active or if the protocol names are enetered correctly
@@ -91,28 +92,27 @@ def plot_vc_holding (filename, channels):
                 THRs = Res[0,1] * 0.1 #10 %
                 THRi = Res[0,2] * 0.1
         
-                #fig,ax = plt.subplots(3,2,sharex=True, figsize = (12,6))
-                fig, ax = plt.subplots(3,2,sharex=True)
-                hold = ax[0,0].scatter(range(sweep_count), Res[:,0], color='b', label = 'Holding current (median)')
+                fig, ax = plt.subplots(3,1,sharex=True)
+                hold = ax[0].scatter(range(sweep_count), Res[:,0], color='b', label = 'Holding current (median)')
                 #ax[0].set_title('Holding current')
-                hold_win = ax[0,0].fill_between(range(sweep_count), Res[0,0] - THholding, Res[0,0] + THholding, color='b', alpha=0.1, label = '20% window')
-                ax[0,0].set_ylim([np.min(Res[0,0] - 1.5 * THholding), np.max(Res[0,0] + 1.5 * THholding)])
-                ax[0,0].set_yticks([np.min(Res[0,0] - 1.5 * THholding), Res[0,0], np.max(Res[0,0] + 1.5 * THholding)])
+                hold_win = ax[0].fill_between(range(sweep_count), Res[0,0] - THholding, Res[0,0] + THholding, color='b', alpha=0.1, label = '20% window')
+                ax[0].set_ylim([np.min(Res[0,0] - 2 * THholding), np.max(Res[0,0] + 2 * THholding)])
+                ax[0].set_yticks([np.min(Res[0,0] - 2 * THholding), Res[0,0], np.max(Res[0,0] + 2 * THholding)])
                 #ax[0].legend(loc = 'upper right')
 
-                Rs = ax[1,0].scatter(range(sweep_count), Res[:,1], color='r', label = 'Series resistance (median)')
+                Rs = ax[1].scatter(range(sweep_count), Res[:,1], color='r', label = 'Series resistance (median)')
                 #ax[1].set_title('Series resistance')
-                Rs_win = ax[1,0].fill_between(range(sweep_count), Res[0,1] - THRs, Res[0,1] + THRs, color='r', alpha=0.1, label = '20% window')
-                ax[1,0].set_ylim([np.min(Res[0,1] - 1.5 * THRs), np.max(Res[0,1] + 1.5 * THRs)])
-                ax[1,0].set_yticks([np.min(Res[0,1] - 1.3 * THRs), Res[0,1], np.max(Res[0,1] + 1.3 * THRs)])
+                Rs_win = ax[1].fill_between(range(sweep_count), Res[0,1] - THRs, Res[0,1] + THRs, color='r', alpha=0.1, label = '20% window')
+                ax[1].set_ylim([np.min(Res[0,1] - 2 * THRs), np.max(Res[0,1] + 2 * THRs)])
+                ax[1].set_yticks([np.min(Res[0,1] - 2 * THRs), Res[0,1], np.max(Res[0,1] + 2 * THRs)])
                 #ax[1].legend(loc = 'upper right')
 
-                Rin = ax[2,0].scatter(range(sweep_count), Res[:,2], color='g', label = 'Input resistance (median)')
+                Rin = ax[2].scatter(range(sweep_count), Res[:,2], color='g', label = 'Input resistance (median)')
                 #ax[2].set_title('Input resistance')
-                Rin_win = ax[2,0].fill_between(range(sweep_count), Res[0,2] - THRi, Res[0,2] + THRi, color='g', alpha=0.1, label = '20% window')
-                ax[2,0].set_ylim([np.min(Res[0,2] - 1.5 * THRi), np.max(Res[0,2] + 1.5 * THRi)])
-                ax[2,0].set_yticks([np.min(Res[0,2] - 1.3 * THRi), Res[0,2], np.max(Res[0,2] + 1.3 * THRi)])
-                ax[2,0].set_xlabel('Sweep num')
+                Rin_win = ax[2].fill_between(range(sweep_count), Res[0,2] - THRi, Res[0,2] + THRi, color='g', alpha=0.1, label = '20% window')
+                ax[2].set_ylim([np.min(Res[0,2] - 2 * THRi), np.max(Res[0,2] + 2 * THRi)])
+                ax[2].set_yticks([np.min(Res[0,2] - 2 * THRi), Res[0,2], np.max(Res[0,2] + 2 * THRi)])
+                ax[2].set_xlabel('Sweep num')
                 #ax[2].legend(loc = 'upper right')
             
             #leg = plt.figlegend(loc = 'center right', bbox_to_anchor=(1.4, 0.5))
@@ -124,11 +124,11 @@ def plot_vc_holding (filename, channels):
                     ## positions within [1,1] would be within the figure
                     ## all numbers are ratio by default
 
-                    bbox_to_anchor=(1.4, 0.7),
+                    bbox_to_anchor=(1.05, 1),
 
                     ## loc indicates the position within the figure
                     ## it is defined consistent to the same Matlab function 
-                    loc='center right',
+                    loc='center left',
 
                     ncol = 1
                     #mode="expand",
@@ -137,9 +137,10 @@ def plot_vc_holding (filename, channels):
                 
             fig.patch.set_facecolor('white') 
             fig.suptitle(key, fontsize = 15)
-            fig.tight_layout()
+            #fig.tight_layout()
 
-            plt.savefig(dir_vc_plots + '/' + filename[end_fn:-4] + '_'+ key + '_VC_plot.png')
+            plt.savefig(dir_vc_plots + '/' + filename[end_fn:-4] + '_'+ key + '_VC_plot.png', \
+                bbox_extra_artists=(lgd,), bbox_inches='tight')
             plt.close(fig)
 
 
@@ -685,8 +686,8 @@ def plot_trace(fn, sweep, channel):
     fast visualization of recordings and corresponding protocol
     accepts only 1 int for channel
     '''
-    end_fn = fn.rfind('/') + 1
 
+    end_fn = fn.rfind('/') + 1
     trace = pyabf.ABF(fn)
 
     if len(trace.channelList) < 8:
@@ -698,6 +699,7 @@ def plot_trace(fn, sweep, channel):
         channel = trace.channelList[trace.adcNames.index(channel_name)]
     else:
         channel = channel-1
+        channel_name = 'Ch' + str(channel+1)
 
     fig, ax = plt.subplots(2,1, sharex = False, figsize = (14,8))
     if sweep == 'all':
@@ -799,10 +801,10 @@ def QC_RMP_Ctrl(df, max_allowed_RMP_Ctrl):
 
     cell_ID_keep = df['cell_ID'][(df['recording_in'] == 'Ctrl') & (df['resting_potential'] < max_allowed_RMP_Ctrl)].to_list()
     cells_to_delete = list(set(df['cell_ID'].unique().tolist()) - set(cell_ID_keep))
-
     for cell in cells_to_delete:
         df = df.drop(df.index[df['cell_ID'] == cell])     
     df.reset_index(inplace = True, drop = True)
+
     return df
 
 #plotting funcs
@@ -818,16 +820,16 @@ def plot_ (df, title, params = ['Average amp (positive)', 'Average interevent in
     OP_colors = ['#dede00', '#ff7f00', '#4daf4a', '#984ea3', 'violet']
     op_color_dict = {'OP230914':'#dede00', 'OP231005':'#ff7f00', 'OP231109':'#4daf4a', 'OP231123':'#984ea3', 'OP231130':'violet'}
     df = df.sort_values(by = ['recording_in', 'cell_ID']).reset_index(drop= True)
-    fig, ax = plt.subplots(2,1, sharex = False, figsize=(8,10))
+    fig, ax = plt.subplots(len(params),1, sharex = False, figsize=(6,10))
     for p, param in enumerate(params):
         x_vals = []
         for i, rec_solution in enumerate(sorted(df.recording_in.unique())):
             df_plot = df[df['recording_in'] == rec_solution].reset_index(drop= True) 
             x = np.linspace(2*i, 1 + 2*i, len(df_plot))
-            ax[p].scatter(x, df_plot[param], alpha = 0.7, label = 'Ctrl')
+            ax[p].scatter(x, df_plot[param], alpha = 0.6, label = 'Ctrl')
             ax[p].plot([0.4 + 2*i, 0.6 + 2*i], [np.nanmean(df_plot[param]), np.nanmean(df_plot[param])], c = 'k')
             ax[p].text(0.4 + 2*i, np.nanmean(df_plot[param]) + p +0.03,  str(round(np.nanmean(df_plot[param]),2)), size = 15, c = 'k', zorder = 10)
-            ax[p].set_title(param)
+            #ax[p].set_title(param)
 
             x_vals.append(x)
 
@@ -841,6 +843,8 @@ def plot_ (df, title, params = ['Average amp (positive)', 'Average interevent in
         for c, cell in enumerate(cell_IDs):
             #indx = index_s[c]
             #x_K = results_df_plot['x'].loc[results_df_plot['cell_ID'] == cell].tolist()[0]
+            # if len(x_vals[1]) <= c :
+            #     continue
             x = [x_vals[0][c], x_vals[1][c]]
             y = [df[param][df['recording_in'] == 'Ctrl'].tolist()[c], df[param][df['recording_in'] == 'high K'].tolist()[c]]
             #op = df_plot['OP'][df_plot['cell_ID_new'] == cell].tolist()[0]
@@ -848,8 +852,14 @@ def plot_ (df, title, params = ['Average amp (positive)', 'Average interevent in
     
     ax[0].set_ylabel('Amplitude (pA)')
     ax[1].set_ylabel('IEI (ms)')
+    ax[2].set_ylabel('RMP (mV)')
+    # ax[0].set_ylabel('Input resistance (MΩ)')
+    # ax[1].set_ylabel('Input resistance (MΩ)')
 
+    #ax[2].set_title('Resting membrane potential')
+    ax[0].set_xticks(ticks = [0.5, 2.5], labels = ['Ctrl', 'high K'],)
     ax[1].set_xticks(ticks = [0.5, 2.5], labels = ['Ctrl', 'high K'],)
+    ax[2].set_xticks(ticks = [0.5, 2.5], labels = ['Ctrl', 'high K'],)
 
     fig.suptitle(title)
     fig.tight_layout()
