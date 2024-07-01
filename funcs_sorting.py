@@ -7,6 +7,7 @@ import datetime
 import funcs_human_characterisation as hcf
 import funcs_plotting as plotting_funcs
 import pyabf
+import re
 
 #this function opens the alerady existing experiments_overview file and adds the latest OP info
 #patcher and op_folder have to be strings; so with " "
@@ -83,7 +84,7 @@ def get_abf_files(file_list):
             filenames.append(file_list[file])
     return filenames
 
-def sort_protocol_names (file_list, df_rec, lab_book_path):
+def sort_protocol_names (file_list, df_rec, lab_book_path, V = 'new'):
     '''
     takes a file list (contents of a folder) and pandas data frame (lab notebook)
     returns indices for all recording types
@@ -113,6 +114,9 @@ def sort_protocol_names (file_list, df_rec, lab_book_path):
     rec_file = pd.ExcelFile(lab_book_path)
     num_slices = rec_file.sheet_names[1:]
     
+    if V == 'old':
+        return slice_indx, def_slice_names, index_dict
+
     pre_chans, post_chans = [], []
     for slice_ in num_slices:
         con_screen_matrix = pd.read_excel(lab_book_path, slice_, index_col=0)
@@ -155,13 +159,17 @@ def get_work_dir(human_dir, OP, patcher: str):
         work_dir = human_dir + 'data_rosie/'+ OP_folder 
     return work_dir
 
-def get_OP_metadata (human_dir, OP, patcher):
+def get_OP_metadata (human_dir, OP, patcher, V = 'new'):
     work_dir = get_work_dir(human_dir, OP, patcher)
     file_list = get_sorted_file_list(work_dir)
     jsons = get_json_files(file_list)
     df_rec, lab_book_path = get_lab_book(work_dir)
     filenames = get_abf_files(file_list)
-    slice_indx, def_slice_names, indices_dict, pre_chans, post_chans = sort_protocol_names(file_list, df_rec, lab_book_path)
+
+    if V == 'old':
+        slice_indx, def_slice_names, indices_dict = sort_protocol_names(file_list, df_rec, lab_book_path, V = 'old')
+    else:
+        slice_indx, def_slice_names, indices_dict, pre_chans, post_chans = sort_protocol_names(file_list, df_rec, lab_book_path)
 
     if OP + '_indices_dict.json' in jsons:
         indices_dict = from_json(work_dir, OP, '_indices_dict.json')
@@ -169,7 +177,12 @@ def get_OP_metadata (human_dir, OP, patcher):
         to_json(work_dir, OP, '_indices_dict.json', indices_dict)
 
     slice_names = fix_slice_names(def_slice_names, slice_indx)
+    
+    if V == 'old':
+        return work_dir, filenames, indices_dict, slice_names
+
     return work_dir, filenames, indices_dict, slice_names, pre_chans, post_chans
+
 
 def make_dir_if_not_existing(working_dir, new_dir):
     '''
@@ -192,7 +205,7 @@ def plot_trace_if_not_done(work_dir, dir_plots, filenames):
     else:
             print("skipping plotting")
 
-def to_json (work_dir, OP, file_out, out_data):
+def to_json(work_dir, OP, file_out, out_data):
     '''
     returns a list with 3 dictionaries; 
     [1] slice names and active channels (for characterization)
@@ -208,6 +221,10 @@ def to_json (work_dir, OP, file_out, out_data):
 def from_json (work_dir, OP, fn):
     fname = work_dir + OP + fn
     f = open(fname)
+    return json.load(f)
+
+def open_json(dir):
+    f = open(dir)
     return json.load(f)
 
 def get_json_files (file_list):
@@ -257,13 +274,13 @@ def get_json_meta (human_dir, OP, patcher, file_out): # file_out = '_meta_active
         'active_chans': active_chans_all
     }
 
-    pre_chans_all, post_chans_all, treatments = [], [], [] 
+    treatments = []
     for indx in indices_dict['con_screen']:
         #treatment = input('Treatment (Ctrl, high K, or TTX) for ' + OP + ' ' + slice_names[indx])
         # pre_chans = [int(item) for item in input('Pre channels in ' + filenames[indx]).split()]
         # post_chans = [int(item) for item in input('Post channels in ' + filenames[indx]).split()]
-        pre_chans_all.append(pre_chans)
-        post_chans_all.append(post_chans)
+        # pre_chans_all.append(pre_chans)
+        # post_chans_all.append(post_chans)
         treatments.append(treatment_dict[slice_names[indx][:2]])
     con_screen_meta = {
         'OP_time' : op_time,
@@ -275,8 +292,10 @@ def get_json_meta (human_dir, OP, patcher, file_out): # file_out = '_meta_active
 
     pre_chans_all_IC, post_chans_all_VC, treatments = [], [], []
     for i in indices_dict['IC_files']:
-        pre_chans_IC = [int(item) for item in input('Pre channels in IC ' + filenames[i]).split()]
-        post_chans_VC = [int(item) for item in input('Post channels in VC ' + filenames[i]).split()]
+        # pre_chans_IC = [int(item) for item in input('Pre channels in IC ' + filenames[i]).split()]
+        # post_chans_VC = [int(item) for item in input('Post channels in VC ' + filenames[i]).split()]
+        pre_chans_IC = []
+        post_chans_VC = []
         pre_chans_all_IC.append(pre_chans_IC)
         post_chans_all_VC.append(post_chans_VC)
         treatments.append(treatment_dict[slice_names[i][:2]])
@@ -307,6 +326,99 @@ def get_json_meta (human_dir, OP, patcher, file_out): # file_out = '_meta_active
     json_meta = from_json(work_dir, OP, file_out)
     return json_meta
 
+
+def get_json_meta_connect_all (human_dir, OP, patcher, file_out = '_con_screen_only.json'): # file_out = '_con_screen_only.json'
+    work_dir, filenames, indices_dict, slice_names = get_OP_metadata(human_dir, OP, patcher, 'old')
+    
+    if isinstance(indices_dict, list):
+        indices_dict = indices_dict[0]
+
+    exp_view = pd.read_excel(glob.glob(human_dir + '*experiments_overview.xlsx')[0]) 
+    op_time = exp_view['cortex_out'][exp_view.index[exp_view['OP'] == OP]].tolist()
+    file_list = get_sorted_file_list(work_dir)
+    
+    jsons = get_json_files(file_list)   
+    if OP + file_out in jsons:
+        json_con_screen = from_json(work_dir, OP, file_out)
+        if len(json_con_screen) == 1:
+
+            work_dir, filenames, indices_dict, slice_names, pre_chans, post_chans = get_OP_metadata(human_dir, OP, patcher)
+
+            treatment_dict = {}
+            for a, s in enumerate(json_con_screen[0]['slices']):
+                treatment_dict[s] = json_con_screen[0]['treatment'][a]
+
+            if isinstance(indices_dict, list):
+                indices_dict = indices_dict[0]
+            json_con_screen[0]['pre_chans'] = pre_chans
+            json_con_screen[0]['post_chans'] = post_chans
+
+            if 'IC_files' in indices_dict.keys():
+                pre_chans_all_IC, post_chans_all_VC, treatments = [], [], []
+                df_rec, lab_book_path = get_lab_book(work_dir)
+                for a, j in enumerate(indices_dict['IC_files']):
+                    prot_name = df_rec['protocol'][j]
+                    pre_chan_IC = int(re.findall(r'\d', prot_name)[0])
+                    if slice_names[j] not in json_con_screen[0]['slices']:
+                        post_chans_VC = [int(item) for item in input('Post channels in ' + filenames[j]).split()]
+                    else:
+                        indx_ = json_con_screen[0]['slices'].index(slice_names[j])
+
+                        pre_chans_all = [eval(i) for i in pre_chans[indx_]]
+                        post_chans_all = [eval(i) for i in post_chans[indx_]]
+
+                        pre_chan_indx = [i for i, val in enumerate(pre_chans_all) if val==pre_chan_IC]
+                        post_chans_VC = []
+                        for i in pre_chan_indx:
+                            post_chans_VC.append(post_chans_all[i])
+        
+                    pre_chans_IC = [pre_chan_IC] * len(post_chans_VC)
+
+                    pre_chans_all_IC.append(pre_chans_IC)
+                    post_chans_all_VC.append(post_chans_VC)
+                    treatments.append(treatment_dict[slice_names[j][:2]])
+
+                con_screen_meta_IC = {
+                    'con_screen_IC_file_indices' : indices_dict['IC_files'],
+                    'treatment' : treatments,
+                    'pre_chans_IC' : pre_chans_all_IC,
+                    'post_chans_VC' : post_chans_all_VC
+                }
+                to_json(work_dir, OP, file_out, [json_con_screen[0], con_screen_meta_IC])
+                json_con_screen = from_json(work_dir, OP, file_out)
+            else :
+                to_json(work_dir, OP, file_out, [json_con_screen[0]])
+                json_con_screen = from_json(work_dir, OP, file_out)
+        return json_con_screen
+
+    treatment_dict = {}
+    slices = np.unique(np.array(slice_names))
+    unique_slices = []
+    [unique_slices.append(S[:2]) for S in slices]
+    unique_slices = np.unique(np.array(unique_slices))
+
+    for i in unique_slices:
+        treatment = input('Treatment (Ctrl, high K, or TTX) for ' + OP + ' ' + i)
+        treatment_dict[i] = treatment
+
+    active_chans_con_screen, slice_names_dict, treatments = [], [], []
+    for i in indices_dict['con_screen']:
+        slice_names_dict.append(slice_names[i])
+        treatments.append(treatment_dict[slice_names[i][:2]])
+        active_channels = [int(item) for item in input('Used channels in ' + OP + ' ' + filenames[i]).split()]
+        active_chans_con_screen.append(active_channels)
+        con_screen_meta = {
+            'OP_time' : op_time[0].strftime('%y%m%d %H:%M'),
+            'slices' : slice_names_dict,
+            'treatment' : treatments,
+            'con_screen_file' : indices_dict['con_screen'],
+            'active_chans': active_chans_con_screen
+        }
+    to_json(work_dir, OP, file_out, [con_screen_meta])
+    json_con_screen = from_json(work_dir, OP, file_out)
+    return json_con_screen
+
+
 def get_datetime_from_input (op_time):
     ''' 
     op_time - 2020-10-20 10:00:00
@@ -315,6 +427,7 @@ def get_datetime_from_input (op_time):
     # cortex_out_time = datetime.datetime(year, month, day, hour, minute)
     cortex_out_time = datetime.datetime.strptime(op_time, "%Y-%m-%d %H:%M:%S")
     return cortex_out_time
+
 
 def get_time_after_OP (filename, cortex_out_time):
 

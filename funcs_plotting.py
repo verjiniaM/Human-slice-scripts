@@ -113,9 +113,7 @@ def plot_vc_holding (filename, channels):
                 ax[2].set_ylim([np.min(Res[0,2] - 2 * THRi), np.max(Res[0,2] + 2 * THRi)])
                 ax[2].set_yticks([np.min(Res[0,2] - 2 * THRi), Res[0,2], np.max(Res[0,2] + 2 * THRi)])
                 ax[2].set_xlabel('Sweep num')
-                #ax[2].legend(loc = 'upper right')
             
-            #leg = plt.figlegend(loc = 'center right', bbox_to_anchor=(1.4, 0.5))
                 lgd = plt.legend(
                     [hold, hold_win, Rs, Rs_win, Rin, Rin_win],
                     ['Holding current (median)','20% window', 'Series resistance (median)', '20% window', 'Input resistance (median)', '20% window'],
@@ -346,6 +344,26 @@ def plot_mini_sweeps (filename, cell_chan, sweep):
 
 ## Connectivity plotting functions 
 
+def plot_con_screen_all (fn, active_chans):
+    #%matplotlib qt
+    con_screen_data = hcf.load_traces(fn)
+
+    fig,ax = plt.subplots(len(active_chans),1, sharex = True, figsize=(10,20))
+    fig.patch.set_facecolor('white')
+
+    for i, signal in enumerate(active_chans):
+        ch_name = 'Ch' + str(signal)
+        ch_data = con_screen_data[ch_name][0]
+        avg_signal = np.mean(ch_data, axis = 1)
+
+        ax[i].plot(avg_signal)
+        ax[i].set_ylabel(ch_name)
+    
+    fig.suptitle(fn[fn.rfind('/') + 1:-4])
+    #plt.savefig(save_folder + fn[fn.rfind('/') + 1:-4] )
+    plt.show(block=True)
+
+
 def plot_connect(fn, active_channels, z1=0.5, z2=35.5,
  clrs = ["b", "g", "k", "c", "k", "y", "#FF4500", "#800080"]):
     end_fn = fn.rfind('/') + 1
@@ -389,7 +407,7 @@ def plot_connect(fn, active_channels, z1=0.5, z2=35.5,
     plt.savefig(dir_connect + '/' + fn[end_fn:-4] + 'con_screen_plot.png')
     plt.close(fig)
 
-def plot_connection_window(con_screen_file, preC, postC, pre_window, post_window, preAPs_shifted, postsig,\
+def  plot_connection_window(con_screen_file, preC, postC, pre_window, post_window, preAPs_shifted, postsig,\
                            onsets, preAPs, PSPs, bl):
 
     sampl_rate, units, times = hcf.get_abf_info(con_screen_file, preC, np.shape(postsig)[1], np.shape(postsig)[0])
@@ -408,7 +426,7 @@ def plot_connection_window(con_screen_file, preC, postC, pre_window, post_window
         my_labels['l1'] = "_nolegend_"
 
     for i in range(np.shape(postsig)[1]):
-        y = postsig[:,i][preAPs[0][0]-750:preAPs[0][len(preAPs)-1]+750]
+        y = postsig[:,i][preAPs[0][0]-750:preAPs[0][len(preAPs[0])-1]+750]
         axarr[1].plot(times[0:len(y)], y, lw=0.2, color='grey', alpha=0.4, zorder=0 )
         #axarr[1].plot(y, lw=0.2, color='grey', alpha=0.4)
     
@@ -421,7 +439,7 @@ def plot_connection_window(con_screen_file, preC, postC, pre_window, post_window
         linestyles = 'solid', lw = 3, color='b', label = my_labels['l2'],zorder=10, alpha = 0.6)
         my_labels['l2'] = "_nolegend_"
 
-    axarr[1].scatter(onsets/sampl_rate, bl, marker='^', color='r', label = my_labels['l3'],zorder=10)
+    axarr[1].scatter(onsets/sampl_rate, bl, marker='^', color='r', label = my_labels['l3'],  zorder=10)
 
     for i in range(0,len(PSPs)):
         axarr[1].scatter(PSPs[i][1]/sampl_rate, PSPs[i][0], marker='+',\
@@ -433,11 +451,12 @@ def plot_connection_window(con_screen_file, preC, postC, pre_window, post_window
     axarr[1].set_title('Post cell responsees')
     axarr[1].set_xlabel('sec')
     axarr[1].set_ylabel(str(units)[-2:])
-    plt.figlegend(loc = 'center right',  bbox_to_anchor=(0.92, 0.5))
+    plt.figlegend(loc = 'center right',  bbox_to_anchor=(1.05, 1))
     fig.patch.set_facecolor('white')
 
     plt.savefig(dir_connect + '/pre_post_events_' + con_screen_file[end_fn:-4] + '_Ch' + str(preC) + '#Ch' + str(postC) + '.png')
     plt.close()
+
     return fig, axarr
 
 def plot_post_cell(con_screen_file, pre_cell_chan, post_cell_chan):
@@ -451,7 +470,7 @@ def plot_post_cell(con_screen_file, pre_cell_chan, post_cell_chan):
     mean_pre, mean_post, pre_window, post_window, preAPs_shifted, preAPs = con_param.get_analysis_window(pre_sig, post_sig)
     sampl_rate = 200_000
 
-    fig = plt.figure(figsize=(20,12))
+    fig = plt.figure(figsize=(40,24))
     plt.subplots(1,1,sharex=True)
 
     my_labels = {'l1' : 'peak pre_AP'}
@@ -461,8 +480,8 @@ def plot_post_cell(con_screen_file, pre_cell_chan, post_cell_chan):
         plt.vlines(preAPs[0]-xvals,-50, -210, lw=0.25, color = 'r', label = my_labels['l1'])
         my_labels['l1'] = "_nolegend_"
 
-    fig.patch.set_facecolor('white')
     plt.figlegend(loc = 'upper right')
+    fig.patch.set_facecolor('white')
     plt.savefig(dir_connect + '/post_swps_all_' + con_screen_file[end_fn:-4] + '_' + 
     'Ch' + str(pre_cell_chan) + '_to_' + 'Ch' + str(post_cell_chan) + '.png')
     plt.close()
@@ -473,9 +492,9 @@ def plot_post_cell(con_screen_file, pre_cell_chan, post_cell_chan):
     plt.plot(times, y, lw=1.5, color='k')
     plt.xlabel('ms')
     plt.ylabel('mV')
+    fig.patch.set_facecolor('white')
     plt.savefig(dir_connect + '/post_swps_mean_' + con_screen_file[end_fn:-4] + '_' + 
     'Ch' + str(pre_cell_chan) + '_to_' + 'Ch' + str(post_cell_chan) + '.png')
-    fig.patch.set_facecolor('white')
     plt.close()
 
 
@@ -583,7 +602,7 @@ def plot_connection_window_VC (con_screen_file, preC, postC, pre_window, post_wi
         my_labels['l1'] = "_nolegend_"
 
     for i in range(np.shape(postsig)[1]):
-        y = postsig[:,i][preAPs[0][0]-750:preAPs[0][len(preAPs)-1]+750]
+        y = postsig[:,i][preAPs[0][0]-750:preAPs[0][len(preAPs[0])-1]+750]
         axarr[1].plot(times[0:len(y)], y, lw=0.2, color='grey', alpha=0.4, zorder=0 )
         #axarr[1].plot(y, lw=0.2, color='grey', alpha=0.4)
     

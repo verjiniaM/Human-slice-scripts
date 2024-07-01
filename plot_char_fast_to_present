@@ -4,9 +4,10 @@ import pandas as pd
 from funcs_human_characterisation import load_traces
 import numpy as np
 import matplotlib.pyplot as plt
-import stimulation_windows_ms
+from stimulation_windows_ms import stim_window_con_screen
 import neo
 import funcs_sorting as sort
+import funcs_human_characterisation as hcf
 
 #%%
 
@@ -14,7 +15,7 @@ human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'
 OP = 'OP240215'
 patcher = 'Verji'
 
-work_dir, filenames, indices_dict, slice_names = sort.get_OP_metadata(human_dir, OP, patcher)
+work_dir, filenames, indices_dict, slice_names, pre_chans, post_chans = sort.get_OP_metadata(human_dir, OP, patcher)
 
 #%%
 
@@ -120,13 +121,13 @@ plt.savefig('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/plots/f
 fn = work_dir + filenames[15]
 fn2 = work_dir + filenames[51]
 
-z = 1.5
+z1 = 1.5
 z2 = 40.5
-stim_window = stimulation_windows_ms.stim_window_con_screen #what are the stim windows???
+stim_window = stim_window_con_screen #what are the stim windows???
 con_screen_data = hcf.load_traces(fn)
 
 x = len(active_channels[0]) 
-stim_window = stim_win.stim_window_con_screen
+stim_window = stim_window_con_screen
 
 fig, ax = plt.subplots(x, x, sharex = True, sharey = False, figsize = (6,6))
 for i, ch1 in enumerate(active_channels[0]):
@@ -155,16 +156,15 @@ for i, ch1 in enumerate(active_channels[0]):
             ax[i,j].set_ylim([plotwin.min() - z1, plotwin.max() + z2])
             v2 = ax[i,j].vlines(0,plotwin.min() + z1, plotwin.max() + z2, lw=0.7, color='k')
 
-fig.suptitle('connections in ' + fn[end_fn:],fontsize=15)
+fig.suptitle('connections in ' + fn[-10:-4],fontsize=15)
 fig.patch.set_facecolor('white')
 fig.tight_layout()
-plt.savefig('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/plots/for_lab_seminar_13.03.24/traces/con_screen_D1.pdf', format = 'pdf')
+# plt.savefig('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/plots/for_lab_seminar_13.03.24/traces/con_screen_D1.pdf', format = 'pdf')
 
 
 con_screen_data2 = hcf.load_traces(fn2)
 
 x = len(active_channels[1]) 
-stim_window = stim_win.stim_window_con_screen
 
 fig, ax = plt.subplots(x, x, sharex = True, sharey = False, figsize = (6,6))
 for i, ch1 in enumerate(active_channels[1]):
@@ -193,10 +193,10 @@ for i, ch1 in enumerate(active_channels[1]):
             ax[i,j].set_ylim([plotwin.min() - z1, plotwin.max() + z2])
             v2 = ax[i,j].vlines(0,plotwin.min() + z1, plotwin.max() + z2, lw=0.7, color='k')
 
-fig.suptitle('connections in ' + fn2[end_fn:],fontsize=15)
+fig.suptitle('connections in ' + fn2[-10:-4],fontsize=15)
 fig.patch.set_facecolor('white')
 fig.tight_layout()
-plt.savefig('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/plots/for_lab_seminar_13.03.24/traces/con_screen_D2.pdf', format = 'pdf')
+# plt.savefig('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/plots/for_lab_seminar_13.03.24/traces/con_screen_D2.pdf', format = 'pdf')
 
 
 # # results = work_dir + 'data_tables/' + OP[:-1] + '_Intrinsic_and_synaptic_properties.xlsx'
@@ -206,3 +206,4 @@ plt.savefig('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/plots/f
 # # %%
 
 # %%
+

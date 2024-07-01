@@ -1,0 +1,26 @@
+### Classic matplotlib plotting style as of v1.5
+
+
+#AXES 
+axes.labelcolor:    black
+axes.facecolor:     white
+axes.spines.right:  False
+axes.spines.top: False
+axes.edgecolor:     black
+axes.grid: False
+axes.axisbelow:     line 
+
+#LINES
+lines.linewidth : 2
+
+#FONTS
+font.size : 20
+
+#FIGURE
+figure.facecolor:   white
+savefig.facecolor: white
+text.color: black
+
+#ticks
+xtick.color: black
+ytick.color: black

@@ -30,8 +30,8 @@ def presynaptic_screen(con_screen_file, pre_cell_chan):
         vm1 = np.mean(pre_sig[:,i][0:4000])
         vm2 = np.mean(pre_sig[:,i][197999:199999])
         max_val = np.max(pre_sig[:,i])
-        if (vm1 > -50) or vm1-(vm1 * -0.1) > vm2 or vm2 >vm1 + (vm1 * -0.1):
-            es.append(i)
+        if (vm1 > -45) or vm1-(vm1 * -0.1) > vm2 or vm2 >vm1 + (vm1 * -0.1):
+            #es.append(i)
             print("Excluding swp # " + str(i) + '; drift more than 0.1*RMP start to end or RMP > -50') 
         elif vmO - (vmO * -0.1) > vm1 or vm1 > vmO + (vmO * -0.1):
             es.append(i)
@@ -71,7 +71,7 @@ def postsynaptic_screen(con_screen_file, post_cell_chan, es):
         vm1 = np.mean(post_sig[:,i][0:4000]) #baseline 
         vm2 = np.mean(post_sig[:,i][197999:199999])
         post_amp = np.max(post_sig[:,i]) - np.min(post_sig[:,i])  
-        if (vm1 > -50) or vm1 - (vm1 * -0.1) > vm2 or vm2 > vm1 + (vm1 * -0.1):
+        if (vm1 > -45) or vm1 - (vm1 * -0.1) > vm2 or vm2 > vm1 + (vm1 * -0.1):
             es2.append(i)
         elif vm1 < -80:
             es2.append(i)
@@ -269,7 +269,7 @@ def presynaptic_screen_IC(con_screen_file, pre_cell_chan):
         vm2 = np.mean(pre_sig[:,i][40_000:44_000])
         max_val = np.max(pre_sig[:,i])
         if (vm1 > -50) or vm1-(vm1 * -0.1) > vm2 or vm2 >vm1 + (vm1 * -0.1):
-            es.append(i)
+            #es.append(i)
             print("Excluding swp # " + str(i) + '; drift more than 0.1*RMP start to end or RMP > -50') 
         elif vmO - (vmO * -0.1) > vm1 or vm1 > vmO + (vmO * -0.1):
             es.append(i)

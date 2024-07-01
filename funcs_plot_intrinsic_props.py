@@ -10,10 +10,8 @@ import funcs_for_results_tables as get_results
 
 #import seaborn as sns
 
-plt.rcParams['lines.linewidth'] = 2
-plt.rcParams['axes.spines.right'] = False
-plt.rcParams['axes.spines.top'] = False
-plt.rcParams['font.size'] = 20
+plt.style.use('./style_plot_intrinsic.mplstyle')
+
 #mpl.rcParams['axes.prop_cycle'] = cycler(color=['r', 'g', 'b', 'y']) 3 changes the default colors
 
 def patient_age_to_float(df_intr_props, min_age, max_age=151):
@@ -183,16 +181,34 @@ def dict_for_plotting():
     values[2] plot y ticks
     '''
     titles_dict = {'Rs': ['Series resistance', 'MΩ', [5,10,15,20,25,30]], 
-    'Rin': ['Input resistance', 'MΩ', [50,100,150,200,250]],
-    'resting_potential': ['Resting membrane potential', 'mV',[-75, -70, -65,-60,-55, -50]],
+    'AP_halfwidth': ['AP halfwidth', 'ms', [0.5, 1, 1.5, 2, 2.5]],
+    'Rin': ['Input resistance', 'MΩ', [0,100,200,300,400]],
+    'resting_potential': ['Resting membrane potential', 'mV',[-80, -70,-60,-50]],
     'max_spikes': ['Maximum number of spikes', 'count', [0,10,20,30,40,50]],
     'Rheobase': ['Rheobase', 'pA', [100,300,500,700,900]],
     'AP_heigth': ['AP amplitude', 'mV', [50,60,70,80,90,100]],    
-    'TH': ['AP threshold', 'mV', [-45, -40, -30, -35, -25]],
+    'TH': ['AP threshold', 'mV', [-50, -40, -30, -20, -10 ]],
     'max_depol': ['AP upstroke (30% to 70%)', 'mV/ms', [100,200,300,400,500]],
     'max_repol': ['AP downstroke (70% to 30%)', 'mV/ms', [-100, -80, -60, -40, -20]],
     'membra_time_constant_tau': ['Membrane time constant', 'ms', [10, 20, 30, 40, 50]],
     'capacitance': ['Capacitance', 'pF', [100, 300, 500, 700]]}
+    return titles_dict
+
+def dict_for_plotting_synaptic():
+    '''
+    key is the param as in the data table column
+    values[0] plot title
+    values[1] y asix
+    values[2] plot y ticks
+    '''
+    titles_dict = {'amplitude mean': ['Mean amplitude', 'pA', [-50, -40, -30, -20, -10, 0]], 
+    'frequency': ['Event frequency', 'Hz', [0,2,4,6,8,10]],
+    'risetime mean': ['Mean risetime (10 to 90)', 'ms', [0.0002, 0.002, 0.01]],
+    'decaytime mean': ['Mean half decay time', 'ms', [0.003, 0.004, 0.005, 0.006]]}
+    return titles_dict
+
+def dict_for_plotting_con_screen():
+    titles_dict = {'Amp.1': ['EPSP amplitude', 'mV', [0,1,2,3,4,5]]}
     return titles_dict
 
 def plot_time_after_OP_vs_param(df, param,
@@ -237,6 +253,8 @@ def get_age_color_dict(df):
     for i in range(len(df)):
         if df['patient_age'].tolist()[i] == 'A':
             num_patient_age.append(151)
+        elif df['patient_age'].tolist()[i] == 'J':
+            num_patient_age.append(0)
         else:
             num_patient_age.append(df['patient_age'].tolist()[i])
     df.insert(len(df.columns), 'patient_age_num', num_patient_age)
@@ -364,7 +382,7 @@ destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/p
                         y = df[param][df['cell_ID_new'] == cell]
                         op = df_plot['OP'][df_plot['cell_ID_new'] == cell].tolist()[0]
                         age = df_plot['patient_age_num'][df_plot['cell_ID_new'] == cell].tolist()[0]
-                        if str([type(k) for k in op_color_dict.keys()][0]) == "<class 'numpy.int64'>" :
+                        if type(list(op_color_dict.keys())[0]) is not str :
                             plt.plot(x1, y, '-', color = op_color_dict[age], alpha = 0.5, linewidth = 2, zorder = 1)
                         else:
                             plt.plot(x1, y, '-', color = op_color_dict[op], alpha = 0.5, linewidth = 2, zorder = 1)
@@ -382,7 +400,7 @@ destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/p
                             y = df[param][df['cell_ID_new'] == cell]
                             op = df_plot['OP'][df_plot['cell_ID_new'] == cell].tolist()[0]
                             age = df_plot['patient_age_num'][df_plot['cell_ID_new'] == cell].tolist()[0]
-                            if str([type(k) for k in op_color_dict.keys()][0]) == "<class 'numpy.int64'>" :
+                            if type(list(op_color_dict.keys())[0]) is not str :
                                 plt.plot(x1, y, '-', color = op_color_dict[age], alpha = 0.4, linewidth = 2, zorder = 1)
                             else:
                                 plt.plot(x1, y, '-', color = op_color_dict[op], alpha = 0.4, linewidth = 2, zorder = 1)
@@ -450,7 +468,7 @@ destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/p
                         y = df[param][df['cell_ID_new'] == cell]
                         op = df_plot['OP'][df_plot['cell_ID_new'] == cell].tolist()[0]
                         age = df_plot['patient_age_num'][df_plot['cell_ID_new'] == cell].tolist()[0]
-                        if str([type(k) for k in op_color_dict.keys()][0]) == "<class 'numpy.int64'>" :
+                        if type(list(op_color_dict.keys())[0]) is not str :
                             plt.plot(x1, y, '-', color = op_color_dict[age], alpha = 0.5, linewidth = 2, zorder = 1)
                         else:
                             plt.plot(x1, y, '-', color = op_color_dict[op], alpha = 0.5, linewidth = 2, zorder = 1)
@@ -468,7 +486,7 @@ destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/p
                             y = df[param][df['cell_ID_new'] == cell]
                             op = df_plot['OP'][df_plot['cell_ID_new'] == cell].tolist()[0]
                             age = df_plot['patient_age_num'][df_plot['cell_ID_new'] == cell].tolist()[0]
-                            if str([type(k) for k in op_color_dict.keys()][0]) == "<class 'numpy.int64'>" :
+                            if type(list(op_color_dict.keys())[0]) is not str :
                                 plt.plot(x1, y, '-', color = op_color_dict[age], alpha = 0.4, linewidth = 2, zorder = 1)
                             else:
                                 plt.plot(x1, y, '-', color = op_color_dict[op], alpha = 0.4, linewidth = 2, zorder = 1)
@@ -543,7 +561,7 @@ destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/p
                         y = df[param][df['cell_ID_new'] == cell]
                         op = df_plot['OP'][df_plot['cell_ID_new'] == cell].tolist()[0]                        
                         age = df_plot['patient_age_num'][df_plot['cell_ID_new'] == cell].tolist()[0]
-                        if str([type(k) for k in op_color_dict.keys()][0]) == "<class 'numpy.int64'>" :
+                        if type(list(op_color_dict.keys())[0]) is not str:
                             ax.plot(x1, y, '-', color = op_color_dict[age], alpha = 0.5, linewidth = 2, zorder = 1)
                         else:
                             ax.plot(x1, y, '-', color = op_color_dict[op], alpha = 0.5, linewidth = 2, zorder = 1)
@@ -561,7 +579,7 @@ destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/p
                             y = df[param][df['cell_ID_new'] == cell]
                             op = df_plot['OP'][df_plot['cell_ID_new'] == cell].tolist()[0]
                             age = df_plot['patient_age_num'][df_plot['cell_ID_new'] == cell].tolist()[0]
-                            if str([type(k) for k in op_color_dict.keys()][0]) == "<class 'numpy.int64'>" :
+                            if type(list(op_color_dict.keys())[0]) is not str :
                                 ax.plot(x1, y, '-', color = op_color_dict[age], alpha = 0.4, linewidth = 2, zorder = 1)
                             else:
                                 ax.plot(x1, y, '-', color = op_color_dict[op], alpha = 0.4, linewidth = 2, zorder = 1)
@@ -625,7 +643,7 @@ destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/p
                     y = df[param][df['cell_ID_new'] == cell]
                     op = df_plot['OP'][df_plot['cell_ID_new'] == cell].tolist()[0]
                     age = df_plot['patient_age_num'][df_plot['cell_ID_new'] == cell].tolist()[0]
-                    if str([type(k) for k in op_color_dict.keys()][0]) == "<class 'numpy.int64'>" :
+                    if type(list(op_color_dict.keys())[0]) is not str :
                         plt.plot(x1, y, '-', color = op_color_dict[age], alpha = 0.4, linewidth = 2, zorder = 1)
                     else:
                         plt.plot(x1, y, '-', color = op_color_dict[op], alpha = 0.4, linewidth = 2, zorder = 1)
@@ -1108,8 +1126,12 @@ destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/p
 #%%
 # connectivity ploting funcs (summary)
 
+plt.style.use('./style_plot_intrinsic.mplstyle')
+
 def get_QC_connectivity_df(df):
-    mask = (df['Vm pre'] < -50 ) & (df['Vm post'] < -50 )
+    mask = (df['Vm pre'] < -50 ) & (df['Vm post'] < -50 ) & \
+        (df['Amp 1'] > 0) &  (df['Amp 2'] > 0 )   & \
+            (df['Amp 3'] > 0 ) &  (df['Amp 4'] > 0)
     df = df.loc[mask, :]
     return df
 
@@ -1119,9 +1141,22 @@ def get_QC_connectivity_VC(df):
     return df
 
 def get_repatch_connectivity_df(df):
-    mask = (df['repatch'] == 'yes' )
-    df = df.loc[mask, :]
-    return df
+
+    #take only repatched cells
+    repatch_df = df[df['repatch'] == 'yes']
+    repatch_df.reset_index(inplace = True, drop = True)
+
+    #check if cell IDs appear twice, if not remove
+    not_repatched_cells = []
+    for cell in repatch_df['connection_ID'].unique():
+        if len(repatch_df[repatch_df['connection_ID'] == cell]) != 2:
+            not_repatched_cells.append(cell)
+
+    for cell in not_repatched_cells:
+        repatch_df = repatch_df.drop(repatch_df.index[repatch_df['connection_ID'] == cell])     
+    repatch_df.reset_index(inplace = True, drop = True)
+
+    return repatch_df
 
 def get_amps_lats_columns(df):
     amps, lats = [], []
@@ -1132,27 +1167,33 @@ def get_amps_lats_columns(df):
             lats.append(i)
     return amps, lats
 
-def plot_connect_amplitude(df, data_type, op_color_dict,
+def plot_connect_amplitude(df, data_type, op_color_dict, results_ = 'amp',
 destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/plots/connectivity/'):
 
-    treatments = ['Ctrl', 'high K']
+    treatments = ['Ctrl', 'TTX', 'high K']
     amps, lats = get_amps_lats_columns(df)
     plot_amps = df.columns[amps[0]:amps[3]+1]
+    label_y = 'Amplitude (mV)'
+    y_lim = 'Amp 1'
+    if results_ == 'lat':
+        plot_amps = df.columns[lats[0]:lats[3]+1]
+        label_y = 'Delay (ms)'
+        y_lim = 'Lat4'
 
-
-    colors = ['#dede00', '#ff7f00', '#dede00', '#4daf4a', '#dede00', 'mediumpurple']
+    colors = ['#dede00', '#ff7f00', '#dede00', '#DA67BA', '#dede00', '#7FEE8F','#dede00']
+   #colors = ['#dede00', '#ff7f00', '#dede00', '#4daf4a', '#dede00', 'mediumpurple']
     cmap = plt.cm.get_cmap('tab20')
     # op_color_dict = {}
     # for h, op in enumerate(df['OP'].unique()):
     #     op_color_dict[op] = cmap((h+1)/10)  
 
-    fig, ax = plt.subplots(2,2, figsize = (10,10))
+    fig, ax = plt.subplots(2,2, figsize = (16,16))
     ax = ax.flatten()
     for a, amp in enumerate(plot_amps): 
         
         day_label = []
         num_cels = {}
-        #data_boxplot = []
+        
         for i, tr in enumerate(treatments):
             x_plot =[]
             for j, day in enumerate(sorted(df['day'].unique())):
@@ -1172,32 +1213,41 @@ destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/p
                 #data_boxplot.append(df_plot[amp)
             ax[a].text(1 + 2*i, int(np.max(df['Amp 1'])+0.6), tr, size = 17, c = colors[2*i+1])
             ax[a].text(1.7 + 2*i, int(np.max(df['Amp 1'])-0.3), 'n = ' + str(len(df_plot)), size = 10, c = colors[2*i+1])
-            if k in [1,3,5]:
+            if k in [1,3,5] and 'repatch' in data_type:
                 for c, cell in enumerate(df_plot['connection_ID']):
+                    if k == 1 and len(df_plot['connection_ID'])-1 == c:
+                        print(str(c+1) + 'Gencho')
                     x1 = [x_plot[0][c], x[c]] 
                     y = df[amp][df['connection_ID'] == cell]
                     op = df_plot['OP'][df_plot['connection_ID'] == cell].tolist()[0]
                     #age = df_plot['_new'][df_plot['connection_ID'] == cell].tolist()[0]
-                    if str([type(k) for k in op_color_dict.keys()][0]) == "<class 'numpy.int64'>" :
+                    if type(list(op_color_dict.keys())[0]) is not str:
                         ax[a].plot(x1, y, '-', color = op_color_dict[age], alpha = 0.5, linewidth = 2, zorder = -1)
                     else:
                         ax[a].plot(x1, y, '-', color = op_color_dict[op], alpha = 0.5, linewidth = 2, zorder = -1)
 
-        #plt.boxplot(data_boxplot, showbox = False)
-        ax[a].spines['top'].set_visible(False)
-        ax[a].spines['right'].set_visible(False)
-        ax[a].set_ylim([-0.5, int(np.max(df['Amp 1']))+1])
+
+        
         if 'VC' in data_type:
-            ax[a].set_ylabel('Amplitude (pA)', fontsize = 15)
+            ax[a].set_ylabel('Amplitude (pA)', fontsize = 24)
         else:
-            ax[a].set_ylabel('Amplitude (mV)', fontsize = 15)
-        ax[a].set_xticks(ticks = list(range(1,4)), labels = day_label) 
+            ax[a].set_ylabel(label_y, fontsize = 20)
+        if results_ == 'amp':
+            ax[a].set_ylim([-0.5, int(np.max(df['Amp 1']))+1])
+        else:
+            max_ = np.max([np.max(df).Lat1, np.max(df).Lat2,np.max(df).Lat3,np.max(df).Lat4]) + 0.5
+            ax[a].set_ylim([-0.5, int(max_)])
+        #ax[a].set_xticks(ticks = list(range(1,len(day_label) +1)), labels = day_label) 
+        ax[a].set_xticks(ticks = [1, 2, 3, 4, 5, 6], labels = ['D1', 
+        'D2 \n Ctrl', 'D1', 'D2 \n TTX','D1', 'D2 \n high K'], size = 20)
         #ax[a].set_title('#' + str(a+1), fontsize = 15)
         ax[a].set_xlabel('Day', fontsize = 15)
+        ax[a].tick_params(axis='y', labelsize=22) 
         
     fig.subplots_adjust(hspace = 0.4, wspace = 0.4)
+    
     fig.suptitle('Postsynaptic responses', fontsize = 20)
-    fig.patch.set_facecolor('white')
+    #fig.patch.set_facecolor('white')
     date = str(datetime.date.today())
     plt.savefig(destination_dir  + date + data_type +'_postsynaptic_responses.png')
     plt.close(fig)
@@ -1216,7 +1266,7 @@ destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/p
     colors = ['#dede00', '#ff7f00', '#dede00', '#DA67BA', '#dede00', '#7FEE8F','#dede00','#186F25'] #Ctrl, TTX, 8mM Kcl, 15 mM Kcl
 
     for u, param in enumerate(titles_dict.keys()): 
-        fig2 = plt.figure(figsize=(10,7))
+        fig2 = plt.figure(figsize=(11,7))
         ax = plt.subplot(1,1,1)
         day_label = []
         num_cels = {}
@@ -1237,39 +1287,36 @@ destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/p
                     median_15 = np.median(y_15mm)
                     ax.scatter(x_8, y_8mm, c = colors[5], s = 60, alpha = 0.5)
                     ax.scatter(x_15, y_15mm, c = colors[7], s = 60, alpha = 0.5)
-                    ax.boxplot(y_8mm, positions = [k+0.6], notch = True, patch_artist=True, boxprops=dict(facecolor=colors[5], alpha = 0.8),
-                    medianprops = dict(linewidth=2.3, color = 'k'))
-                    ax.boxplot(y_15mm, positions = [k+1.55], notch = True, patch_artist=True, boxprops=dict(facecolor=colors[7], alpha = 0.8),
-                    medianprops = dict(linewidth=2.3, color = 'k'))
+                    #ax.boxplot(y_8mm, positions = [k+0.6], notch = True, patch_artist=True, boxprops=dict(facecolor=colors[5], alpha = 0.8),
+                    #medianprops = dict(linewidth=2.3, color = 'k'))
+                    #ax.boxplot(y_15mm, positions = [k+1.55], notch = True, patch_artist=True, boxprops=dict(facecolor=colors[7], alpha = 0.8),
+                    #medianprops = dict(linewidth=2.3, color = 'k'))
                 else:
-                    ax.boxplot(df_plot[param], positions = [k + 0.5], notch = True, patch_artist=True, boxprops=dict(facecolor=colors[k], alpha = 0.8),
-                    medianprops = dict(linewidth=2.3, color = 'k'))    
+                    #ax.boxplot(df_plot[param], positions = [k + 0.5], notch = True, patch_artist=True, boxprops=dict(facecolor=colors[k], alpha = 0.8),
+                    #medianprops = dict(linewidth=2.3, color = 'k'))    
                     ax.scatter(x, df_plot[param], c = colors[int(k)], s = 60, alpha = 0.5)
                 
                 # yerr = 1.253*(df_plot[param].std()/(math.sqrt(len(df_plot))))
-                # ax.scatter(1+k, median, color = 'k', marker = '_', s = 2000)
-                # ax.text(0.9+k, (1.05*median), str(round(median,2)), size = 12)
+                ax.scatter(1+k, median, color = 'k', marker = '_', s = 2000)
+                ax.text(0.9+k, (1.05*median), str(round(median,2)), size = 20)
                 day_label.append(day)
                 num_cels[tr + ' ' + day] = len(df_plot)
-                data_boxplot.append(df_plot[param])
-            ax.text(1 + 2*i, int(np.max(df[param])), tr, size = 17, c = colors[2*i+1])
-            ax.text(1.7 + 2*i, int(np.max(df[param])), 'n = ' + str(len(df_plot)), size = 12, c = colors[2*i+1])
+                #data_boxplot.append(df_plot[param])
+            #ax.text(1 + 2*i, int(np.max(df[param])), tr, size = 17, c = colors[2*i+1])
+            #ax.text(1.7 + 2*i, int(np.max(df[param])), 'n = ' + str(len(df_plot)), size = 12, c = colors[2*i+1])
 
         #plt.boxplot(data_boxplot, showbox = False)
         ax.tick_params(axis='y', labelsize=22)
         ax.set_xticks(ticks = [0.7, 1.7, 2.7, 3.7, 4.7, 5.8, 6.55], labels = ['D1', 
-        'D2 \n Ctrl', 'D1', 'D2 \n TTX','D1', 'D2 \n 8mM','D2 \n 15mM'], size = 20)
-        #when plotting TTX as well
-        # ax.set_xticks(ticks = [0.6,1.6,2.6,3.55,4.6, 5.6,6.6], labels = ['D1', 
-        # 'D2 \n Ctrl','D1', 'D2 \n TTX' ,'D1', 'D2 \n 8mM','D2 \n 15mM'], size = 20)
+        'D2 \n after Ctrl', 'D1', 'D2 \n after TTX','D1', 'D2 \n 8mM','D2 \n 15mM'], size = 20)
 
-        plt.title(titles_dict[param][0], fontsize = 19, x = 0.5, y = 1)
+        #plt.title(titles_dict[param][0], fontsize = 19, x = 0.5, y = 1)
         ax.set_ylabel(titles_dict[param][1], fontsize = 24)
         ax.set_yticks(ticks = titles_dict[param][2])
 
-        plt.subplots_adjust(hspace=0.35)
-        fig2.patch.set_facecolor('white')
-        fig2.tight_layout()
+        # plt.subplots_adjust(hspace=0.35)
+        # fig2.patch.set_facecolor('white')
+        # fig2.tight_layout()
 
         date = str(datetime.date.today())
         plt.savefig(destination_dir  + date + '_plot_' + param + '.pdf')
@@ -1283,7 +1330,7 @@ destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/p
         
     colors = ['#dede00', '#ff7f00', '#dede00', '#DA67BA', '#dede00', '#7FEE8F','#dede00','#186F25'] #Ctrl, TTX, 8mM Kcl, 15 mM Kcl
     for u, param in enumerate(titles_dict.keys()): 
-        fig2 = plt.figure(figsize=(9,7))
+        fig2 = plt.figure(figsize=(11,7))
         ax = plt.subplot(1,1,1)
         day_label = []
         num_cels = {}
@@ -1311,8 +1358,8 @@ destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/p
                     ax.scatter(x_15, y_15mm[param], c = colors[7], s = 80, zorder = 2, alpha = 0.8)
                     ax.plot([0.7+k, 1+k], [median_8, median_8], c = 'k', linestyle = 'solid')
                     ax.plot([1.3+k, 1.6+k], [median_15, median_15], c = 'k', linestyle = 'solid')
-                    ax.text(k+0.65, median_8 + 0.5, str(round(median_8, 2)), size = 15)
-                    ax.text(k+1.25, median_15 + 0.5, str(round(median_15, 2)), size = 15)
+                    ax.text(k+0.65, median_8 + 0.5, str(round(median_8, 2)), fontsize = 20)
+                    ax.text(k+1.25, median_15 + 0.5, str(round(median_15, 2)), fontsize = 20)
                     df_plot.insert(0, 'x', np.concatenate([x_15, x_8]))
 
                     for c, cell in enumerate(df_plot['cell_ID_new']):
@@ -1322,10 +1369,10 @@ destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/p
                         y = df[param][df['cell_ID_new'] == cell]
                         op = df_plot['OP'][df_plot['cell_ID_new'] == cell].tolist()[0]
                         age = df_plot['patient_age_num'][df_plot['cell_ID_new'] == cell].tolist()[0]
-                        if str([type(k) for k in op_color_dict.keys()][0]) == "<class 'numpy.int64'>" :
-                            plt.plot(x1, y, '-', color = op_color_dict[age], alpha = 0.5, linewidth = 2, zorder = 1)
+                        if type(list(op_color_dict.keys())[0]) is not str :
+                            plt.plot(x1, y, '-', colors[k], alpha = 0.3, linewidth = 2, zorder = 1)
                         else:
-                            plt.plot(x1, y, '-', color = op_color_dict[op], alpha = 0.5, linewidth = 2, zorder = 1)
+                            plt.plot(x1, y, '-', colors[k], alpha = 0.3, linewidth = 2, zorder = 1)
 
 
                 else:
@@ -1340,33 +1387,30 @@ destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/p
                             y = df[param][df['cell_ID_new'] == cell]
                             op = df_plot['OP'][df_plot['cell_ID_new'] == cell].tolist()[0]
                             age = df_plot['patient_age_num'][df_plot['cell_ID_new'] == cell].tolist()[0]
-                            if str([type(k) for k in op_color_dict.keys()][0]) == "<class 'numpy.int64'>" :
-                                plt.plot(x1, y, '-', color = op_color_dict[age], alpha = 0.45, linewidth = 2, zorder = 1)
+                            if type(list(op_color_dict.keys())[0]) is not str :
+                                plt.plot(x1, y, '-', color = colors[k], alpha = 0.3, linewidth = 2, zorder = -1)
                             else:
-                                plt.plot(x1, y, '-', color = op_color_dict[op], alpha = 0.45, linewidth = 2, zorder = 1)
+                                plt.plot(x1, y, '-', color = colors[k], alpha = 0.3, linewidth = 2, zorder = -1)
 
 
                 day_label.append(day)
                 num_cels[tr + ' ' + day] = len(df_plot)
 
-                # ax.text(1 + 2*i, int(np.max(df[param])), tr, size = 17, c = colors[2*i+1])
-                # ax.text(1.7 + 2*i, int(np.max(df[param])), 'n = ' + str(len(y_8mm)), size = 12, c = colors[2*i+1])
+                ax.text(1 + 2*i, int(np.max(df[param])), tr, size = 17, c = colors[2*i+1])
+                ax.text(1.7 + 2*i, int(np.max(df[param])), 'n = ' + str(len(df_plot)), size = 12, c = colors[2*i+1])
     
-        ax.tick_params(axis='y', labelsize=22) 
+        
         ax.set_xticks(ticks = [1, 2, 3, 4, 5, 5.8, 6.55], labels = ['D1', 
-        'D2 \n Ctrl', 'D1', 'D2 \n TTX','D1', 'D2 \n 8mM','D2 \n 15mM'], size = 20)
-        #when plotting TTX as well
-        # ax.set_xticks(ticks = [0.6,1.6,2.6,3.55,4.6, 5.6,6.6], labels = ['D1', 
-        # 'D2 \n Ctrl','D1', 'D2 \n TTX' ,'D1', 'D2 \n 8mM','D2 \n 15mM'], size = 20)
+        'D2 \n after Ctrl', 'D1', 'D2 \n after TTX','D1', 'D2 \n 8mM','D2 \n 15mM'], size = 20)
         ax.set_ylabel(titles_dict[param][1], fontsize = 24)
-        ax.set_yticks(ticks = titles_dict[param][2])
+        #ax.set_yticks(ticks = titles_dict[param][2])
+        ax.tick_params(axis='y', labelsize=22) 
         #plt.title(titles_dict[param][0], fontsize = 19, x = 0.5, y = 1)
-
-        fig2.patch.set_facecolor('white')
-        fig2.tight_layout()
+        plt.subplots_adjust(hspace=0.35)
+        #fig2.tight_layout()
 
         date = str(datetime.date.today())
         plt.savefig(destination_dir + date + '_plot_' + param + '.pdf')
         plt.close(fig2)
 
-# %%
+ # %%

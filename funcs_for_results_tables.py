@@ -1,5 +1,4 @@
 import os
-import shutil
 import pandas as pd
 import funcs_sorting as sort
 import numpy as np
@@ -335,7 +334,7 @@ def get_spontan_QC(human_dir, OP, patcher):
             active_chans = active_chans_meta[0]['active_chans'][vc_indx[-1]]
             active_chans_spontan.append(active_chans)
         active_chans_meta[0]['active_chans_spontan'] = active_chans_spontan
-        #sort.to_json(work_dir, OP, '_meta_active_chans.json', active_chans_meta)
+        sort.to_json(work_dir, OP, '_meta_active_chans.json', active_chans_meta)
 
     input('Are the active_chans_spontan correct?')
 
@@ -627,12 +626,13 @@ def get_metadata_for_event_analysis(human_dir, OP, patcher:str, event_type): # a
 #%%
 # Functions for full analysis (not OP-based)
 
-def prapare_for_event_analysis(op_to_analyse, human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'):
+def prapare_for_event_analysis(human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'):
     '''
     checks mini or spontan experiments surgery in the '*experiments_overview.xlsx'
     puts all files to be analyzed in human_dir + '/meta_events/[spontan/mini]_files/'
     saves the meta_tables to be analyzed in human_dir + '/meta_events/meta_files_to_analyse/'
     '''
+    #exp_view = pd.read_excel('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/2024-05-11_experiments_overview.xlsx')
     exp_view = pd.read_excel(glob.glob(human_dir + '*experiments_overview.xlsx')[0]) 
     date = str(datetime.date.today())
     
@@ -645,6 +645,7 @@ def prapare_for_event_analysis(op_to_analyse, human_dir = '/Users/verjim/laptop_
             get_metadata_for_event_analysis(human_dir, OP, patcher, 'minis') 
             work_dir_mini = sort.get_work_dir(human_dir, OP, patcher)
             df_mini = pd.read_excel(work_dir_mini + 'data_tables/minis_meta_' + OP + '.xlsx') 
+            df_mini = df_mini.loc[~df_mini['Name of recording'].isna()]
             #moving files directly to the recordings folder in event analysis
             for f in df_mini['Name of recording']:
                 shutil.copy(os.path.join(work_dir_mini, f), '/Users/verjim/spontaneous-postsynaptic-currents-detection/recordings/')
@@ -657,18 +658,19 @@ def prapare_for_event_analysis(op_to_analyse, human_dir = '/Users/verjim/laptop_
             get_metadata_for_event_analysis(human_dir, OP, patcher, 'spontan') 
             work_dir_spontan = sort.get_work_dir(human_dir, OP, patcher)
             df_spontan = pd.read_excel(work_dir_spontan + 'data_tables/spontan_meta_' + OP + '.xlsx') 
+            df_spontan = df_spontan.loc[~df_spontan['Name of recording'].isna()]
             #moving files directly to the recordings folder in event analysis
             for f in df_spontan['Name of recording']:
                 shutil.copy(os.path.join(work_dir_spontan, f), '/Users/verjim/spontaneous-postsynaptic-currents-detection/recordings/')
             meta_df_spontan = pd.concat([meta_df_spontan.loc[:], df_spontan]).reset_index(drop=True)
 
-        if exp_view['EPSPs_highK'][i] == 'yes':  
-            patcher = exp_view['patcher'][i]
-            OP = exp_view['OP'][i]
-            get_metadata_for_event_analysis(human_dir, OP, patcher, 'EPSPs') 
-            work_dir_EPSPs = sort.get_work_dir(human_dir, OP, patcher)
-            df_EPSPs = pd.read_excel(work_dir_EPSPs + 'data_tables/EPSPs_meta_' + OP + '.xlsx') 
-            meta_df_EPSPs = pd.concat([meta_df_EPSPs.loc[:], df_EPSPs]).reset_index(drop=True)
+        # if exp_view['EPSPs_highK'][i] == 'yes':  
+        #     patcher = exp_view['patcher'][i]
+        #     OP = exp_view['OP'][i]
+        #     get_metadata_for_event_analysis(human_dir, OP, patcher, 'EPSPs') 
+        #     work_dir_EPSPs = sort.get_work_dir(human_dir, OP, patcher)
+        #     df_EPSPs = pd.read_excel(work_dir_EPSPs + 'data_tables/EPSPs_meta_' + OP + '.xlsx') 
+        #     meta_df_EPSPs = pd.concat([meta_df_EPSPs.loc[:], df_EPSPs]).reset_index(drop=True)
 
     #remove any files where there's nothing to analyse
     meta_df_mini.reset_index(inplace = True, drop = True)
@@ -689,12 +691,18 @@ def prapare_for_event_analysis(op_to_analyse, human_dir = '/Users/verjim/laptop_
     #save data 
     meta_df_mini.to_excel(human_dir + '/meta_events/meta_files_to_analyse/' + date + 'minis_meta.xlsx',index=False)
     meta_df_spontan.to_excel(human_dir + '/meta_events/meta_files_to_analyse/' + date + 'spontan_meta.xlsx',index=False)
-    meta_df_EPSPs.to_excel(human_dir + '/meta_events/EPSPs/meta_dfs/' + date + 'EPSPs_meta.xlsx',index=False)
+    #meta_df_EPSPs.to_excel(human_dir + '/meta_events/EPSPs/meta_dfs/' + date + 'EPSPs_meta.xlsx',index=False)
     print('Meta data for events is saved. Files are copied to desired folders. Ready to proceed with event analysis. ')
-
+    return meta_df_mini, meta_df_spontan
 
 #analysis of intrinsic properties
 def collect_intrinsic_df(human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'):
+    '''
+    collects *QC_passed data tables from all OP folders
+    adds area and high K concentratioon columns from exp_view
+    saves a datafram with today's data in /results/human/data/summary_data_tables/intrinsic_properties/
+    '''
+
     exp_view = pd.read_excel(glob.glob(human_dir + '*experiments_overview.xlsx')[0]) 
 
     area_dict, high_k_dict = {}, {}
@@ -734,7 +742,7 @@ def save_intr_data(df_intr_props,  QC_data, repatch_data, juv_repatch, adult_rep
         adult_repatch.to_excel(writer, sheet_name='adult_repatch_all_QC')
 
 #analysis of intrinsic properties
-def collect_connections_df(human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'):
+def collect_connections_df(human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/', folder = 'new'):
     exp_view = pd.read_excel(glob.glob(human_dir + '*experiments_overview.xlsx')[0]) 
 
     area_dict, high_k_dict = {}, {}
@@ -742,7 +750,10 @@ def collect_connections_df(human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmit
         area_dict[OP] = exp_view['region'][exp_view['OP'] == OP].tolist()[0]
         high_k_dict[OP] = exp_view['K concentration'][exp_view['OP'] == OP].tolist()[0]
     
-    connections_IC = glob.glob(human_dir + '/data_*/' + 'OP*' + '/data_tables/' + '*connected_cell_properties.xlsx')
+    if folder != 'new':
+        print('change the code to continue! sorry')
+
+    connections_IC = glob.glob(human_dir + '/data_*/' + 'OP*' + '/connection_analysis/' + '*_connections.xlsx')
     all_cons_IC = pd.DataFrame()
     for IC_path in connections_IC:
         df = pd.read_excel(IC_path)
@@ -757,7 +768,7 @@ def collect_connections_df(human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmit
         all_cons_IC.loc[mask, 'high K concentration'] = high_k_dict[OP]
     all_cons_IC.loc[all_cons_IC['treatment'] == 'high k'] = 'high K'
 
-    connections_VC = glob.glob(human_dir + '/data_*/' + 'OP*' + '/data_tables/' + '*connected_cell_properties_post_in_VC.xlsx')
+    connections_VC = glob.glob(human_dir + '/data_*/' + 'OP*' + '/connection_analysis/' + '*_connected_cell_properties_post_in_VC.xlsx')
     all_cons_VC = pd.DataFrame()
     for VC_path in connections_VC:
         df = pd.read_excel(VC_path)
@@ -937,3 +948,88 @@ def check_if_data_missing_in_results_df ():
 
     missing_data = sorted(list(set(result_IDs_keep) - set(results_file.sheet_names)))
     print(missing_data)
+
+
+def collect_events_dfs(event_type, human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'):
+    ''' 
+    event_type = 'minis' or 'spontan'
+    '''
+    OP_dirs = glob.glob(human_dir + 'data*' + '/' + 'OP*')
+
+    meta_df = pd.DataFrame()
+    for dir_ in OP_dirs:
+        dir_ = dir_ + '/'
+
+        df_QC_path = glob.glob(dir_ + '*data_tables/' + '*' + event_type + '.xlsx')
+        if df_QC_path == []:
+            continue
+        QC_df = pd.read_excel(df_QC_path[0])
+        if len(QC_df) == 0:
+            continue
+        patcher = QC_df['patcher'][0]
+        OP = QC_df['OP'][0]
+
+        meta_data_path = glob.glob(dir_ + '*data_tables/' + '*' + event_type + '_meta' + '*.xlsx')
+        if meta_data_path == []:
+            #create the metadata
+            get_metadata_for_event_analysis(human_dir, OP, patcher, event_type)
+            meta_data_path = glob.glob(dir_ + '*data_tables/' + '*' + event_type + '_meta' + '*.xlsx')
+        df_meta = pd.read_excel(meta_data_path[0])
+        df_meta = df_meta.loc[~df_meta['Name of recording'].isna()]
+        meta_df = pd.concat([meta_df.loc[:], df_meta]).reset_index(drop=True)
+
+    return meta_df
+
+
+
+#random new functions - to be sorted in other scripts
+#%%
+import funcs_for_results_tables as get_results
+import datetime
+import pandas as pd
+import numpy as np
+
+mini_meta = get_results.collect_events_dfs('minis')
+spontan_meta = get_results.collect_events_dfs('spontan')
+
+analysis_df = spontan_meta
+
+for i in range(len(analysis_df)):
+  if len(analysis_df['slice'][i]) > 2 and analysis_df['hrs_incubation'][i] == 0:
+    print('Fix hrs incubation for ' + analysis_df['OP'][i] + ' ' +analysis_df['Name of recording'][i] +  ' '+str(analysis_df['Channels to use'][i]))
+
+date = str(datetime.date.today())
+human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'
+# mini_meta.to_excel(human_dir + '/meta_events/meta_files_to_analyse/' + date + '_minis_meta.xlsx',index=False)
+spontan_meta.to_excel(human_dir + '/meta_events/meta_files_to_analyse/' + date + 'spontan_meta.xlsx',index=False)
+
+#%%
+import glob
+import funcs_sorting as sort
+import pandas as pd
+
+human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'
+OP_dirs = glob.glob(human_dir + 'data*' + '/' + 'OP*')
+
+df_slice_treatments = pd.DataFrame(columns = ['OP', 'patcher', 'slice', 'treatment'])
+for dir_ in OP_dirs:
+    OP = dir_[dir_.find('OP'):dir_.find('OP')+8]
+    if OP == 'OP201020' or OP == 'OP231108' or OP == 'OP240318' or OP == 'OP240124' or OP == 'OP230412' or OP == 'OP240229':
+        continue
+    patcher_ = dir_[dir_.find('data_')+5:dir_.find('data_')+10]
+    if patcher_ == 'verji':
+        patcher = 'Verji'
+    else:
+        patcher = 'Rosie'
+    if OP == 'OP231123' and patcher =='Verji':
+        continue
+    active_chans_meta = sort.get_json_meta(human_dir, OP, patcher, '_meta_active_chans.json')
+
+    work_dir, filenames, indices_dict, slice_names, pre_chans, post_chans = sort.get_OP_metadata(human_dir, OP, patcher)
+    len_tr = len(active_chans_meta[0]['treatment'])
+    len_slices = len(active_chans_meta[0]['slices'])
+    if len_tr != len_slices:
+        print('fix active_chans_meta ' + OP)
+    df_add = pd.DataFrame({'OP':[OP]*len_tr, 'patcher': [patcher]*len_tr, 
+    'slice' : active_chans_meta[0]['slices'], 'treatment': active_chans_meta[0]['treatment']})
+    df_slice_treatments = pd.concat([df_slice_treatments.loc[:], df_add]).reset_index(drop=True)
