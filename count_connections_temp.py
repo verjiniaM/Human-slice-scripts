@@ -46,10 +46,12 @@ df_d2 = df_connections[df_connections.day == 'D2']
 print(len(OPs))
 print(len(df_connections))
 
-df_d1
+df_connections
 
-con_d1 = df_d1['num_possible_connections'] / df_d1['found_connections']
-con_d2 = df_d2.num_possible_connections / df_d2.found_connections
+# df_d1
 
-print('connectivity D1: ' + str(con_d1))
-print('connectivity D2: ' + str(con_d2))
+# con_d1 = df_d1['num_possible_connections'] / df_d1['found_connections']
+# con_d2 = df_d2.num_possible_connections / df_d2.found_connections
+
+# print('connectivity D1: ' + str(con_d1))
+# print('connectivity D2: ' + str(con_d2))
