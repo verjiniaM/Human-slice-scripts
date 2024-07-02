@@ -1,10 +1,10 @@
-import sorting_functions as sort
+import funcs_sorting as sort
 import pandas as pd
 import human_characterisation_functions as hcf
 import plotting_funcs
 import plot_intrinsic_props
 
-OP_list = [, 'OP231005', 'OP231109', 'OP231123']
+OP_list = ['OP231005', 'OP231109', 'OP231123']
 
 
 def main():

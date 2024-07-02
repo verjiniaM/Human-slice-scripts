@@ -193,6 +193,10 @@ def from_json (work_dir, OP, fn):
     f = open(fname)
     return json.load(f)
 
+def open_json(path_):
+    f = open(path_)
+    return json.load(f)
+
 def get_json_files (file_list):
     jsons = []
     for file in range(len(file_list)):
