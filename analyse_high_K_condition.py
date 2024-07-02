@@ -1,4 +1,5 @@
 import funcs_sorting as sort
+import funcs_sorting as sort
 import pandas as pd
 import funcs_human_characterisation as hcf
 import funcs_plotting as plotting_funcs

@@ -828,13 +828,13 @@ def QC_RMP_Ctrl(df, max_allowed_RMP_Ctrl):
 
 #plotting funcs
 #mpl.rcParams - for all parameter settings
-@mpl.rc_context({'axes.labelsize': 17, \
-    'axes.spines.right': False, \
-        'axes.spines.top': False, \
-            'axes.titlesize': 15, \
-                'xtick.labelsize': 15, \
-                     'ytick.labelsize': 15, \
-                        'figure.titlesize': 20})
+# @mpl.rc_context({'axes.labelsize': 17, \
+#     'axes.spines.right': False, \
+#         'axes.spines.top': False, \
+#             'axes.titlesize': 15, \
+#                 'xtick.labelsize': 15, \
+#                      'ytick.labelsize': 15, \
+#                         'figure.titlesize': 20})
 def plot_ (df, title, params = ['Average amp (positive)', 'Average interevent interval (ms)']):
     OP_colors = ['#dede00', '#ff7f00', '#4daf4a', '#984ea3', 'violet']
     op_color_dict = {'OP230914':'#dede00', 'OP231005':'#ff7f00', 'OP231109':'#4daf4a', 'OP231123':'#984ea3', 'OP231130':'violet'}
@@ -887,13 +887,13 @@ def plot_ (df, title, params = ['Average amp (positive)', 'Average interevent in
 
     plt.show()
 
-@mpl.rc_context({'axes.labelsize': 17, \
-    'axes.spines.right': False, \
-        'axes.spines.top': False, \
-            'axes.titlesize': 15, \
-                'xtick.labelsize': 15, \
-                     'ytick.labelsize': 15, \
-                        'figure.titlesize': 20})
+# @mpl.rc_context({'axes.labelsize': 17, \
+#     'axes.spines.right': False, \
+#         'axes.spines.top': False, \
+#             'axes.titlesize': 15, \
+#                 'xtick.labelsize': 15, \
+#                      'ytick.labelsize': 15, \
+#                         'figure.titlesize': 20})
 def sns_plot_MEA_data(df, title):
     colors = ['darkblue','#4daf4a', 'violet']
     customPalette = sns.set_palette(sns.color_palette(colors))
