@@ -6,13 +6,42 @@ import numpy as np
 import math
 import funcs_human_characterisation as hcf
 import funcs_for_results_tables as get_results
+import funcs_sorting as sort
 
 
 #import seaborn as sns
 
 plt.style.use('./style_plot_intrinsic.mplstyle')
 
-#mpl.rcParams['axes.prop_cycle'] = cycler(color=['r', 'g', 'b', 'y']) 3 changes the default colors
+#mpl.rcParams['axes.prop_cycle'] = cycler(color=['r', 'g', 'b', 'y']) 3 changes the default colors 
+
+def get_column_RMPs_from_char(df, human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'):
+    '''
+    from intrinsic parameters, reads fn
+    gives RMP when the inj is 0 pA
+    inserts column into df
+    '''
+
+    if 'RMP_from_char' in df.columns:
+        print('RMP from char column already exist')
+        return df
+    
+    rmps = []
+    for file in df.filename.unique():
+        df_ = df[df['filename'] == file]
+        OP = df_['OP'].iloc[0]
+        patcher = df_['patcher'].iloc[0]
+        work_dir = sort.get_work_dir(human_dir, OP, patcher)
+        fn = work_dir + file
+
+        chan = df_['cell_ch'].tolist()
+
+        rmps.extend(hcf.get_RMP_char_file(fn, chan))
+    df.insert(len(df.columns), 'RMP_from_char', rmps)
+
+    return df
+
+
 
 def patient_age_to_float(df_intr_props, min_age, max_age=151):
     '''
@@ -188,8 +217,8 @@ def dict_for_plotting():
     'Rheobase': ['Rheobase', 'pA', [100,300,500,700,900]],
     'AP_heigth': ['AP amplitude', 'mV', [50,60,70,80,90,100]],    
     'TH': ['AP threshold', 'mV', [-50, -40, -30, -20, -10 ]],
-    'max_depol': ['AP upstroke (30% to 70%)', 'mV/ms', [100,200,300,400,500]],
-    'max_repol': ['AP downstroke (70% to 30%)', 'mV/ms', [-100, -80, -60, -40, -20]],
+    'max_depol': ['AP upstroke (min)', 'mV/ms', [100,200,300,400,500]],
+    'max_repol': ['AP downstroke (max)', 'mV/ms', [-100, -80, -60, -40, -20]],
     'membra_time_constant_tau': ['Membrane time constant', 'ms', [10, 20, 30, 40, 50]],
     'capacitance': ['Capacitance', 'pF', [100, 300, 500, 700]]}
     return titles_dict
