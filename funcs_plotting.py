@@ -11,6 +11,8 @@ import pyabf
 import matplotlib as mpl
 import seaborn as sns
 
+plt.style.use('./style_plot_intrinsic.mplstyle')
+
 # plots the middle sweep for each channel
 # check the traces to see which channels were active or if the protocol names are enetered correctly
 def plot_middle_sweep (filename): 
@@ -699,7 +701,7 @@ def plot_rheobase_trace(fn, chans):
         plt.close(fig)
 
 
-def plot_trace(fn, sweep, channel):
+def plot_trace(fn, sweep, channel, save_dir = None):
     ''' 
     arguemnts : fn - filename, sweep - sweep number, channel - active channel from 1 to 8
     fast visualization of recordings and corresponding protocol
@@ -720,27 +722,30 @@ def plot_trace(fn, sweep, channel):
         channel = channel-1
         channel_name = 'Ch' + str(channel+1)
 
+    plt.style.use(['fast'])
     fig, ax = plt.subplots(2,1, sharex = False, figsize = (14,8))
     if sweep == 'all':
         data_long = trace.data[channel]
         ax[0].plot(data_long)
     else:
         trace.setSweep(sweepNumber = sweep, channel = channel)
-        ax[0].plot(trace.sweepX, trace.sweepY)
+        ax[0].plot(trace.sweepX, trace.sweepY, c = '#0000FF', linewidth = 6, alpha = 0.7)
         x = trace.sweepX
         y = trace.sweepY
     
     ax[0].set_ylabel(trace.sweepLabelY)
 
-    ax[1].plot(trace.sweepX, trace.sweepC)
+    ax[1].plot(trace.sweepX, trace.sweepC, linewidth = 6)
     ax[1].set_xlabel(trace.sweepLabelX)
     ax[1].set_ylabel(trace.sweepLabelC)
 
-    #channel_name = 'Ch' + str(channel)
     fig.suptitle('{0}, sweep num {1} , channel {2}'.format(fn[end_fn:], str(sweep),channel_name))
 
+    if save_dir:
+        plt.savefig('{0}trace_{1}_{2}_swp_{3}.png'.format(save_dir,fn[end_fn:], channel_name, sweep))
+
     plt.show()
-    #return x,y
+    return x,y
 
 def plot_average_all_swps(fn, chans):
     '''

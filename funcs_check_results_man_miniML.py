@@ -4,6 +4,7 @@ from matplotlib import pyplot
 import pyabf
 import numpy as np
 import os
+import glob
 plt.style.use('./style_plot_intrinsic.mplstyle')
 
 def plot_trace(fn, sweeps_analyse, channel, scaling = 1.0, first_point = 0, last_point = 5500, unit = 'pA'):
@@ -47,6 +48,7 @@ def plot_trace(fn, sweeps_analyse, channel, scaling = 1.0, first_point = 0, last
     data_long = reshape_data.flatten()
     data_unit = unit if unit is not None else abf_file.adcUnits[channel]
 
+    
     ax.plot(data_long)
     ax.set_ylabel(data_unit)
 
@@ -63,33 +65,38 @@ file_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/data_sponta
 #path_indx = 51 # 43 no /Volumes
 
 # pick random files from the results dir
-data_files = sorted(os.listdir('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/data_spontan/output/cell_props/'))
-indxs =  np.arange(1,2) #np.random.randint(0, len(data_files), (1,2))[0]
-files_check = [data_files[indx] for indx in indxs]
+data_files_all = sorted(os.listdir('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/data_spontan/output/cell_props/'))
+files_check = [s for s in data_files_all if 'individual' in s]
 
-for i in range(len(files_check)):
+medians, fns = [], []
+for i in range(len(files_check[:10])):
     fn = files_check[i][:files_check[i].find('ch') - 1]
     chan_str = files_check[i][files_check[i].find('ch') + 2: files_check[i].find('ch') + 3]
 
     df_indv = pd.read_csv('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/data_spontan/output/cell_props/' + fn + '_ch'+ chan_str +'_individual.csv')
     #avgs_ = pd.read_csv('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/data_spontan/output/cell_props/' + fn + '_ch'+ chan_str +'_avgs.csv')
-    
+
     file_path = file_dir + fn + '.abf'
     chan = int(chan_str) + 1
 
     swp_analysis = df_meta['swps_to_analyse'][(df_meta['Name of recording'] ==  fn + '.abf') \
     &  (df_meta['Channels to use'] == chan)].values
     if len(swp_analysis) == 0:
+        print('problem with ' + fn + chan_str)
         continue
     else:
         swp_analysis = swp_analysis[0]
-    
-    %matplotlib qt
+
+    %matplotlib qt  
     trace, ax = plot_trace(file_path, swp_analysis, chan)
-    for col in df_indv.columns[1:]:
-        ax.scatter(df_indv[col][0], trace[int(df_indv[col][0])], zorder = 10)
-    plt.show()
-    %matplotlib
-    input()
-    %matplotlib
+    # fns.append(fn)
+    # medians.append(np.median(trace))
+    x = df_indv.iloc[0,:][1:].values
+    y = [trace[int(a)] for a in x]
+    #for col in df_indv.columns[1:]:
+    ax.scatter(x,y, zorder = 10, c = 'k')
+    #plt.show()
+    #%matplotlib
+    #input()
+    
     
