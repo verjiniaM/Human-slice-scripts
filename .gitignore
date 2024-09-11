@@ -4,6 +4,7 @@
 *.pyd
 __pycache__/
 .DS_Store
+*.lock
 
 # Virtual environment
 venv/

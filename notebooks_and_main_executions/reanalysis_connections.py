@@ -1,10 +1,10 @@
 import pandas as pd
 import glob
-import intrinsic_props_and_connectivity.funcs_sorting as sort
-import src.intrinsic_props_and_connectivity.funcs_human_characterisation as hcf
+import ephys_analysis.funcs_sorting as sort
+import src.ephys_analysis.funcs_human_characterisation as hcf
 import numpy as np
-import intrinsic_props_and_connectivity.funcs_plotting_raw_traces as funcs_plotting_raw_traces
-import src.intrinsic_props_and_connectivity.funcs_con_screen as con_param
+import ephys_analysis.funcs_plotting_raw_traces as funcs_plotting_raw_traces
+import src.ephys_analysis.funcs_con_screen as con_param
 
 
 human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'
@@ -157,7 +157,7 @@ con_data_VC.to_excel(work_dir + '/connection_analysis/' + OP + '_connected_cell_
 
 
 # %%
-import src.intrinsic_props_and_connectivity.funcs_plot_intrinsic_props as plotting_funcs
+import src.ephys_analysis.funcs_plot_intrinsic_props as plotting_funcs
 import pandas as pd 
 
 

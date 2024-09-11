@@ -4,8 +4,8 @@ import pandas as pd
 import datetime
 import numpy as np
 import math
-import src.intrinsic_props_and_connectivity.funcs_human_characterisation as hcf
-import src.intrinsic_props_and_connectivity.funcs_for_results_tables as get_results
+import src.ephys_analysis.funcs_human_characterisation as hcf
+import src.ephys_analysis.funcs_for_results_tables as get_results
 
 
 #import seaborn as sns

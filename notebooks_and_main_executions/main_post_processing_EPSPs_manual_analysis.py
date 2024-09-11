@@ -1,6 +1,6 @@
 import pandas as pd
-import intrinsic_props_and_connectivity.funcs_sorting as sort
-import intrinsic_props_and_connectivity.funcs_plotting_raw_traces as plotting_funcs
+import ephys_analysis.funcs_sorting as sort
+import ephys_analysis.funcs_plotting_raw_traces as plotting_funcs
 
 #ANALYSIS MAIN
 

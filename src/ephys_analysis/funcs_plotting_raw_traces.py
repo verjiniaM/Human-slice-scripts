@@ -2,10 +2,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import math
-import intrinsic_props_and_connectivity.stimulation_windows_ms as stim_win
-import src.intrinsic_props_and_connectivity.funcs_con_screen as con_param
-import intrinsic_props_and_connectivity.funcs_sorting as sort
-import src.intrinsic_props_and_connectivity.funcs_human_characterisation as hcf
+import ephys_analysis.stimulation_windows_ms as stim_win
+import src.ephys_analysis.funcs_con_screen as con_param
+import ephys_analysis.funcs_sorting as sort
+import src.ephys_analysis.funcs_human_characterisation as hcf
 import pyabf
 
 # plots the middle sweep for each channel

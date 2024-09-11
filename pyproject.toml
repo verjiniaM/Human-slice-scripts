@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "ephys_analysis"
+version = "0.1.0"
+description = "functions for analysis of intrinsic properties, connectivty, and synaptic events"
+authors = ["verjiniaM <87032309+verjiniaM@users.noreply.github.com>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+numpy = "^2.1.1"
+matplotlib = "^3.9.2"
+neo = "^0.13.0"
+openpyxl = "3.1.5"
+pandas = "2.2.2"
+pyabf = "2.3.8"
+pytest = "8.3.3"
+scipy = "1.14.1"
+seaborn = "0.13.2"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

@@ -1,8 +1,8 @@
 import interpFL
 import numpy as np
 from scipy.signal import find_peaks
-import intrinsic_props_and_connectivity.stimulation_windows_ms as stim_win
-import src.intrinsic_props_and_connectivity.funcs_human_characterisation as hcf
+import ephys_analysis.stimulation_windows_ms as stim_win
+import src.ephys_analysis.funcs_human_characterisation as hcf
 import math
 
 

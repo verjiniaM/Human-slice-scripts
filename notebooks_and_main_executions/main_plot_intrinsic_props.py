@@ -1,7 +1,7 @@
-import src.intrinsic_props_and_connectivity.funcs_for_results_tables as get_results
+import src.ephys_analysis.funcs_for_results_tables as get_results
 import pandas as pd
 import glob
-import src.intrinsic_props_and_connectivity.funcs_plot_intrinsic_props as pl_intr
+import src.ephys_analysis.funcs_plot_intrinsic_props as pl_intr
 import numpy as np
 from importlib import reload
 
