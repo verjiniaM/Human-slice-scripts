@@ -16,4 +16,4 @@ env/
 .vscode/
 
 #folder 
-*/not_used/
+.not_used/
