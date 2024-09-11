@@ -1,6 +1,6 @@
 import neo
 import numpy as np
-from detect_peaks import detect_peaks
+from ephys_analysis.detect_peaks import detect_peaks
 import math
 import pyabf
 

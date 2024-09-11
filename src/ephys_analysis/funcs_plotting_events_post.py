@@ -2,7 +2,6 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 
-
 def QC_filter_for_plotting(results_df, holding, temp, K_concentr = 8, min_age = 0):
     '''
     holding [str] - 'yes' or 'no'

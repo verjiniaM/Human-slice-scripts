@@ -1,5 +1,4 @@
-import human_characterisation_functions as hcf
-import pytest
+import ephys_analysis.human_characterisation_functions as hcf
 import pyabf
 
 # def test_get_access_resistance():

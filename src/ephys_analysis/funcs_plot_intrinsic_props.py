@@ -4,11 +4,7 @@ import pandas as pd
 import datetime
 import numpy as np
 import math
-import src.ephys_analysis.funcs_human_characterisation as hcf
-import src.ephys_analysis.funcs_for_results_tables as get_results
-
-
-#import seaborn as sns
+import ephys_analysis.funcs_human_characterisation as hcf
 
 plt.style.use('./style_plot_intrinsic.mplstyle')
 

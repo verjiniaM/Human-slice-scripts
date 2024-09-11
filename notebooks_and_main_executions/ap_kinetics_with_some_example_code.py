@@ -1,5 +1,5 @@
 #%%
-from detect_peaks import detect_peaks
+from ephys_analysis.detect_peaks import detect_peaks
 import matplotlib.pyplot as plt
 import numpy as np
 import os

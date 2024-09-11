@@ -1,8 +1,8 @@
-import interpFL
+import ephys_analysis.interpFL as interpFL
 import numpy as np
 from scipy.signal import find_peaks
 import ephys_analysis.stimulation_windows_ms as stim_win
-import src.ephys_analysis.funcs_human_characterisation as hcf
+import ephys_analysis.funcs_human_characterisation as hcf
 import math
 
 

@@ -1,12 +1,11 @@
 #%%
-from detect_peaks import detect_peaks
+from ephys_analysis.detect_peaks import detect_peaks
 import matplotlib.pyplot as plt
 import numpy as np
-import os
 import math
 import pandas as pd
 import ephys_analysis.funcs_sorting as sort
-import src.ephys_analysis.funcs_human_characterisation as hcf
+import ephys_analysis.funcs_human_characterisation as hcf
 import glob
 
 

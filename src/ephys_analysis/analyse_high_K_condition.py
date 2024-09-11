@@ -1,7 +1,6 @@
-import ephys_analysis.funcs_sorting as sort
-import ephys_analysis.funcs_sorting as sort
 import pandas as pd
-import src.ephys_analysis.funcs_human_characterisation as hcf
+import ephys_analysis.funcs_sorting as sort
+import ephys_analysis.funcs_human_characterisation as hcf
 import ephys_analysis.funcs_plotting_raw_traces as plotting_funcs
 import ephys_analysis.funcs_plotting_raw_traces as plot_intrinsic_props
 

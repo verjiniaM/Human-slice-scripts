@@ -2,9 +2,9 @@ import os
 import pandas as pd
 import ephys_analysis.funcs_sorting as sort
 import numpy as np
-import src.ephys_analysis.funcs_human_characterisation as hcf
+import ephys_analysis.funcs_human_characterisation as hcf
 import ephys_analysis.funcs_plotting_raw_traces as plotting_funcs
-import src.ephys_analysis.funcs_con_screen as con_param
+import ephys_analysis.funcs_con_screen as con_param
 import datetime
 import shutil
 import glob
@@ -977,56 +977,3 @@ def collect_events_dfs(event_type, human_dir = '/Users/verjim/laptop_D_17.01.202
 
     return meta_df
 
-
-
-#random new functions - to be sorted in other scripts
-#%%
-import src.ephys_analysis.funcs_for_results_tables as get_results
-import datetime
-import pandas as pd
-import numpy as np
-
-mini_meta = get_results.collect_events_dfs('minis')
-spontan_meta = get_results.collect_events_dfs('spontan')
-
-analysis_df = spontan_meta
-
-for i in range(len(analysis_df)):
-  if len(analysis_df['slice'][i]) > 2 and analysis_df['hrs_incubation'][i] == 0:
-    print('Fix hrs incubation for ' + analysis_df['OP'][i] + ' ' +analysis_df['Name of recording'][i] +  ' '+str(analysis_df['Channels to use'][i]))
-
-date = str(datetime.date.today())
-human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'
-# mini_meta.to_excel(human_dir + '/meta_events/meta_files_to_analyse/' + date + '_minis_meta.xlsx',index=False)
-spontan_meta.to_excel(human_dir + '/meta_events/meta_files_to_analyse/' + date + 'spontan_meta.xlsx',index=False)
-
-#%%
-import glob
-import ephys_analysis.funcs_sorting as sort
-import pandas as pd
-
-human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'
-OP_dirs = glob.glob(human_dir + 'data*' + '/' + 'OP*')
-
-df_slice_treatments = pd.DataFrame(columns = ['OP', 'patcher', 'slice', 'treatment'])
-for dir_ in OP_dirs:
-    OP = dir_[dir_.find('OP'):dir_.find('OP')+8]
-    if OP == 'OP201020' or OP == 'OP231108' or OP == 'OP240318' or OP == 'OP240124' or OP == 'OP230412' or OP == 'OP240229':
-        continue
-    patcher_ = dir_[dir_.find('data_')+5:dir_.find('data_')+10]
-    if patcher_ == 'verji':
-        patcher = 'Verji'
-    else:
-        patcher = 'Rosie'
-    if OP == 'OP231123' and patcher =='Verji':
-        continue
-    active_chans_meta = sort.get_json_meta(human_dir, OP, patcher, '_meta_active_chans.json')
-
-    work_dir, filenames, indices_dict, slice_names, pre_chans, post_chans = sort.get_OP_metadata(human_dir, OP, patcher)
-    len_tr = len(active_chans_meta[0]['treatment'])
-    len_slices = len(active_chans_meta[0]['slices'])
-    if len_tr != len_slices:
-        print('fix active_chans_meta ' + OP)
-    df_add = pd.DataFrame({'OP':[OP]*len_tr, 'patcher': [patcher]*len_tr, 
-    'slice' : active_chans_meta[0]['slices'], 'treatment': active_chans_meta[0]['treatment']})
-    df_slice_treatments = pd.concat([df_slice_treatments.loc[:], df_add]).reset_index(drop=True)
