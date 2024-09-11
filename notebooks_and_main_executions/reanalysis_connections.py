@@ -1,14 +1,10 @@
-#%%
-import os
 import pandas as pd
 import glob
-import funcs_sorting as sort
-import funcs_human_characterisation as hcf
-import funcs_for_results_tables as get_results
-from importlib import reload
+import intrinsic_props_and_connectivity.funcs_sorting as sort
+import src.intrinsic_props_and_connectivity.funcs_human_characterisation as hcf
 import numpy as np
-import funcs_plotting
-import funcs_con_screen as con_param
+import intrinsic_props_and_connectivity.funcs_plotting_raw_traces as funcs_plotting_raw_traces
+import src.intrinsic_props_and_connectivity.funcs_con_screen as con_param
 
 
 human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'
@@ -26,7 +22,7 @@ con_screen_json = sort.get_json_meta_connect_all(human_dir, OP, patcher)
 
 for a, i in enumerate(con_screen_json[0]['con_screen_file']):
     %matplotlib qt
-    funcs_plotting.plot_con_screen_all(work_dir + filenames[i], con_screen_json[0]['active_chans'][a])
+    funcs_plotting_raw_traces.plot_con_screen_all(work_dir + filenames[i], con_screen_json[0]['active_chans'][a])
     %matplotlib
 
 
@@ -92,9 +88,9 @@ for i, indx in enumerate(con_screen_json[0]['con_screen_file']):
         con_data = pd.concat([con_data.loc[:], df_add]).reset_index(drop=True)
 
         #plotting
-        funcs_plotting.plot_connection_window(con_screen_file, pre_cell, post_cell, pre_window, \
+        funcs_plotting_raw_traces.plot_connection_window(con_screen_file, pre_cell, post_cell, pre_window, \
             post_window, preAPs_shifted, post_signal, onsets, preAPs, post_peaks, post_local_baseline)
-        funcs_plotting.plot_post_cell(con_screen_file, pre_cell, post_cell)
+        funcs_plotting_raw_traces.plot_post_cell(con_screen_file, pre_cell, post_cell)
 
 con_data.to_excel(work_dir + '/connection_analysis/' + OP + '_connections.xlsx', index=False) 
 
@@ -152,16 +148,16 @@ for i, indx in enumerate(con_screen_json[1]['con_screen_IC_file_indices']):
         con_data_VC = pd.concat([con_data_VC.loc[:], df_add]).reset_index(drop=True)
 
         #plotting
-        funcs_plotting.plot_connection_window_VC(con_screen_file_IC, pre_cell, post_cell, pre_window, \
+        funcs_plotting_raw_traces.plot_connection_window_VC(con_screen_file_IC, pre_cell, post_cell, pre_window, \
                 post_window, preAPs_shifted, post_sig, onsets, preAPs, post_peaks, bl)
-        funcs_plotting.plot_post_cell_VC(con_screen_file_IC, pre_cell, post_cell)
+        funcs_plotting_raw_traces.plot_post_cell_VC(con_screen_file_IC, pre_cell, post_cell)
 
 con_data_VC.to_excel(work_dir + '/connection_analysis/' + OP + '_connected_cell_properties_post_in_VC.xlsx', index=False) 
 
 
 
 # %%
-import funcs_plot_intrinsic_props as plotting_funcs
+import src.intrinsic_props_and_connectivity.funcs_plot_intrinsic_props as plotting_funcs
 import pandas as pd 
 
 

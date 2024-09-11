@@ -5,8 +5,8 @@ import numpy as np
 import os
 import math
 import pandas as pd
-import funcs_sorting as sort
-import funcs_human_characterisation as hcf
+import intrinsic_props_and_connectivity.funcs_sorting as sort
+import src.intrinsic_props_and_connectivity.funcs_human_characterisation as hcf
 import glob
 
 

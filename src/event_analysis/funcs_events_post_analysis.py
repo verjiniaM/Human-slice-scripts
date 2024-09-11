@@ -2,13 +2,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 import datetime
-import os
-import glob
 import shutil
-import funcs_human_characterisation as hcf
-import funcs_plot_intrinsic_props  as pl_intr
-
-
+import src.intrinsic_props_and_connectivity.funcs_human_characterisation as hcf
+import src.intrinsic_props_and_connectivity.funcs_plot_intrinsic_props  as pl_intr
 
 def copy_event_analysis_data_to_analysis_folder(event_type):
     '''

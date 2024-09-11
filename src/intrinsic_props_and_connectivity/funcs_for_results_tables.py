@@ -1,16 +1,13 @@
 import os
 import pandas as pd
-import funcs_sorting as sort
+import intrinsic_props_and_connectivity.funcs_sorting as sort
 import numpy as np
-import funcs_human_characterisation as hcf
-import funcs_plotting as plotting_funcs
-import funcs_con_screen as con_param
-import json
-import math
+import src.intrinsic_props_and_connectivity.funcs_human_characterisation as hcf
+import intrinsic_props_and_connectivity.funcs_plotting_raw_traces as plotting_funcs
+import src.intrinsic_props_and_connectivity.funcs_con_screen as con_param
 import datetime
 import shutil
 import glob
-import funcs_plot_intrinsic_props as plot_intrinsic_props
 from openpyxl import load_workbook
 
 
@@ -984,7 +981,7 @@ def collect_events_dfs(event_type, human_dir = '/Users/verjim/laptop_D_17.01.202
 
 #random new functions - to be sorted in other scripts
 #%%
-import funcs_for_results_tables as get_results
+import src.intrinsic_props_and_connectivity.funcs_for_results_tables as get_results
 import datetime
 import pandas as pd
 import numpy as np
@@ -1005,7 +1002,7 @@ spontan_meta.to_excel(human_dir + '/meta_events/meta_files_to_analyse/' + date +
 
 #%%
 import glob
-import funcs_sorting as sort
+import intrinsic_props_and_connectivity.funcs_sorting as sort
 import pandas as pd
 
 human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'

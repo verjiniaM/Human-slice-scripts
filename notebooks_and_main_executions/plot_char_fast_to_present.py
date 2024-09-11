@@ -4,7 +4,7 @@ import pandas as pd
 from funcs_human_characterisation import load_traces
 import numpy as np
 import matplotlib.pyplot as plt
-from stimulation_windows_ms import stim_window_con_screen
+from intrinsic_props_and_connectivity.stimulation_windows_ms import stim_window_con_screen
 import neo
 import funcs_sorting as sort
 import funcs_human_characterisation as hcf

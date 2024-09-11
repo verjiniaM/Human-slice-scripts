@@ -1,5 +1,5 @@
 import glob
-import funcs_sorting as sort
+import intrinsic_props_and_connectivity.funcs_sorting as sort
 import pandas as pd
 
 human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'

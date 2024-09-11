@@ -9,6 +9,7 @@ Created on Fri Jun 23 15:11:58 2023
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+
 #%%load data
 
 df = pd.read_excel('/Volumes/TOSHIBA EXT/Verjinia/Data/all_data_human 2.xlsx',

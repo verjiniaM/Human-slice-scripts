@@ -1,9 +1,8 @@
 import os
 import pandas as pd
 import glob
-import funcs_sorting as sort
-import funcs_human_characterisation as hcf
-import funcs_for_results_tables as get_results
+import intrinsic_props_and_connectivity.funcs_sorting as sort
+import src.intrinsic_props_and_connectivity.funcs_for_results_tables as get_results
 
 
 # #%%

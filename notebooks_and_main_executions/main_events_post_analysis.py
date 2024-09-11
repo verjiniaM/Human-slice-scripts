@@ -1,9 +1,7 @@
 import pandas as pd
-import funcs_events_post_analysis as event_funcs
-import funcs_plot_intrinsic_props as plot_intr
-import funcs_for_results_tables as get_results
-import datetime
+import src.event_analysis.funcs_events_post_analysis as event_funcs
 import glob
+import matplotlib.pyplot as plt
 
 #%%
 # might need some manual intervention

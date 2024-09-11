@@ -1,15 +1,9 @@
-
-#%%
 import neo
 import numpy as np
 from detect_peaks import detect_peaks
 import math
 import pyabf
-import matplotlib.pyplot as plt
-import funcs_sorting as sort
 
-
-#%%
 # =============================================================================
 # Basic functions for characterisation of human neurons
 # =============================================================================

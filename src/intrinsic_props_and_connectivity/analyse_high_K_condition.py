@@ -1,9 +1,9 @@
-import funcs_sorting as sort
-import funcs_sorting as sort
+import intrinsic_props_and_connectivity.funcs_sorting as sort
+import intrinsic_props_and_connectivity.funcs_sorting as sort
 import pandas as pd
-import funcs_human_characterisation as hcf
-import funcs_plotting as plotting_funcs
-import funcs_ as plot_intrinsic_props
+import src.intrinsic_props_and_connectivity.funcs_human_characterisation as hcf
+import intrinsic_props_and_connectivity.funcs_plotting_raw_traces as plotting_funcs
+import intrinsic_props_and_connectivity.funcs_plotting_raw_traces as plot_intrinsic_props
 
 
 def main():

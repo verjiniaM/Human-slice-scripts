@@ -4,8 +4,8 @@ import glob
 import numpy as np
 import json
 import datetime
-import funcs_human_characterisation as hcf
-import funcs_plotting as plotting_funcs
+import src.intrinsic_props_and_connectivity.funcs_human_characterisation as hcf
+import intrinsic_props_and_connectivity.funcs_plotting_raw_traces as plotting_funcs
 import pyabf
 import re
 
