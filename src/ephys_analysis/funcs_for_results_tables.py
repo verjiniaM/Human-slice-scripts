@@ -976,4 +976,3 @@ def collect_events_dfs(event_type, human_dir = '/Users/verjim/laptop_D_17.01.202
         meta_df = pd.concat([meta_df.loc[:], df_meta]).reset_index(drop=True)
 
     return meta_df
-
