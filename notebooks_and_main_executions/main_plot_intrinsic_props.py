@@ -14,10 +14,17 @@ exp_view = pd.read_excel(glob.glob(human_dir + '*experiments_overview.xlsx')[0])
 
 #collect all QC intrinsic datatables
 df_intr_props = get_results.collect_intrinsic_df()
+df_intr_props = pl_intr.get_column_RMPs_from_char(df_intr_props)
+
+df_intr_props = df_intr_props[(df_intr_props.resting_potential > -100) & (df_intr_props.resting_potential < 0) ]
+
 df_intr_props.columns[df_intr_props.isna().any()].tolist()
 
+#check for unknown patient ages
+df_intr_props.OP.iloc[[indx for indx in range(len(df_intr_props)) if type(df_intr_props.patient_age.iloc[indx]) == str]].unique()
+
 #filter on age and hrs incubation
-adult_df = pl_intr.filter_adult_hrs_incubation_data(df_intr_props, min_age = 0, hrs_inc = 16, max_age = 151) # QC criteria 
+adult_df = pl_intr.filter_adult_hrs_incubation_data(df_intr_props, min_age = 10, hrs_inc = 16, max_age = 151) # QC criteria 
 #adult_df = adult_df[adult_df['area'] == 'temporal']
 #adult_df = adult_df[adult_df['high K concentration'] == '8 mM']
 #op_color_dict = pl_intr.get_op_color_dict(adult_df)

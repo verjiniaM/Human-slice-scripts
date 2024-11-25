@@ -103,6 +103,21 @@ def get_inj_current_steps(fn):
         inj = char.userList
     return inj
 
+def get_RMP_char_file(fn, chans):
+    
+    charact_data = load_traces(fn)
+    inj = get_inj_current_steps(fn)
+
+    RMPs_all = []
+    for ch in chans:
+        key = 'Ch' + str(ch)
+        ch1 = charact_data[key][0]
+        indx_0 = inj.index(0)
+        RMPs_all.append(np.mean(ch1[:, indx_0]))
+
+    return RMPs_all
+
+
 def load_traces(filename):
     '''
     returns a dictionary; key: channel name (e.g. 'Ch1')
