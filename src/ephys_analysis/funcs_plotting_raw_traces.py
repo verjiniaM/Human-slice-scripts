@@ -1,4 +1,4 @@
-
+from tkinter import font
 import numpy as np
 import matplotlib.pyplot as plt
 import math
@@ -7,6 +7,9 @@ import ephys_analysis.funcs_con_screen as con_param
 import ephys_analysis.funcs_sorting as sort
 import ephys_analysis.funcs_human_characterisation as hcf
 import pyabf
+from ipywidgets import interact
+
+plt.style.use('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/code/Human-slice-scripts/style_plot_intrinsic.mplstyle')
 
 # plots the middle sweep for each channel
 # check the traces to see which channels were active or if the protocol names are enetered correctly
@@ -726,13 +729,13 @@ def plot_average_all_swps(fn, chans):
     for looking at inputs
     '''
     trace = pyabf.ABF(fn)
+    if '_Ipatch' in trace.adcNames:
+        trace.adcNames[trace.adcNames.index('_Ipatch')] = 'Ch1'
+    if 'IN0' in trace.adcNames:
+        trace.adcNames[trace.adcNames.index('IN0')] = 'Ch1'
 
     for channel in chans:
         if len(trace.channelList) < 8:
-            if '_Ipatch' in trace.adcNames:
-                trace.adcNames[trace.adcNames.index('_Ipatch')] = 'Ch1'
-            if 'IN0' in trace.adcNames:
-                trace.adcNames[trace.adcNames.index('IN0')] = 'Ch1'
             channel_name = 'Ch' + str(channel)
             channel = trace.channelList[trace.adcNames.index(channel_name)]
         else:
@@ -743,18 +746,58 @@ def plot_average_all_swps(fn, chans):
         data_wide = data_long.reshape(int(len(data_long)/ len(trace.sweepY)), len(trace.sweepY))
         data_wide_mean = np.mean(data_wide, axis = 0)
         fig, ax = plt.subplots(1,1, figsize = (7, 4))
-        x = np.array(range(len(data_wide_mean)))/20_000
+        x = np.array(range(len(data_wide_mean)))/trace.sampleRate
         ax.plot(x, data_wide_mean)
 
-        ax.set_xlabel(trace.sweepLabelX, fontsize = 14) 
-        ax.set_ylabel(trace.sweepLabelY, fontsize = 14)
+        ax.set_xlabel(trace.sweepLabelX) 
+        ax.set_ylabel(trace.sweepLabelY)
 
-        ax.tick_params(axis='x', labelsize=14)
-        ax.tick_params(axis='y', labelsize=14)
-
-        ax.spines['top'].set_visible(False)
-        ax.spines['right'].set_visible(False)
-
-        fig.suptitle('Average across all sweeps', fontsize = 15)
+        fig.suptitle('Average across all sweeps')
         #plt.savefig('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/mouse/ca1-sub-channorhodopsin_mice/Calb-CreSubiculum/inputs/'+ filenames[i][:-4] + 'Ch.' +channel_str + '.jpg')
         plt.show()
+
+def plt_trace_select_swps_cut_parts (fn, chan, swps_keep = 'all', start_point_cut = False, end_point_cut = False):
+    ''' 
+    arguemnts : fn - filename, chan - channel number from 1 to 8
+    visualization of recordings with selection of channels and parts to cut
+    accepts int for channel
+    start_point_cut, end_point_cut - int, what aprt to cut from the trace
+    '''
+    trace = pyabf.ABF(fn)
+    # fixing the naming
+    if '_Ipatch' in trace.adcNames:
+            trace.adcNames[trace.adcNames.index('_Ipatch')] = 'Ch1'
+    if 'IN0' in trace.adcNames:
+        trace.adcNames[trace.adcNames.index('IN0')] = 'Ch1'
+    
+    # channels are always consequtive nums in pyabf
+    chan_name = 'Ch' + str(chan)
+    if len(trace.channelList) < 8:
+        chan = trace.channelList[trace.adcNames.index(chan_name)]
+    else:
+        chan = chan - 1
+
+    data_long = trace.data[chan]
+    swp_len = int(trace.sweepLengthSec * trace.sampleRate)
+    data_wide = data_long.reshape(trace.sweepCount, swp_len) # each sweep is a row
+    
+    if len(swps_keep) == trace.sweepCount:
+        data_plot = hcf.reshape_data(data_wide, 'all', start_point_cut, end_point_cut)
+    else:
+        data_plot = hcf.reshape_data(data_wide, swps_keep, start_point_cut, end_point_cut)
+    
+    fig, ax = plt.subplots(1,1, figsize = (7, 4))
+    x = np.linspace(0, len(data_plot), len(data_plot))/trace.sampleRate
+    ax.plot(x, data_plot)
+    for i in range(1, len(swps_keep)):
+        vline = i * trace.sweepLengthSec
+        if i == 1:
+            ax.axvline(x = vline, color='red', linestyle='--', linewidth=1, label = 'sweep end')
+        else:
+            ax.axvline(x = vline, color='red', linestyle='--', linewidth=1)
+
+    ax.set_xlabel(trace.sweepLabelX) 
+    ax.set_ylabel(trace.sweepLabelY)
+    fig.suptitle(chan_name + ' from ' + fn[fn.rfind('/') + 1:] + ' nice sweeps')
+    fig.legend(loc='lower left', bbox_to_anchor=(-0.1, -0.1), fontsize = 13)
+    plt.show()

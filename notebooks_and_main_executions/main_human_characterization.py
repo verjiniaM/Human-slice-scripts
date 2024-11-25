@@ -2,7 +2,7 @@ import os
 import pandas as pd
 import glob
 import ephys_analysis.funcs_sorting as sort
-import src.ephys_analysis.funcs_for_results_tables as get_results
+import ephys_analysis.funcs_for_results_tables as get_results
 
 
 # #%%

@@ -1,5 +1,5 @@
-import ephys_analysis.human_characterisation_functions as hcf
-import pyabf
+import ephys_analysis.funcs_human_characterisation as hcf
+import numpy as np
 
 # def test_get_access_resistance():
 #     filename_vc = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/data_verji/OP220426_trial/22427001.abf'
@@ -17,18 +17,20 @@ import pyabf
 #     assert capacitance_all == pytest.approx([445.3729258, 11.66120996])
 
 
-def test_from_axon_file():
-    fn = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/data_verji/OP230523/23523050.abf' 
+def test_reshape_data():
+    # Define the dimensions
+    rows, cols = 10, 7
+    # Create the array
+    A = np.arange(rows).reshape(rows, 1) * np.ones((1, cols), dtype=int)
+    A[:, 1:3] = 25
+    B = A.copy()
 
-    data = hcf.from_axon_file(filepath = fn, channel = 6, unit ='pA', sweeps_delete = list(range(1,30)),
-    first_point = 0, last_point = 5500)
+    out = np.arange(3).reshape(3, 1) * np.ones((1, 5), dtype=int)
+    out[0, :] = 1
+    out[1, :] = 4
+    out[2, :] = 6
+    out = out.ravel()
 
-    trace = pyabf.ABF(fn)
-    trace.setSweep(sweepNumber = 0, channel = 6)
-    data_cut = trace.sweepY
-    data_cut = data_cut[5500:]
+    data_plot = hcf.reshape_data(B, [2,5,7], 1, 3)
 
-    assert (data == data_cut).all() 
-
-
-
+    assert np.array_equal(out, data_plot)

@@ -643,3 +643,29 @@ def get_initial_firing_rate(fn, channels, inj = 'full'):
                 params[i,k+1] = len(pks) #num_aps
 
     return params
+
+def reshape_data(data_, swps_keep = 'all', start_point_cut = False, end_point_cut = False):
+    '''
+    data_wide has dimensions sweep_count -> [0] x sweep_len -> [1]
+    '''
+    data_wide = data_.copy() #create a copy of the data; not to deal with numpy problems
+    swp_count = np.shape(data_wide)[0]
+    swp_len = np.shape(data_wide)[1]
+    swps_delete = np.array(list(set(range(swp_count)) - set(swps_keep)))
+
+    if start_point_cut or end_point_cut:
+        if not end_point_cut:
+            end_point_cut = swp_len
+        data_plot = np.delete(data_wide, list(range(start_point_cut, end_point_cut)), 1)
+    else:
+        data_plot = data_wide
+
+    if isinstance(swps_keep, str):
+        if swps_keep == 'all':
+            return data_plot.ravel()
+        elif swps_keep == '[]':
+            return np.array([])
+    else:
+        swps_keep = np.array(swps_keep) - 1
+        return np.delete(data_plot, swps_delete, 0).ravel()
+

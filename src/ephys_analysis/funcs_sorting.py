@@ -552,7 +552,7 @@ def create_full_results_df(meta_keep_path, results_QC_path, verji_dir):
     in_meta_not_in_results = list(set(meta_keep_IDs) - set(results_IDs))
     results_exclude = list(set(results_IDs) - set(meta_keep_IDs))
 
-    #if all of the above 3 lists are empy continue with a piece of heart
+    #if all of the above 3 lists are empy continue with a peace of heart
 
     #take more metadata from the tables in the data folders of the recordings
     RMP_high_K_all = concat_dfs_in_folder(verji_dir + 'OP*' + '/data_tables/'  + '*RMP_high_K' + '*.xlsx')

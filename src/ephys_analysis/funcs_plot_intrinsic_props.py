@@ -1,14 +1,11 @@
-
-import matplotlib.pyplot as plt 
-import pandas as pd
-import datetime
-import numpy as np
 import math
+import datetime
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
 import ephys_analysis.funcs_human_characterisation as hcf
 
-plt.style.use('./style_plot_intrinsic.mplstyle')
-
-#mpl.rcParams['axes.prop_cycle'] = cycler(color=['r', 'g', 'b', 'y']) 3 changes the default colors
+plt.style.use('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/code/Human-slice-scripts/style_plot_intrinsic.mplstyle')
 
 def patient_age_to_float(df_intr_props, min_age, max_age=151):
     '''
@@ -1121,8 +1118,6 @@ destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/p
 
 #%%
 # connectivity ploting funcs (summary)
-
-plt.style.use('./style_plot_intrinsic.mplstyle')
 
 def get_QC_connectivity_df(df):
     mask = (df['Vm pre'] < -50 ) & (df['Vm post'] < -50 ) & \

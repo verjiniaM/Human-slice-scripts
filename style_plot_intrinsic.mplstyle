@@ -1,6 +1,5 @@
 ### Classic matplotlib plotting style as of v1.5
 
-
 #AXES 
 axes.labelcolor:    black
 axes.facecolor:     white
@@ -9,6 +8,7 @@ axes.spines.top: False
 axes.edgecolor:     black
 axes.grid: False
 axes.axisbelow:     line 
+axes.prop_cycle: cycler('color', ['darkgreen']) # default plot color is green
 
 #LINES
 lines.linewidth : 2
