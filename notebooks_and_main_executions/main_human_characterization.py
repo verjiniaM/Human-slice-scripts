@@ -4,13 +4,12 @@ import glob
 import ephys_analysis.funcs_sorting as sort
 import ephys_analysis.funcs_for_results_tables as get_results
 
-
 # #%%
-OP = 'OP231130'
+OP = ''
 patcher = 'Verji'
 tissue_source = 'Bielefeld'
 inj = 'full'
-age = 39
+age = 37
 #%%
 #loading the updated experiments_overview and the old summary_data_table
 human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'
@@ -24,12 +23,16 @@ sort.add_cortex_out_time(human_dir, exp_view_new)
 #loading the latest data table, should be the last one in the folder
 latest_sum_data_table = sorted(glob.glob(results_dir + 'summary_data_tables/intrinsic_properties/' + '*.xlsx'))[-1]
 end_path = latest_sum_data_table.rfind('/')
-summary_data_table = pd.read_excel(latest_sum_data_table)
-print('Using summary data table from ' + latest_sum_data_table[end_path + 1 : end_path + 11])
+
+if '~' in latest_sum_data_table:
+    summary_data_table = pd.read_excel(latest_sum_data_table[:end_path +1] + latest_sum_data_table[end_path + 3:])
+else:
+    summary_data_table = pd.read_excel(latest_sum_data_table)
+print('Using summary data table from ' + latest_sum_data_table[end_path + 1:])
 
 # updating full OP list from latest summmary based on all OPs in exp_overview
 last_update_op_list = summary_data_table.OP.unique().tolist()
-newest_op_list = exp_view.OP.unique().tolist()
+newest_op_list = exp_view_new.OP.unique().tolist()
 all_OPs = last_update_op_list + newest_op_list
 op_to_analyse = [i for i in all_OPs if all_OPs.count(i)==1]
 
@@ -82,6 +85,8 @@ if len(not_repatched_cells) > 0:
     print('Not repatched cells ' + str(not_repatched_cells)[1:-1])
 
 #%%
+
+# GO TO THE reanalysis_connections.py to continue with the connection analysis !
 
 # get_results.prapare_for_event_analysis(human_dir)
 # connections_IC, connections_VC = get_results.collect_connections_df(human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/')

@@ -1,16 +1,13 @@
 import math
 import datetime
+import os
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import ephys_analysis.funcs_human_characterisation as hcf
+import ephys_analysis.funcs_sorting as sort
 
 plt.style.use('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/code/Human-slice-scripts/style_plot_intrinsic.mplstyle')
-import funcs_human_characterisation as hcf
-import funcs_for_results_tables as get_results
-import funcs_sorting as sort
-
-#mpl.rcParams['axes.prop_cycle'] = cycler(color=['r', 'g', 'b', 'y']) 3 changes the default colors 
 
 def get_column_RMPs_from_char(df, human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'):
     '''
@@ -37,8 +34,6 @@ def get_column_RMPs_from_char(df, human_dir = '/Users/verjim/laptop_D_17.01.2022
     df.insert(len(df.columns), 'RMP_from_char', rmps)
 
     return df
-
-
 
 def patient_age_to_float(df_intr_props, min_age, max_age=151):
     '''
@@ -228,9 +223,10 @@ def dict_for_plotting_synaptic():
     values[2] plot y ticks
     '''
     titles_dict = {'amplitude mean': ['Mean amplitude', 'pA', [-50, -40, -30, -20, -10, 0]], 
-    'frequency': ['Event frequency', 'Hz', [0,2,4,6,8,10]],
+    'frequency (Hz)': ['Event frequency', 'Hz', [0,2,4,6,8,10]],
     'risetime mean': ['Mean risetime (10 to 90)', 'ms', [0.0002, 0.002, 0.01]],
-    'decaytime mean': ['Mean half decay time', 'ms', [0.003, 0.004, 0.005, 0.006]]}
+    'decaytime mean': ['Mean half decay time', 'ms', [0.003, 0.004, 0.005, 0.006]],
+    'amp_abs': ['Absolute mean amplitude', 'pA', [0, 10, 20, 30, 40, 50]]}
     return titles_dict
 
 def dict_for_plotting_con_screen():
@@ -288,11 +284,12 @@ def get_age_color_dict(df):
     age_color_dict = {}
     age_list = sorted(list(df.patient_age_num.unique()))
     for h, years in enumerate(age_list):
-       age_color_dict[years] = cmap((h+1)/len(age_list))
+        age_color_dict[years] = cmap((h+1)/len(age_list))
+
     return df, age_color_dict
 
 def plot_param_for_days_slice(df, op_color_dict,
-destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/plots/intrinsic_properties/adult_slice/'):
+    destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/plots/intrinsic_properties/adult_slice/'):
 
     treatments = ['Ctrl', 'high K']
     #treatments = ['Ctrl', 'TTX', 'high K']
@@ -357,6 +354,7 @@ destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/p
         fig2.tight_layout()
 
         date = str(datetime.date.today())
+        os.makedirs(destination_dir, exist_ok=True)
         plt.savefig(destination_dir  + date + '_plot_' + param + '.pdf')
         plt.close(fig2)
 
@@ -631,6 +629,7 @@ destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/p
     fig2.tight_layout()
 
     date = str(datetime.date.today())
+    os.makedirs(destination_dir, exist_ok=True)
     plt.savefig(destination_dir + date + '_plot_all_params' + '.pdf')
     plt.close(fig2)
 
@@ -1153,9 +1152,9 @@ destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/p
 # connectivity ploting funcs (summary)
 
 def get_QC_connectivity_df(df):
-    mask = (df['Vm pre'] < -50 ) & (df['Vm post'] < -50 ) & \
-        (df['Amp 1'] > 0) &  (df['Amp 2'] > 0 )   & \
-            (df['Amp 3'] > 0 ) &  (df['Amp 4'] > 0)
+    mask = (df['Vm pre'] < -40 ) & (df['Vm post'] < -40)
+        # (df['Amp 1'] > 0) &  (df['Amp 2'] > 0 )   & \
+        #     (df['Amp 3'] > 0 ) &  (df['Amp 4'] > 0)
     df = df.loc[mask, :]
     return df
 
@@ -1191,10 +1190,10 @@ def get_amps_lats_columns(df):
             lats.append(i)
     return amps, lats
 
-def plot_connect_amplitude(df, data_type, op_color_dict, results_ = 'amp',
+def plot_connect_amplitude(df, data_type, op_color_dict, con_ID_col ,results_ = 'amp',
 destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/plots/connectivity/'):
 
-    treatments = ['Ctrl', 'TTX', 'high K']
+    treatments = ['Ctrl', 'high K']
     amps, lats = get_amps_lats_columns(df)
     plot_amps = df.columns[amps[0]:amps[3]+1]
     label_y = 'Amplitude (mV)'
@@ -1213,7 +1212,7 @@ destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/p
 
     fig, ax = plt.subplots(2,2, figsize = (16,16))
     ax = ax.flatten()
-    for a, amp in enumerate(plot_amps): 
+    for a, amp in enumerate(plot_amps):
         
         day_label = []
         num_cels = {}
@@ -1226,31 +1225,29 @@ destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/p
                 median = df_plot[amp].median()
                 x = np.linspace(0.65+k, 1.35+k, len(df_plot))
                 x_plot.append(x)
-                ax[a].scatter(x, df_plot[amp], alpha = 0.9, c = colors[int(k)], s = 60)
+                ax[a].scatter(x, df_plot[amp], alpha = 0.9, c = colors[int(k)], s = 100)
                 if len(df_plot) == 0:
                     continue
                 yerr = 1.253*(df_plot[amp].std()/(math.sqrt(len(df_plot))))
-                ax[a].scatter(1+k, median, color = 'k', marker = '_', s = 2000)
-                ax[a].text(0.9+k, 1.2*median, str(round(median,2)), size = 10)
+                ax[a].scatter(1+k, median, color = 'k', marker = '_', s =4000)
+                ax[a].text(0.9+k, 1.2*median, str(round(median,2)), size = 20)
                 day_label.append(day)
                 num_cels[tr + ' ' + day] = len(df_plot)
                 #data_boxplot.append(df_plot[amp)
-            ax[a].text(1 + 2*i, int(np.max(df['Amp 1'])+0.6), tr, size = 17, c = colors[2*i+1])
-            ax[a].text(1.7 + 2*i, int(np.max(df['Amp 1'])-0.3), 'n = ' + str(len(df_plot)), size = 10, c = colors[2*i+1])
+            ax[a].text(1.3 + 2*i, int(np.max(df['Amp 1'])+1.8), tr, size = 18, c = colors[2*i+1])
+            ax[a].text(1.3 + 2*i, int(np.max(df['Amp 1'])+0.8), 'n = ' + str(len(df_plot)), size = 18, c = colors[2*i+1])
             if k in [1,3,5] and 'repatch' in data_type:
-                for c, cell in enumerate(df_plot['connection_ID']):
-                    if k == 1 and len(df_plot['connection_ID'])-1 == c:
+                for c, cell in enumerate(df_plot[con_ID_col]):
+                    if k == 1 and len(df_plot[con_ID_col])-1 == c:
                         print(str(c+1) + 'Gencho')
                     x1 = [x_plot[0][c], x[c]] 
-                    y = df[amp][df['connection_ID'] == cell]
-                    op = df_plot['OP'][df_plot['connection_ID'] == cell].tolist()[0]
-                    #age = df_plot['_new'][df_plot['connection_ID'] == cell].tolist()[0]
+                    y = df[amp][df[con_ID_col] == cell]
+                    op = df_plot['OP'][df_plot[con_ID_col] == cell].tolist()[0]
+                    #age = df_plot['_new'][df_plot[con_ID_col] == cell].tolist()[0]
                     if type(list(op_color_dict.keys())[0]) is not str:
                         ax[a].plot(x1, y, '-', color = op_color_dict[age], alpha = 0.5, linewidth = 2, zorder = -1)
                     else:
                         ax[a].plot(x1, y, '-', color = op_color_dict[op], alpha = 0.5, linewidth = 2, zorder = -1)
-
-
         
         if 'VC' in data_type:
             ax[a].set_ylabel('Amplitude (pA)', fontsize = 24)
@@ -1261,9 +1258,9 @@ destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/p
         else:
             max_ = np.max([np.max(df).Lat1, np.max(df).Lat2,np.max(df).Lat3,np.max(df).Lat4]) + 0.5
             ax[a].set_ylim([-0.5, int(max_)])
-        #ax[a].set_xticks(ticks = list(range(1,len(day_label) +1)), labels = day_label) 
-        ax[a].set_xticks(ticks = [1, 2, 3, 4, 5, 6], labels = ['D1', 
-        'D2 \n Ctrl', 'D1', 'D2 \n TTX','D1', 'D2 \n high K'], size = 20)
+        #ax[a].set_xticks(ticks = list(range(1,len(day_label) +1)), labels = day_label)
+        ax[a].set_xticks(ticks = [1, 2, 3, 4], labels = ['D1', 
+        'D2 \n Ctrl', 'D1', 'D2 \n high K'], size = 20)
         #ax[a].set_title('#' + str(a+1), fontsize = 15)
         ax[a].set_xlabel('Day', fontsize = 15)
         ax[a].tick_params(axis='y', labelsize=22) 
@@ -1343,6 +1340,7 @@ destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/p
         # fig2.tight_layout()
 
         date = str(datetime.date.today())
+        os.makedirs(destination_dir, exist_ok=True)
         plt.savefig(destination_dir  + date + '_plot_' + param + '.pdf')
         plt.close(fig2)
 
@@ -1434,6 +1432,7 @@ destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/p
         #fig2.tight_layout()
 
         date = str(datetime.date.today())
+        os.makedirs(destination_dir, exist_ok=True)
         plt.savefig(destination_dir + date + '_plot_' + param + '.pdf')
         plt.close(fig2)
 

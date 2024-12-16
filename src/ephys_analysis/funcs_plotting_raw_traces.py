@@ -11,7 +11,6 @@ from ipywidgets import interact
 
 plt.style.use('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/code/Human-slice-scripts/style_plot_intrinsic.mplstyle')
 
-plt.style.use('./style_plot_intrinsic.mplstyle')
 
 # plots the middle sweep for each channel
 # check the traces to see which channels were active or if the protocol names are enetered correctly
@@ -326,9 +325,8 @@ def plot_mini_sweeps (filename, cell_chan, sweep):
     plt.show()
 
 
-## Connectivity plotting functions 
-
-def plot_con_screen_all (fn, active_chans):
+## Connectivity plotting functions
+def plot_con_screen_all(fn, active_chans):
 
     con_screen_data = hcf.load_traces(fn)
 

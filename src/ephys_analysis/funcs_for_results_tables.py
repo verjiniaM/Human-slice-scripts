@@ -66,9 +66,10 @@ def get_intrinsic_properties_df(human_dir, OP, tissue_source, patcher, age, inj)
         RMPs = hcf.get_RMP(filename_vm, active_channels)
 
         rheos, THs, THs_in_trace, swps = hcf.get_rheobase_from_ramp(filename_ramp, active_channels)
-        params1_df = pd.DataFrame({'filename': filenames[char], 'slice' : slic, 'cell_ch': active_channels,
-        'hrs_after_OP' : time_after_op, 'cell_ID':cell_IDs, 'day' : day , 'treatment': treatment, 
-        'Rs' : Rs, 'Rin': Rin, 'resting_potential': RMPs})
+        params1_df = pd.DataFrame({'filename': filenames[char], 'slice' : slic, \
+                                   'cell_ch': active_channels, 'hrs_after_OP' : time_after_op, \
+                                    'cell_ID':cell_IDs, 'day' : day , 'treatment': treatment, \
+                                        'Rs' : Rs, 'Rin': Rin, 'resting_potential': RMPs})
 
         charact_params  = hcf.all_chracterization_params(filename_char, active_channels, inj)
         df_char = pd.DataFrame.from_dict(charact_params)
@@ -599,9 +600,8 @@ def get_metadata_for_event_analysis(human_dir, OP, patcher:str, event_type): # a
     elif event_type == 'EPSPs':
         df_events = pd.read_excel(work_dir + 'data_tables/RMP_high_K_' + OP + '.xlsx')
         #df_intrinsic = pd.read_excel(glob.glob(work_dir + 'data_tables/' + 'QC_passed_' + '*.xlsx')[0])
-
         df_meta = pd.DataFrame({
-            'Name of recording': df_events['filename'],  
+            'Name of recording': df_events['filename'],
             'Channels to use': df_events['cell_ch'], 
             'Sampling rate (Hz)': 20_000,
             'Analysis start at sweep (number)' : 1,
@@ -738,8 +738,9 @@ def save_intr_data(df_intr_props,  QC_data, repatch_data, juv_repatch, adult_rep
         adult_repatch.to_excel(writer, sheet_name='adult_repatch_all_QC')
 
 #analysis of intrinsic properties
-def collect_connections_df(human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/', folder = 'new'):
-    exp_view = pd.read_excel(glob.glob(human_dir + '*experiments_overview.xlsx')[0]) 
+def collect_connections_df(human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/', 
+                           folder = 'new'):
+    exp_view = pd.read_excel(glob.glob(human_dir + '*experiments_overview.xlsx')[0])
 
     area_dict, high_k_dict = {}, {}
     for OP in exp_view['OP'].unique():
@@ -753,6 +754,11 @@ def collect_connections_df(human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmit
     all_cons_IC = pd.DataFrame()
     for IC_path in connections_IC:
         df = pd.read_excel(IC_path)
+        if 'rosie' in IC_path:
+            patcher = 'Rosie'
+        else:
+            patcher = 'Verji'
+        df['pathcer'] = patcher
         all_cons_IC = pd.concat([all_cons_IC.loc[:], df]).reset_index(drop=True)
      
     all_cons_IC.insert(0, 'area', '')
@@ -775,14 +781,14 @@ def collect_connections_df(human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmit
         mask = all_cons_VC ['OP'] == OP
         if len(mask.unique()) == 1:
             continue
-        all_cons_VC .loc[mask, 'area'] = area_dict[OP]
-        all_cons_VC .loc[mask, 'high K concentration'] = high_k_dict[OP]
+        all_cons_VC.loc[mask, 'area'] = area_dict[OP]
+        all_cons_VC.loc[mask, 'high K concentration'] = high_k_dict[OP]
     all_cons_VC.loc[all_cons_VC ['treatment'] == 'high k'] = 'high K'
 
     date = str(datetime.date.today())
 
     file_name = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/data/summary_data_tables/connectivity/' + date + '_connectivity.xlsx'
-    with pd.ExcelWriter(file_name) as writer:  
+    with pd.ExcelWriter(file_name) as writer:
         all_cons_IC.to_excel(writer, sheet_name='Connectivity_IC')
         all_cons_VC.to_excel(writer, sheet_name='Connectivity_VC')
 
@@ -903,7 +909,7 @@ def add_sheets_from_df_to_QC_checked_df():
     # missing_data = sorted(list(set(result_IDs_QC) - set(df_check.sheet_names)))
     # print(missing_data)
 
-def check_if_data_missing_in_results_df ():
+def check_if_data_missing_in_results_df():
     meta_dfs_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/meta_events/EPSPs/meta_dfs/original_/'
     meta_all = sort.concat_dfs_in_folder(meta_dfs_dir) 
 
@@ -975,3 +981,33 @@ def collect_events_dfs(event_type, human_dir = '/Users/verjim/laptop_D_17.01.202
         meta_df = pd.concat([meta_df.loc[:], df_meta]).reset_index(drop=True)
 
     return meta_df
+
+# collect minis
+# fix or delete later
+def wrong():
+    exp_view_mini = exp_view[exp_view['minis'] == 'yes'].reset_index(drop=True)
+    patcher_dict = {'Rosie': 'data_rosie/', 'Verji': 'data_verji/'}
+    meta_df = pd.DataFrame()
+    for i in range(len(exp_view_mini)): #ran to range 22 
+        patcher =  exp_view_mini['patcher'][i]
+        OP_dir  = human_dir + patcher_dict[patcher] + exp_view_mini['OP'][i] + '/data_tables/'
+        QC_mini_path = glob.glob(OP_dir + '*' +'*final.xlsx')
+        if len(QC_mini_path) > 0:
+            df_QC_mini = pd.read_excel(QC_mini_path[0])
+        else:
+            print('No QC file found for ' + exp_view_mini['OP'][i])
+            continue
+
+        meta_df = pd.concat([meta_df[:], df_QC_mini]).reset_index(drop=True)
+            
+        # moving files directly to the recordings folder in event analysis
+        for f in df_QC_mini.filename:
+            shutil.copy(os.path.join(human_dir + patcher_dict[patcher] + exp_view_mini['OP'][i] + '/', f), \
+                        '/Users/verjim/miniML_data/data/minis_events/')
+
+    rows_to_delete = meta_df[meta_df.swps_to_analyse == '[]']
+
+    # Delete the identified rows
+    meta_df_cleaned = meta_df.drop(rows_to_delete.index)
+    meta_df_cleaned.reset_index(drop=True, inplace=True)
+    meta_df_cleaned.to_excel('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/meta_events/meta_files_to_analyse/' + date + 'minis_meta.xlsx')

@@ -348,13 +348,23 @@ def get_ap_param(charact_data, channels, inj, max_spikes):
             THloc = THlocs[0][0]
             TH = AP[THloc-1]
             APheight = peaks[first_spiking_sweep, ap ,2]-TH #amplitude of AP, the 2nd AP
+            # if APheight < 5:
+            #     print('AP height < 5 mV')
+            #     first_spiking_sweep = first_spiking_sweep = np.where(spike_counts[:,1]>1)[0][1]
+            #     peak_loc = np.where(ch1[:,first_spiking_sweep] == peaks[first_spiking_sweep, ap ,2])[0][0]
+            #     AP = ch1[:, first_spiking_sweep][peak_loc - 200:peak_loc+200]
+            #     d1_AP = np.diff(AP)*20
+            #     THlocs = np.where(d1_AP[:195] > 10)
+            #     if THlocs[0].size != 0:
+            #         THloc = THlocs[0][0]
+            #         TH = AP[THloc-1]
+            #         APheight = peaks[first_spiking_sweep, ap ,2]-TH 
             max_depol = np.max(d1_AP[:200]) #how quickly is the voltage change occuring
             max_repol = np.min(d1_AP[-200:])
             ch_params = [Rheobase, AP, THloc, TH, APheight, max_depol, max_repol]
 
             for i, param in enumerate(params):
                 param.append(ch_params[i])
-            continue
         else:
             print("Only 1 SLOW AP found for " + key)
             TH, THloc = math.nan, math.nan
@@ -374,7 +384,7 @@ def get_AP_HW(channels, AP_all, APheight_all, TH_all):
     '''
     AP_HWs = []
     for i, ch in enumerate(channels):
-        if len(AP_all[i]) == 0:
+        if len(AP_all[i]) == 0 or math.isnan(APheight_all[i]) or APheight_all[i] < 25:
             AP_HWs.append(math.nan)
             continue
 

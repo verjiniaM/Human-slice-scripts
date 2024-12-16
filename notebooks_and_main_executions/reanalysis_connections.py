@@ -1,10 +1,43 @@
 import pandas as pd
 import glob
 import ephys_analysis.funcs_sorting as sort
-import src.ephys_analysis.funcs_human_characterisation as hcf
+import ephys_analysis.funcs_human_characterisation as hcf
 import numpy as np
+import os
 import ephys_analysis.funcs_plotting_raw_traces as funcs_plotting_raw_traces
-import src.ephys_analysis.funcs_con_screen as con_param
+import ephys_analysis.funcs_con_screen as con_param
+import PyQt5
+
+def check_which_to_analyse (human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'
+):
+    # Lists to store folders without connection_analysis and with empty connection_analysis
+    no_connection_analysis = []
+    empty_connection_analysis = []
+
+    # Iterate through the folders in human_dir
+    for root, dirs, files in os.walk(human_dir):
+        # Get the folder name
+        folder_name = os.path.basename(root)
+        
+        # Check if the folder name starts with 'OP'
+        if folder_name.startswith('OP'):
+            # Check if 'connection_analysis' is not in the list of directories
+            if 'connection_analysis' not in dirs:
+                no_connection_analysis.append(folder_name)
+            else:
+                connection_analysis_path = os.path.join(root, 'connection_analysis')
+                # Check if the connection_analysis folder is empty
+                if not os.listdir(connection_analysis_path):
+                    empty_connection_analysis.append(folder_name)
+
+    # Print the results
+    print("Folders without 'connection_analysis/' folder:")
+    for folder in sorted(no_connection_analysis):
+        print(folder)
+
+    print("\nFolders with empty 'connection_analysis/' folder:")
+    for folder in sorted(empty_connection_analysis):
+        print(folder)
 
 
 human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'
@@ -12,7 +45,7 @@ results_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/data/
 
 exp_view = pd.read_excel(glob.glob(human_dir + '*experiments_overview.xlsx')[0]) 
 
-OP = 'OP240507' 
+OP = 'OP241120' 
 patcher = 'Verji'
 
 work_dir, filenames, indices_dict, slice_names = sort.get_OP_metadata(human_dir, OP, patcher, 'old')
@@ -20,6 +53,7 @@ dir_plots = sort.make_dir_if_not_existing (work_dir, 'connection_analysis')
 
 con_screen_json = sort.get_json_meta_connect_all(human_dir, OP, patcher)
 
+# inspect each plot and check if the connections in the lab_book are correctly noted
 for a, i in enumerate(con_screen_json[0]['con_screen_file']):
     %matplotlib qt
     funcs_plotting_raw_traces.plot_con_screen_all(work_dir + filenames[i], con_screen_json[0]['active_chans'][a])
@@ -157,11 +191,8 @@ con_data_VC.to_excel(work_dir + '/connection_analysis/' + OP + '_connected_cell_
 
 
 # %%
-import src.ephys_analysis.funcs_plot_intrinsic_props as plotting_funcs
+import ephys_analysis.funcs_plot_intrinsic_props as plotting_funcs
 import pandas as pd 
-
-
-
 
 df = pd.read_excel(work_dir + '/connection_analysis/' + OP + '_connections.xlsx')
 df = df[df['repatch'] == 'yes']

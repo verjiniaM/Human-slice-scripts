@@ -337,7 +337,7 @@ def get_json_meta_connect_all (human_dir, OP, patcher, file_out = '_con_screen_o
     op_time = exp_view['cortex_out'][exp_view.index[exp_view['OP'] == OP]].tolist()
     file_list = get_sorted_file_list(work_dir)
     
-    jsons = get_json_files(file_list)   
+    jsons = get_json_files(file_list)
     if OP + file_out in jsons:
         json_con_screen = from_json(work_dir, OP, file_out)
         if len(json_con_screen) == 1:
