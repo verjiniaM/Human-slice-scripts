@@ -201,7 +201,7 @@ def dict_for_plotting():
     values[1] y asix
     values[2] plot y ticks
     '''
-    titles_dict = {'Rs': ['Series resistance', 'MΩ', [5,10,15,20,25,30]], 
+    titles_dict = {'Rs': ['Series resistance', 'MΩ', [5,10,15,20,25,30]],
     'AP_halfwidth': ['AP halfwidth', 'ms', [0.5, 1, 1.5, 2, 2.5]],
     'Rin': ['Input resistance', 'MΩ', [0,100,200,300,400]],
     'resting_potential': ['Resting membrane potential', 'mV',[-80, -70,-60,-50]],
@@ -797,7 +797,7 @@ def plot_RMP_time(df_resting, save_dir):
             ax[i].scatter(x_all,y_all)
             ax[i].set_title('Ch' + str(chan))
             ax[i].set_xticks(ticks = list(range(2,len(time_label)+2)), labels = time_label,
-            rotation = 45) 
+            rotation = 45)
             ax[i].set_ylabel('mV')
             ax[i].spines['top'].set_visible(False)
             ax[i].spines['right'].set_visible(False)

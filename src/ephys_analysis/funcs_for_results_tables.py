@@ -48,7 +48,7 @@ def get_intrinsic_properties_df(human_dir, OP, tissue_source, patcher, age, inj)
         slic = slice_names[vc]
         treatment = active_chans_meta['treatment'][i]
         day = 'D1'
-        if slic[-2:] == 'D2': 
+        if slic[-2:] == 'D2':
             day = 'D2'
 
         filename_vc = work_dir + filenames[vc]
@@ -62,7 +62,7 @@ def get_intrinsic_properties_df(human_dir, OP, tissue_source, patcher, age, inj)
         
         cell_IDs = hcf.get_cell_IDs(filename_char, slic, active_channels)
         time_after_op = sort.get_time_after_OP(filename_char, cortex_out_time)
-        Rs, Rin = hcf.get_access_resistance(filename_vc, active_channels) 
+        Rs, Rin = hcf.get_access_resistance(filename_vc, active_channels)
         RMPs = hcf.get_RMP(filename_vm, active_channels)
 
         rheos, THs, THs_in_trace, swps = hcf.get_rheobase_from_ramp(filename_ramp, active_channels)
@@ -106,7 +106,7 @@ def get_QC_access_resistance_df (human_dir, OP, patcher):
     active_chans_meta = sort.get_json_meta(human_dir, OP, patcher, '_meta_active_chans.json')
 
     # [print(key,':',value) for key, value in indices_dict.items()]
-    # if len(indices_dict['vc']) != len(indices_dict['vc_end']): 
+    # if len(indices_dict['vc']) != len(indices_dict['vc_end']):
     #     print('Fix protocol names. Unequal number of VC and freq analyse protocols')
     #     active_chans_vc_end, vc_indx  = [], []
     #     for vc_end_indx in indices_dict['vc_end']:
@@ -208,7 +208,7 @@ def get_con_params_df (human_dir, OP, patcher):
             slic = slice_names[indx]
             con_ID = hcf.get_connection_ID(con_screen_file, slic, pre_cell, post_cell)
             day = 'D1'
-            if slic[-2:] == 'D2': 
+            if slic[-2:] == 'D2':
                 day = 'D2'
 
             pre_signal, es, vm_pre = con_param.presynaptic_screen(con_screen_file, pre_cell)
@@ -284,7 +284,7 @@ def get_con_screen_VC (human_dir, OP, patcher):
             con_ID = hcf.get_connection_ID (con_screen_file_IC, slic, pre_cell, post_cell)
 
             day = 'D1'
-            if slic[-2:] == 'D2': 
+            if slic[-2:] == 'D2':
                 day = 'D2'
 
             pre_sig, es, vm_pre = con_param.presynaptic_screen_IC(con_screen_file_IC, pre_cell)
@@ -323,7 +323,7 @@ def get_spontan_QC(human_dir, OP, patcher):
     active_chans_meta = sort.get_json_meta(human_dir, OP, patcher, '_meta_active_chans.json')
     if len(indices_dict['spontan']) == len(indices_dict['vc']):
         active_chans_meta[0]['active_chans_spontan'] = active_chans_meta[0]['active_chans']
-    else:  
+    else:
         print('Adding active chans spontan')
         active_chans_spontan, vc_indx  = [], []
         for spontan_indx in indices_dict['spontan']:

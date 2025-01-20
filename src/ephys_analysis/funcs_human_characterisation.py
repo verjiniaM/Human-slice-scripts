@@ -1,3 +1,4 @@
+from calendar import c
 import neo
 import numpy as np
 from ephys_analysis.detect_peaks import detect_peaks
@@ -101,10 +102,12 @@ def get_inj_current_steps(fn):
             #plotting_funcs.plot_trace(fn, swp, 2)
     else:
         inj = char.userList
-    return inj
+    return [float(i) for i in inj]
 
 def get_RMP_char_file(fn, chans):
-    
+    '''
+    same as get_RMP, but from the charact file
+    '''
     charact_data = load_traces(fn)
     inj = get_inj_current_steps(fn)
 
@@ -112,6 +115,10 @@ def get_RMP_char_file(fn, chans):
     for ch in chans:
         key = 'Ch' + str(ch)
         ch1 = charact_data[key][0]
+        if 0 not in inj:
+            print('no 0mV step in the inj')
+            RMPs_all.append(math.nan)
+            continue
         indx_0 = inj.index(0)
         RMPs_all.append(np.mean(ch1[:, indx_0]))
 
@@ -208,18 +215,6 @@ def get_RMP (vmfile, channels):
         resting_mems.append(np.median(ch1[:,0]))
     return resting_mems
 
-def find_charact_onset_offset(char_fn):
-    ''' 
-    returrs offset and onset of the charact steps
-    '''
-    trace = pyabf.ABF(char_fn)
-    trace.setSweep(sweepNumber = 0, channel = 0)
-
-    onset = np.where(trace.sweepC != 0)[0][0] - 1
-    offset = np.where(trace.sweepC != 0)[0][-1]
-     
-    return onset, offset
-
 def get_hyperpolar_param(charact_data, channels, inj, onset = 2624, offset = 22624,mc = np.ndarray([5,3])):
     '''
     returns 5 lists with length channels
@@ -229,10 +224,16 @@ def get_hyperpolar_param(charact_data, channels, inj, onset = 2624, offset = 226
     for ch in channels:
         key = 'Ch' + str(ch)
         ch1 = charact_data[key][0]
-        resting_char = np.median(ch1[:,5]) #when the inj = 0mV
+        if 0 not in inj:
+            print('no 0mV step in the inj')
+            return math.nan, math.nan, math.nan, math.nan, math.nan
+
+        indx_0 = inj.index(0)
+        smaller_0 = [indx for indx, val in enumerate(inj) if val < 0]
+        resting_char = np.median(ch1[:,indx_0]) #when the inj = 0mV
         V65s = []
         mc = np.ndarray([21,3])
-        for i in range(0,5):
+        for i in range(len(smaller_0)):
             I = inj[i]*1e-12 #check step size
             bl = np.median(ch1[0:onset-20,i])
             ss = np.median(ch1[offset-2000:offset-1,i]) #steady state, during the current step
@@ -246,12 +247,12 @@ def get_hyperpolar_param(charact_data, channels, inj, onset = 2624, offset = 226
             else:
                 res = list(filter(lambda ii: ii < V65, swp))[0] #takes the first value in swp < V65
                 tau65 = swp.index(res) #index of res
-                R = (Vdiff/1000)/-I     
+                R = (Vdiff/1000)/-I
                 tc = tau65 - onset
                 mc[i,0] = tc * 0.05 #membranec capacitance; tc - time constant
                 mc[i,1] = R * 1e-6 #resistance
                 mc[i,2] = tc * 5e-5 / R #capacitance
-        mc[:,2] = mc[:,2]/1e-12  
+        mc[:,2] = mc[:,2]/1e-12
         tau = mc[1,0]
         capacitance = mc[1,2]
         ch_params = [tau, capacitance, mc, V65s, resting_char]

@@ -95,7 +95,7 @@ def sort_protocol_names (file_list, df_rec, lab_book_path, V = 'new'):
     
     index_dict = {}
     dict_keys = ['vc', 'resting', 'freq analyse', 'characterization' ,'ramp',
-    'con_screen', 'con_screen_VC',
+    'con_screen', 'con_screen_VC', 'char1', 'char2', 'char3',
     'spontan','vc_end', 'vc_mini', 'minis', 'vc_mini_end', 'resting_long']
     for key in dict_keys:
         index = df_rec.index[df_rec['protocol'] == key].tolist()
@@ -168,12 +168,13 @@ def get_OP_metadata (human_dir, OP, patcher, V = 'new'):
 
     if V == 'old':
         slice_indx, def_slice_names, indices_dict = sort_protocol_names(file_list, df_rec, lab_book_path, V = 'old')
+        pre_chans, post_chans = [], []
     else:
         slice_indx, def_slice_names, indices_dict, pre_chans, post_chans = sort_protocol_names(file_list, df_rec, lab_book_path)
 
     if OP + '_indices_dict.json' in jsons:
         indices_dict = from_json(work_dir, OP, '_indices_dict.json')
-    else: 
+    else:
         to_json(work_dir, OP, '_indices_dict.json', indices_dict)
 
     slice_names = fix_slice_names(def_slice_names, slice_indx)

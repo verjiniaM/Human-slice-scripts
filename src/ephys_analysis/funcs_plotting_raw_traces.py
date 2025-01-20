@@ -143,7 +143,7 @@ def plot_vc_holding (filename, channels):
             plt.close(fig)
 
 
-def plot_hyperpolar (filename, channels, inj, onset = 2624, offset = 22624, 
+def plot_hyperpolar(filename, channels, inj, onset = 2624, offset = 22624,
 clrs = ["b", "g", "r", "c", "m", "y", "#FF4500", "#800080"]):
     end_fn = filename.rfind('/') + 1
     dir_onset = sort.make_dir_if_not_existing(filename[:end_fn] + 'plots/', 'Onset')
@@ -724,7 +724,7 @@ def plot_trace(fn, sweep, channel, save_dir = None):
         plt.savefig('{0}trace_{1}_{2}_swp_{3}.png'.format(save_dir,fn[end_fn:], channel_name, sweep))
 
     plt.show()
-    return x,y
+    #return x,y
 
 def plot_average_all_swps(fn, chans):
     '''
@@ -759,7 +759,7 @@ def plot_average_all_swps(fn, chans):
         #plt.savefig('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/mouse/ca1-sub-channorhodopsin_mice/Calb-CreSubiculum/inputs/'+ filenames[i][:-4] + 'Ch.' +channel_str + '.jpg')
         plt.show()
 
-def plt_trace_select_swps_cut_parts (fn, chan, swps_keep = 'all', start_point_cut = False, end_point_cut = False):
+def plt_trace_select_swps_cut_parts(fn, chan, swps_keep = 'all', start_point_cut = False, end_point_cut = False):
     ''' 
     arguemnts : fn - filename, chan - channel number from 1 to 8
     visualization of recordings with selection of channels and parts to cut
