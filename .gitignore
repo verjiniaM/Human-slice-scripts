@@ -18,3 +18,6 @@ env/
 
 #folder 
 .not_used/
+
+**/.DS_Store
+.**/

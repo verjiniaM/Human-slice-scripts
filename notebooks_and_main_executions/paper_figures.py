@@ -2,17 +2,18 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import ephys_analysis.funcs_plot_intrinsic_props as pl_intr
+from ephys_analysis.funcs_for_results_tables import collect_intrinsic_df
 
 def main():
     '''
     plot time dependency for 5 parameteres
     '''
-    # adult_df = load_intr_data()
-    # plot_param_over_time(adult_df, 'resting_potential')
-    # plot_param_over_time(adult_df, 'Rin')
-    # plot_param_over_time(adult_df, 'capacitance')
-    # plot_param_over_time(adult_df, 'TH')
-    # plot_param_over_time(adult_df, 'membra_time_constant_tau')
+    adult_df_ctrl = load_intr_data()
+    plot_param_over_time(adult_df_ctrl, 'resting_potential')
+    plot_param_over_time(adult_df_ctrl, 'Rin')
+    plot_param_over_time(adult_df_ctrl, 'capacitance')
+    plot_param_over_time(adult_df_ctrl, 'TH')
+    plot_param_over_time(adult_df_ctrl, 'membra_time_constant_tau')
     mea_figure()
     mea_figure_normalized()
 
@@ -21,19 +22,15 @@ def load_intr_data():
     collects the intrinsic dfs 
     '''
     # intrinsic df to OP241120
-    df_intr_complete = pd.read_excel('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/' + \
-                                    'results/human/data/summary_data_tables/' + \
-                                    'intrinsic_properties/2024-11-27_collected.xlsx')
-    # df_intr = get_results.collect_intrinsic_df() # for most unpdated version
+    df_intr_complete = collect_intrinsic_df() # for most unpdated version
 
     # df_intr = pl_intr.get_column_RMPs_from_char(df_intr_complete)
-    df_intr = df_intr_complete[(df_intr_complete.resting_potential > -100) & \
-                                (df_intr_complete.resting_potential < 0)]
-    # df_intr = pl_intr.get_column_RMPs_from_char(df_intr_complete
-    adult_df = pl_intr.filter_adult_hrs_incubation_data(df_intr, min_age = 12, \
-                                                        hrs_inc = 16, max_age = 151) # + QC criteria
 
-    return adult_df
+    adult_df = pl_intr.filter_adult_hrs_incubation_data(df_intr_complete, min_age = 12, \
+                                                        hrs_inc = 16, max_age = 151) # + QC criteria
+    adult_ctrl = adult_df[adult_df.treatment == 'Ctrl']
+
+    return adult_ctrl
 
 def plot_param_over_time(adult_data, param):
     '''
@@ -48,19 +45,29 @@ def plot_param_over_time(adult_data, param):
                 c = 'orange', label = 'repatch', alpha = 0.45)
     ax.scatter(adult_slice.hrs_after_OP, adult_slice[param],\
                  c = 'green', label = 'slice', alpha = 0.3)
+ 
+    # regression lines
+    slope_r, intercept_r = np.polyfit(adult_repatch.hrs_after_OP, adult_repatch[param], 1)
+    ax.plot(adult_repatch.hrs_after_OP, slope_r * adult_repatch.hrs_after_OP + intercept_r, \
+            color = 'orange', linestyle = '--', linewidth = 2)
 
+    slope, intercept = np.polyfit(adult_slice.hrs_after_OP, adult_slice[param], 1)
+    ax.plot(adult_slice.hrs_after_OP, slope * adult_slice.hrs_after_OP + intercept, \
+            color='green', linestyle = '--', linewidth = 2)
+
+    # summary bins
     max_hours = int(adult_data['hrs_after_OP'].max())
-    for start in range(0, max_hours + 1, 10):
+    for start in range(10, max_hours + 1, 10):
         end = start + 10
         median_repatch = adult_repatch[(adult_repatch['hrs_after_OP'] >= start) & \
                                       (adult_repatch['hrs_after_OP'] < end)][param].median()
         median_slice = adult_slice[(adult_slice['hrs_after_OP'] >= start) & \
                                     (adult_slice['hrs_after_OP'] < end)][param].median()
 
-        ax.plot([start + 5], [median_repatch], 'orange', marker = '_' , \
-            markersize=20, markeredgewidth=4)
-        ax.plot([start + 5], [median_slice], 'green', marker = '_' , \
-            markersize=20, markeredgewidth=4)
+        ax.plot([start], [median_repatch], 'orange', marker = 'D' , \
+            markersize = 7, markeredgewidth = 4, alpha = 0.8)
+        ax.plot([start], [median_slice], 'green', marker = 'D' , \
+            markersize = 7, markeredgewidth = 4, alpha = 0.8)
 
     ax.set_xlabel('Hours after OP')
     ax.set_ylabel(dict_for_plotting[param][1])

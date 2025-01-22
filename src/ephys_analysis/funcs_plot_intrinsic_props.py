@@ -70,6 +70,7 @@ def change_to_numeric(df):
     return df
 
 def get_QC_data(df):
+    df['resting_potential'] = pd.to_numeric(df['resting_potential'],errors='coerce')  
     mask = (df['Rs'] < 40) & \
         (df['resting_potential'] < -45 ) & (df['resting_potential'] > -90) & \
                 (df['membra_time_constant_tau'] > -25 ) &\
