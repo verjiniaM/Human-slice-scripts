@@ -218,6 +218,7 @@ def get_RMP (vmfile, channels):
 def get_hyperpolar_param(charact_data, channels, inj, onset = 2624, offset = 22624,mc = np.ndarray([5,3])):
     '''
     returns 5 lists with length channels
+    assumes sampling rate of 20 kHz!
     '''
     params = tau_all, capacitance_all, mc_all, V65_all, RMPs_char = [], [], [], [], []
     #RMPs_char = []
@@ -249,7 +250,7 @@ def get_hyperpolar_param(charact_data, channels, inj, onset = 2624, offset = 226
                 tau65 = swp.index(res) #index of res
                 R = (Vdiff/1000)/-I
                 tc = tau65 - onset
-                mc[i,0] = tc * 0.05 #membranec capacitance; tc - time constant
+                mc[i,0] = tc * 0.05 # datapoints to ms conversion; sampling rate = 20 kHz
                 mc[i,1] = R * 1e-6 #resistance
                 mc[i,2] = tc * 5e-5 / R #capacitance
         mc[:,2] = mc[:,2]/1e-12

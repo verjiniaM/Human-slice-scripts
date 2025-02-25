@@ -76,7 +76,10 @@ def get_intrinsic_properties_df(human_dir, OP, tissue_source, patcher, age, inj)
 
         df_to_add = pd.concat([params1_df, df_char], axis = 1)
         df_to_add.insert(len(df_to_add.columns), 'Rheobse_ramp', rheos)
-        df_OP = pd.concat([df_OP.loc[:], df_to_add]).reset_index(drop=True)
+        if df_OP.empty:
+            df_OP = df_to_add
+        else:
+            df_OP = pd.concat([df_OP.loc[:], df_to_add]).reset_index(drop=True)
 
         #plotting function
         plotting_funcs.plot_vc_holding (filename_vc, active_channels)
@@ -619,7 +622,7 @@ def get_metadata_for_event_analysis(human_dir, OP, patcher:str, event_type): # a
 
     df_meta.to_excel(work_dir + 'data_tables/' + event_type + '_meta_' + OP + '.xlsx', index=False) 
 
-#%%
+
 # Functions for full analysis (not OP-based)
 
 def prapare_for_event_analysis(human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'):
@@ -660,7 +663,7 @@ def prapare_for_event_analysis(human_dir = '/Users/verjim/laptop_D_17.01.2022/Sc
                 shutil.copy(os.path.join(work_dir_spontan, f), '/Users/verjim/spontaneous-postsynaptic-currents-detection/recordings/')
             meta_df_spontan = pd.concat([meta_df_spontan.loc[:], df_spontan]).reset_index(drop=True)
 
-        # if exp_view['EPSPs_highK'][i] == 'yes':  
+        # if exp_view['EPSPs_highK'][i] == 'yes':
         #     patcher = exp_view['patcher'][i]
         #     OP = exp_view['OP'][i]
         #     get_metadata_for_event_analysis(human_dir, OP, patcher, 'EPSPs') 
@@ -707,9 +710,13 @@ def collect_intrinsic_df(human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_
         high_k_dict[OP] = exp_view['K concentration'][exp_view['OP'] == OP].tolist()[0]
     
     intr_props_dirs = glob.glob(human_dir + '/data_*/' + 'OP*' + '/data_tables/' + 'QC_passed' + '*.xlsx')
-    all_intr_props = pd.DataFrame()
-    for intr_path in intr_props_dirs:
+    for i, intr_path in enumerate(intr_props_dirs):
         df = pd.read_excel(intr_path)
+        if df.empty or df.isna().all().all():
+            continue
+        if i == 0:
+            all_intr_props = df
+            continue
         all_intr_props = pd.concat([all_intr_props.loc[:], df]).reset_index(drop=True)
      
     all_intr_props.insert(0, 'area', '')
@@ -720,9 +727,9 @@ def collect_intrinsic_df(human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_
 
     all_intr_props.loc[all_intr_props['treatment'] == 'high k'] = 'high K'
 
-    date = str(datetime.date.today())
-    all_intr_props.to_excel('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/data/summary_data_tables/intrinsic_properties/' 
-    + date + '_collected.xlsx', index=False)
+    # date = str(datetime.date.today())
+    # all_intr_props.to_excel('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/data/summary_data_tables/intrinsic_properties/' 
+    # + date + '_collected.xlsx', index=False)
     return all_intr_props
 
 def save_intr_data(df_intr_props,  QC_data, repatch_data, juv_repatch, adult_repatch):
@@ -794,7 +801,6 @@ def collect_connections_df(human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmit
 
     return all_cons_IC, all_cons_VC
 
-#%% 
 ### Functions for fixing initial firing frequency tables
 
 

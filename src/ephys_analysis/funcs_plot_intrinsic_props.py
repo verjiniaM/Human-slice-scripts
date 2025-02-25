@@ -108,7 +108,7 @@ def create_new_cell_IDs(df):
     for i in range(len(df)):
         cell_ID = patcher_dict[df['patcher'].tolist()[i]] + df['cell_ID'].tolist()[i]
         cell_IDs_new.append(cell_ID)
-    df['cell_ID_new'] = cell_IDs_new
+    df.insert(len(df.columns), 'cell_ID_new', cell_IDs_new)
     return df
 
 def get_repatch_df(df):

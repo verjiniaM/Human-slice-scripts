@@ -1,16 +1,14 @@
-import os
 import pandas as pd
 import glob
 import ephys_analysis.funcs_sorting as sort
 import ephys_analysis.funcs_for_results_tables as get_results
 
-# #%%
-OP = ''
+OP = 'OP250207'
 patcher = 'Verji'
-tissue_source = 'Bielefeld'
+tissue_source = 'Mitte'
 inj = 'full'
-age = 37
-#%%
+age = 'A'
+
 #loading the updated experiments_overview and the old summary_data_table
 human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'
 results_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/data/'
@@ -19,7 +17,7 @@ exp_view = pd.read_excel(glob.glob(human_dir + '*experiments_overview.xlsx')[0])
 exp_view_new = sort.update_op_list(human_dir, exp_view)
 sort.add_cortex_out_time(human_dir, exp_view_new)
 
-#%%
+
 #loading the latest data table, should be the last one in the folder
 latest_sum_data_table = sorted(glob.glob(results_dir + 'summary_data_tables/intrinsic_properties/' + '*.xlsx'))[-1]
 end_path = latest_sum_data_table.rfind('/')
@@ -60,7 +58,7 @@ for OP in op_to_analyse:
     get_results.create_IFF_data_table(OP, patcher, '_meta_active_chans.json', inj, human_dir)
 
 
-#%%
+
 #run after QC checked df has been manually compared to the Onsets and the AP_prop plots
 #checks if somewhhre the capacitance was not calculated properly 
 #or if some reaptched cells are wrongly labeled
@@ -84,7 +82,7 @@ for cell in repatch_df['cell_ID'].unique():
 if len(not_repatched_cells) > 0:
     print('Not repatched cells ' + str(not_repatched_cells)[1:-1])
 
-#%%
+
 
 # GO TO THE reanalysis_connections.py to continue with the connection analysis !
 

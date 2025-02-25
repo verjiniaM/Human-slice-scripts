@@ -67,11 +67,13 @@ def get_sorted_file_list(dir):
     file_list = sorted(os.listdir(dir))
     return file_list
 
-def get_lab_book(OP_dir):
+def get_lab_book(OP_dir: str):
     '''
-    returns a pandas data frame of the (.xlsx) file from the OP dir
+    returns a pandas data frame reading the (.xlsx) file from the OP_dir
+
+    args: OP_dir (str)
     '''
-    lab_book_path = glob.glob(OP_dir + '*.xlsx' )[0]
+    lab_book_path = glob.glob(OP_dir + '*.xlsx')[0]
     if lab_book_path != '~$':
         df_rec = pd.read_excel(lab_book_path, header = 1)
     return df_rec, lab_book_path
@@ -84,7 +86,7 @@ def get_abf_files(file_list):
             filenames.append(file_list[file])
     return filenames
 
-def sort_protocol_names (file_list, df_rec, lab_book_path, V = 'new'):
+def sort_protocol_names (df_rec, lab_book_path, version = 'new'):
     '''
     takes a file list (contents of a folder) and pandas data frame (lab notebook)
     returns indices for all recording types
@@ -92,6 +94,10 @@ def sort_protocol_names (file_list, df_rec, lab_book_path, V = 'new'):
 
     slice_indx = df_rec.index[df_rec['slice'].notnull()]
     def_slice_names = df_rec['slice'][slice_indx].tolist()
+
+    for i, prot_name in enumerate(df_rec['protocol']):
+        if prot_name in ('freq analyze', 'freq_analyze', 'freq_analyse'):
+            df_rec.loc[i, 'protocol'] = 'freq analyse'
     
     index_dict = {}
     dict_keys = ['vc', 'resting', 'freq analyse', 'characterization' ,'ramp',
@@ -114,7 +120,7 @@ def sort_protocol_names (file_list, df_rec, lab_book_path, V = 'new'):
     rec_file = pd.ExcelFile(lab_book_path)
     num_slices = rec_file.sheet_names[1:]
     
-    if V == 'old':
+    if version == 'old':
         return slice_indx, def_slice_names, index_dict
 
     pre_chans, post_chans = [], []
@@ -135,13 +141,13 @@ def sort_protocol_names (file_list, df_rec, lab_book_path, V = 'new'):
     return slice_indx, def_slice_names, index_dict, pre_chans, post_chans
 #df_rec['protocol'][other_indices]
 
-def fix_slice_names (def_slice_names, slice_indx):
+def fix_slice_names(def_slice_names, slice_indx):
     '''
     makes a continuous list of the slice names
     indexing it with a file index shows the slices this files belongs to
     '''
     new_slice_names = []
-    for i in range(len(def_slice_names)):
+    for i, _ in enumerate(def_slice_names):
         if i < len(def_slice_names)-1:
             new_slice_names.append([def_slice_names[i]]*(slice_indx[i+1]-slice_indx[i]))
         else :
@@ -167,10 +173,10 @@ def get_OP_metadata (human_dir, OP, patcher, V = 'new'):
     filenames = get_abf_files(file_list)
 
     if V == 'old':
-        slice_indx, def_slice_names, indices_dict = sort_protocol_names(file_list, df_rec, lab_book_path, V = 'old')
+        slice_indx, def_slice_names, indices_dict = sort_protocol_names(df_rec, lab_book_path, version = 'old')
         pre_chans, post_chans = [], []
     else:
-        slice_indx, def_slice_names, indices_dict, pre_chans, post_chans = sort_protocol_names(file_list, df_rec, lab_book_path)
+        slice_indx, def_slice_names, indices_dict, pre_chans, post_chans = sort_protocol_names(df_rec, lab_book_path)
 
     if OP + '_indices_dict.json' in jsons:
         indices_dict = from_json(work_dir, OP, '_indices_dict.json')
