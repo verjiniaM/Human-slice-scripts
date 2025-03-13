@@ -31,7 +31,7 @@ def get_intrinsic_properties_df(human_dir, OP, tissue_source, patcher, age, inj)
         work_dir, filenames, indices_dict, slice_names, pre_chans, post_chans = sort.get_OP_metadata(human_dir, OP, patcher)
         [print(key,':',value) for key, value in indices_dict.items()]
  
-    active_chans_meta = sort.get_json_meta(human_dir, OP, patcher, '_meta_active_chans.json')[0]  
+    active_chans_meta = sort.get_json_meta(human_dir, OP, patcher, '_meta_active_chans.json')[0]
     cortex_out_time = sort.get_datetime_from_input(active_chans_meta['OP_time'][0])
 
     #creating the dataframe
@@ -807,7 +807,7 @@ def collect_connections_df(human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmit
 def create_IFF_data_table(OP, patcher, file_out = '_meta_active_chans.json', inj = 'full',
 human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'):
 
-    work_dir, filenames, indices_dict, slice_names, pre_chans, post_chans = sort.get_OP_metadata(human_dir, OP, patcher)
+    work_dir, filenames, indices_dict = sort.get_OP_metadata(human_dir, OP, patcher)[0:3]
     OP_meta = sort.from_json(work_dir, OP, file_out)
 
     treatments = OP_meta[0]['treatment']
@@ -829,32 +829,32 @@ human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'):
         fn = work_dir + filenames[char]
         channels = active_chans[i]
         treatment = treatments[i]
-        if type(treatment) == list:
+        if isinstance(treatment, list):
             treatment = treatments[i][0]
         slic = slices[i]
         day = 'D1'
-        if slic[-2:] == 'D2': 
+        if slic[-2:] == 'D2':
             day = 'D2'
 
         param = hcf.get_initial_firing_rate(fn, channels, inj = 'full')
 
-        df_OP1 = pd.DataFrame({'OP':OP, 'patcher': patcher, 'filename': filenames[char], 'slice':slic,
+        df_OP1 = pd.DataFrame({'OP':OP,'patcher': patcher,'filename':filenames[char],'slice':slic,
         'day': day, 'cell_ch': channels, 'treatment': treatment})
         df_OP2 = pd.DataFrame(param, columns = col_names)
         df_IFF = pd.concat([df_IFF.loc[:], pd.concat([df_OP1, df_OP2], axis = 1)]).reset_index(drop=True)
 
     df_IFF.to_excel(work_dir + 'data_tables/' + OP + '_IFF_all.xlsx',index=False)
 
-def collect_IFF_dfs(human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'):
-    exp_view = pd.read_excel(glob.glob(human_dir + '*experiments_overview.xlsx')[0]) 
-    exp_view_IFF = exp_view[exp_view['repatch'] == 'yes']
+def collect_IFF_dfs(IFF_dirs = None ,human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'):
+    exp_view = pd.read_excel(glob.glob(human_dir + '*experiments_overview.xlsx')[0])
+    exp_view_IFF = exp_view[exp_view['Before and after'] == 'yes']
 
     area_dict, high_k_dict = {}, {}
     for OP in exp_view_IFF['OP'].unique():
         area_dict[OP] = exp_view_IFF['region'][exp_view_IFF['OP'] == OP].tolist()[0]
         high_k_dict[OP] = exp_view_IFF['K concentration'][exp_view_IFF['OP'] == OP].tolist()[0]
-
-    IFF_dirs = glob.glob(human_dir + '/data_*/' + 'OP*' + '/data_tables/'  + '*_IFF_all.xlsx')
+    
+    IFF_dirs = glob.glob(human_dir + '/data_*/' + 'OP*' + '/data_tables/'  + '*_IFF*')
     IFF_all = pd.DataFrame()
     for IFF_path in IFF_dirs:
         df = pd.read_excel(IFF_path)
@@ -866,9 +866,8 @@ def collect_IFF_dfs(human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/d
         IFF_all.loc[mask, 'area'] = area_dict[OP]
         IFF_all.loc[mask, 'high K concentration'] = high_k_dict[OP]
 
-    IFF_all['treatment'].loc[IFF_all['treatment'] == 'high k'] = 'high K'
-
-    #date = str(datetime.date.today())
+    mask = IFF_all['treatment'] == 'high k'
+    IFF_all.loc[mask, 'treatment'] = 'high K'    #date = str(datetime.date.today())
     # IFF_all.to_excel('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/data/initial_firing_freqs/' 
     # + date + '_IFF_collected.xlsx', index=False)
     return IFF_all

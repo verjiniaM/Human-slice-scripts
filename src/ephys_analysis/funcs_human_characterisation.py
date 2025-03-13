@@ -1,4 +1,3 @@
-from calendar import c
 import neo
 import numpy as np
 from ephys_analysis.detect_peaks import detect_peaks
@@ -40,7 +39,7 @@ def get_cell_IDs (filename_char, slic, active_channels):
 
 def get_new_cell_IDs(filename_char, slic, active_channels, patcher):
     patcher_dict = {'Verji':'vm', 'Rosie': 'rs'}
-    
+
     end_fn = filename_char.rfind('/') + 1
     cell_IDs = []
     for ch in active_channels:
@@ -50,7 +49,7 @@ def get_new_cell_IDs(filename_char, slic, active_channels, patcher):
 
 def get_new_cell_IDs_fn(fn, slic, active_channels, patcher):
     patcher_dict = {'Verji':'vm', 'Rosie': 'rs'}
-    
+
     cell_IDs = []
     for ch in active_channels:
         cellID = patcher_dict[patcher] + fn[:-7] + slic + 'c' + str(ch)
@@ -78,9 +77,18 @@ def find_charact_onset_offset(char_fn):
     trace = pyabf.ABF(char_fn)
     trace.setSweep(sweepNumber = 0, channel = 0)
 
-    onset = np.where(trace.sweepC != 0)[0][0] - 1
+    try:
+        onset = np.where(trace.sweepC != 0)[0][0] - 1
+    except IndexError:
+        char_fn = char_fn[:-5] + str(int(char_fn[-5]) - 1) + '.abf'
+        trace = pyabf.ABF(char_fn)
+        trace.setSweep(sweepNumber = 0, channel = 0)
+        onset = np.where(trace.sweepC != 0)[0][0] - 1
+        offset = np.where(trace.sweepC != 0)[0][-1]
+ 
+        return onset, offset
     offset = np.where(trace.sweepC != 0)[0][-1]
-     
+
     return onset, offset
 
 def get_inj_current_steps(fn):
@@ -475,7 +483,7 @@ def get_ap_param_for_plotting (charact_data, channels, inj, max_spikes):
         peaks = np.empty([len(inj), max_spikes[a], 3])
         peaks.fill(np.nan)
         for i in range(len(ch1[0])): #for all swps
-            pks = detect_peaks(ch1[:,i], mph=2,mpd=5) 
+            pks = detect_peaks(ch1[:,i], mph=2,mpd=5)
             peaks[i,0:len(pks), 0] = inj[i] #injected current
             peaks[i,0:len(pks), 1] = pks #
             peaks[i,0:len(pks), 2] = ch1[pks,i] #sweep number
@@ -653,7 +661,7 @@ def get_initial_firing_rate(fn, channels, inj = 'full'):
     charact_data = load_traces(fn)
     inj = read_inj(inj)
     ch_0 = 'Ch' + str(channels[0])
-    sampl_rate, units, times = get_abf_info(fn, channels[0], np.shape(charact_data[ch_0][0])[1], np.shape(charact_data[ch_0][0])[0])
+    times = get_abf_info(fn, channels[0], np.shape(charact_data[ch_0][0])[1], np.shape(charact_data[ch_0][0])[0])[2]
 
     params = np.zeros((len(channels),len(read_inj(inj))*2))
     for i, ch in enumerate(channels):
@@ -696,3 +704,87 @@ def reshape_data(data_, swps_keep = 'all', start_point_cut = False, end_point_cu
         swps_keep = np.array(swps_keep) - 1
         return np.delete(data_plot, swps_delete, 0).ravel()
 
+import matplotlib.pyplot as plt
+
+def cap_values_adjustment(fn, chans):
+
+    val = 1
+
+    inj = get_inj_current_steps(fn)
+    # print('The inj is', inj[:5])
+
+    # params = tau_all, capacitance_all, mc_all, V65_all = [], [], [], []
+    onset, offset = find_charact_onset_offset(fn)
+
+    charact_data = load_traces(fn)
+
+    for ch in chans:
+        key = 'Ch' + str(ch)
+        ch1 = charact_data[key][0]
+        V65s = []
+        mc = np.ndarray([5,4])
+        for i in range(0,5):
+            I = inj[i]*1e-12 #check step size convert to amper from picoampers
+            bl = np.median(ch1[0:onset-20,i])
+            ss = np.median(ch1[offset-2000:offset-1,i]) #steady state, during the current step
+            swp = list(ch1[:,i])
+            Vdiff = bl-ss #voltage deflection size
+            v65 = Vdiff * 0.63
+            V65 = bl - v65
+            V65s.append(V65)
+            if list(filter(lambda ii: ii < V65, swp)) == []:
+                continue
+            else:
+                res = list(filter(lambda ii: ii < V65, swp))[val] # takes the 1st value in swp < V65
+                tau65 = swp.index(res) #index of res
+                R = (Vdiff/1000)/-I  # milivolt to volt
+                tc = tau65 - onset
+                mc[i,0] = tc / 20 # datapoints to ms conversion; sampling rate = 20 kHz
+                mc[i,1] = R * 1e-6 # resistance in Mega Ohm
+                mc[i,2] = ((tc / 20) / 1_000 )/ R # tc in seconds; capacitance in farad
+                # print(mc[i,0], mc[i,1], mc[i,2])
+        mc[:,3] = inj[:5]
+        mc[:,2] = mc[:,2]/1e-12 # capacitance in picofarads
+        # tau = mc[1,0]
+        # capacitance = mc[1,2]
+        # ch_params = [tau, capacitance, mc, V65s]
+
+        # for i, param in enumerate(params):
+        #     param.append(ch_params[i])
+
+        # np.set_printoptions(suppress=True, formatter={'float_kind': '{:.4f}'.format})
+        # print(mc, 'ch', str(ch))
+        # print('time const', '   resistance  ', 'capacitance', 'injection')
+
+    # clrs = ["b", "g", "r", "c", "m", "y", "#FF4500", "#800080"]
+
+    # end_fn = fn.rfind('/') +1
+
+    # tau_all, capacitance_all, mcs, V65s = tau_all, capacitance_all, mc_all, V65_all[0]
+    # for ch in chans:
+    #     key = 'Ch' + str(ch)
+    #     ch_data = charact_data[key][0]
+
+    #     b = onset + 600
+    #     fig = plt.figure(figsize  = (10,4))
+    #     for i in range(0,5):
+    #         swp = list(ch_data[:,i])
+    #         bl = np.median(ch_data[0:onset-60,i])
+    #         if list(filter(lambda ii: ii < V65s[i], swp)) == []:
+    #             print("No hyperpolarization fig for " + fn[end_fn:-4] + key)
+    #         else:
+    #             res = list(filter(lambda ii: ii < V65s[i], swp))[val] #takes the 1st value in swp < V65
+    #             tau65 = swp.index(res) #index of res
+    #             tc = tau65 - onset
+    #             plt.plot(ch_data[:b,i], c = clrs[i])
+    #             plt.scatter(onset + tc, V65s[i], c=clrs[i], s = 80)
+    #             plt.annotate('V65  ', (onset + tc, V65s[i]), horizontalalignment='right')
+    #             plt.scatter(onset, bl, c='r', s = 80)
+    #             plt.ylabel('mV')
+    #     plt.annotate(' Baseline', (onset, bl))
+    #     fig.patch.set_facecolor('white')
+
+    #     dir_onset = fn[:fn.rfind('/')+1] + 'plots/Onset/'
+    #     # plt.show()
+    #     plt.savefig(dir_onset + '/Char_onset_plot_2' + fn[end_fn:-4]+'_'+ key + '.png')
+        return mc[[1,1], [0, 2]] # by injection -200

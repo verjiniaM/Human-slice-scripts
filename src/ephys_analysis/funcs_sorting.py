@@ -664,7 +664,35 @@ def get_time_of_recording_sweeps(results_df):
     results_df.insert(len(results_df.columns), 'time_after_rec_slice_start_swp1 (sec)', times_after_rec_slice_start_swp1)
     results_df.insert(len(results_df.columns), 'time_after_rec_slice_start_swp2 (sec)', times_after_rec_slice_start_swp2)
     #results_df.to_excel('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/meta_events/EPSPs/DEL_240305-results_df_complete.xlsx')
-    return results_df 
+    return results_df
+
+def list_where_possible_mismatch_files():
+    '''
+    looks through all op dirs, finds indices dict
+    pritns when the resting or ramp file indices are more than the vc ones
+    this mismatch could lead to potential mismatch of vc/ resting channel
+    '''
+    human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'
+    patcher_add = ['data_rosie/', 'data_verji/']
+
+    for patcher in patcher_add:
+        OP_dirs = glob.gloab(human_dir + patcher + 'OP*')
+        for OP in OP_dirs:
+            globed = glob.glob(OP +'/' + '*indices_dict.json')
+            if len(globed) == 0:
+                continue
+                # print(OP[OP.rfind('/')+1:], 'no indices_dict')
+            else:
+                f = open(globed[0])
+                indices_dict = json.load(f)
+            if isinstance(indices_dict, list):
+                indices_dict = indices_dict[0]
+            if len(indices_dict['vc']) < len(indices_dict['resting']):
+                print(OP[OP.rfind('/')+1:], 'more resting than vc')
+            if 'ramp' not in indices_dict.keys():
+                continue
+            elif len(indices_dict['vc']) < len(indices_dict['ramp']):
+                print(OP[OP.rfind('/')+1:], 'more ramp than vc')
 
 #%%
 

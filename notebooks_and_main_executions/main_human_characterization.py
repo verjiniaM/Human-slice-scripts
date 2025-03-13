@@ -3,12 +3,13 @@ import glob
 import ephys_analysis.funcs_sorting as sort
 import ephys_analysis.funcs_for_results_tables as get_results
 
-OP = 'OP250207'
+OP = 'OP250306'
 patcher = 'Verji'
 tissue_source = 'Mitte'
 inj = 'full'
-age = 'A'
+age = 41
 
+#%% 
 #loading the updated experiments_overview and the old summary_data_table
 human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'
 results_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/data/'
@@ -34,6 +35,8 @@ newest_op_list = exp_view_new.OP.unique().tolist()
 all_OPs = last_update_op_list + newest_op_list
 op_to_analyse = [i for i in all_OPs if all_OPs.count(i)==1]
 
+
+get_results.get_intrinsic_properties_df(human_dir, OP, tissue_source, patcher, age, inj)
 for OP in op_to_analyse:
     y_or_n = input('Do you want to start analysis of ' + OP + '(y/n)?') 
     if y_or_n == "n":
@@ -60,7 +63,7 @@ for OP in op_to_analyse:
 
 
 #run after QC checked df has been manually compared to the Onsets and the AP_prop plots
-#checks if somewhhre the capacitance was not calculated properly 
+#checks if somewhhre the capacitance was not calculated properly
 #or if some reaptched cells are wrongly labeled
 
 work_dir = sort.get_work_dir(human_dir, OP, patcher)

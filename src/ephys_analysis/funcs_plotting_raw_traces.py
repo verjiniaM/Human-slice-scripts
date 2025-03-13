@@ -220,7 +220,7 @@ def plot_spikes (filename, channels, inj):
         
         fig.patch.set_facecolor('white')
         fig.suptitle(key, fontsize=15)
-        fig.tight_layout()
+        #fig.tight_layout()
         plt.savefig(dir_spikes + '/char_spikes_plot_' + filename[end_fn:-4]+'_'+ key + '.png')
         plt.close(fig)
 
