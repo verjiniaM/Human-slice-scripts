@@ -1,12 +1,13 @@
 import math
 import datetime
 import os
+from matplotlib.pylab import f
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import ephys_analysis.funcs_human_characterisation as hcf
 import ephys_analysis.funcs_sorting as sort
-import seaborn as sns
+
 
 plt.style.use('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/code/Human-slice-scripts/style_plot_intrinsic.mplstyle')
 
@@ -20,9 +21,9 @@ def get_color_dict(treatments):
         return
     # another green ,'#984ea3'
     plot_colors = {
-        'CtrlD1': '#dede00',
-        'CtrlD2': '#ff7f00',
-        'high KD1': '#dede00',
+        'CtrlD1': 'darkgrey', #'#dede00', 'MediumPurple2'
+        'CtrlD2':  '#c875c4', # '#ff7f00' - orange,
+        'high KD1': 'darkgrey', # '#dede00',
         'high KD2': '#4daf4a'
     }
     return plot_colors
@@ -103,7 +104,7 @@ def get_QC_data(df):
     return df
 
 def filter_on_hrs_incubation(df, min_inc_time, max_hrs_incubation):
-    mask = (df['hrs_incubation'] == 0) | (df['hrs_incubation'] >= min_inc_time) 
+    mask = (df['hrs_incubation'] == 0) | (df['hrs_incubation'] >= min_inc_time)
     df = df.loc[mask, :]
     if max_hrs_incubation < 50:
         mask = (df['hrs_incubation'] <= max_hrs_incubation) 
@@ -223,19 +224,43 @@ def dict_for_plotting():
     '''
     titles_dict = {'Rs': ['Series resistance', 'MΩ', [5,10,15,20,25,30]],
     'AP_halfwidth': ['AP halfwidth', 'ms', [0.5, 1, 1.5, 2, 2.5]],
-    'Rin': ['Input resistance', 'MΩ', [0,100,200,300,400]],
-    'resting_potential': ['Resting membrane potential', 'mV',[-80, -70,-60,-50]],
+    'Rin': ['Input resistance', 'MΩ', [0, 75, 150, 225, 300],[0, '', 150, '', 300]],
+    'resting_potential': ['RMP', 'mV',[-80, -70,-60, -50, -40], [-80, '',-60, '', -40]],
     'max_spikes': ['Maximum number of spikes', 'count', [0,10,20,30,40,50]],
     'Rheobase': ['Rheobase', 'pA', [100,300,500,700,900]],
     'AP_heigth': ['AP amplitude', 'mV', [50,60,70,80,90,100]],    
-    'TH': ['AP threshold', 'mV', [-50, -40, -30, -20, -10 ]],
+    'TH': ['AP threshold', 'mV', [-50, -40, -30, -20, -10 ],[-50, '', -30, '', -10 ]],
     'max_depol': ['AP upstroke (min)', 'mV/ms', [100,200,300,400,500]],
     'max_repol': ['AP downstroke (max)', 'mV/ms', [-100, -80, -60, -40, -20]],
     'membra_time_constant_tau': ['Membrane time constant', 'ms', [10, 20, 30, 40, 50]],
     # 'capacitance': ['Capacitance', 'pF', [100, 300, 500, 700]],
-    'rheo_ramp_c' : ['Rheobase (ramp)', 'pA', [100,300,500,700,900]],
-    'cap_adj': ['Capacitance', 'pF', [100, 300, 500, 700]]}
+    'rheo_ramp_c' : ['Rheobase', 'pA', [100,300,500,700,900],[100,'',500,'',900]],
+    'cap_adj': ['Capacitance', 'pF', [100, 300, 500, 700]],
+    'sag': ['Sag ratio', '', [0.50, 0.65, 0.80,  0.95, 1.10], [0.50, '', 0.80,  '', 1.10]]}
     # 'tau_adj': ['Membrane time constant', 'ms', [10, 20, 30, 40, 50]]}
+    return titles_dict
+
+def dict_for_plotting_reduced(er_type):
+    '''
+    key is the param as in the data table column
+    values[0] plot title
+    values[1] y asix
+    values[2] plot y ticks
+    '''
+    if er_type == 'SE':
+        titles_dict = {'membra_time_constant_tau': ['Membrane time constant', 'ms', [10, 13, 16, 19, 22, 25]],
+                   'resting_potential': ['RMP', 'mV',[-80, -75, -70, -65, -60, -55]],
+                   'rheo_ramp_c' : ['Rheobase (ramp)', 'pA', [100, 275, 450, 625, 800], [100, '', 450, '', 800]],
+                   'Rin': ['Input resistance', 'MΩ', [35,  70, 105, 140, 175, 210]],
+                   'sag': ['Sag ratio', 'sag ratio', [0.8  , 0.875, 0.95, 1.025, 1.1], [0.8, '', 0.95, '', 1.1]],
+                   'TH': ['AP threshold', 'mV', [-45, -40, -35, -30, -25], [-45, '',  -35, '', -25]]}
+    elif er_type == 'CI':
+        titles_dict = {'membra_time_constant_tau': ['Membrane time constant', 'ms', [10, 20, 30, 40, 50]],
+                   'resting_potential': ['RMP', 'mV',[-100, -90, -80, -70, -60, -50]],
+                   'rheo_ramp_c' : ['Rheobase (ramp)', 'pA', [-1000, -600, -200, 200, 600, 1000 ]],
+                   'Rin': ['Input resistance', 'MΩ', [-250, -250, -50, 50, 150, 250]],
+                   'sag': ['Sag ratio', 'sag ratio', [0.5, 0.7, 0.9, 1.1, 1.3, 1.5]],
+                   'TH': ['AP threshold', 'mV', [-50, -45, -40, -35, -30, -25]]}
     return titles_dict
 
 def dict_for_plotting_synaptic():
@@ -323,7 +348,7 @@ def plot_hists(df, data_type):
     os.makedirs(hist_dir, exist_ok=True)
     params = ['Rs', 'AP_halfwidth', 'Rin', 'resting_potential', \
               'max_spikes', 'Rheobase', 'AP_heigth', 'TH', 'max_depol', 'max_repol',\
-                'rheo_ramp_c', 'cap_adj', 'tau_adj']
+                'rheo_ramp_c', 'cap_adj', 'tau_adj', 'sag']
 
     for param in params:
         plt.hist(df[param], bins = 20)
@@ -455,9 +480,15 @@ def plot_param_for_days_no_15mM_slice(df,
                 #     ax.boxplot(y_15mm, positions = [k+1.55], notch = True, patch_artist=True, boxprops=dict(facecolor=colors[tr + day], alpha = 0.75),
                 #     medianprops = dict(linewidth=2.3, color = 'k'))
                 # else:
-                ax.boxplot(df_plot[param], positions = [k + 0.5], notch = True, patch_artist=True, boxprops=dict(facecolor=colors[tr + day], alpha = 0.75),
-                medianprops = dict(linewidth=2.3, color = 'k'))
+
                 ax.scatter(x, df_plot[param], c = colors[tr + day], s = 80, alpha = 0.75)
+                # BIG boxplots next to trace
+                # ax.boxplot(df_plot[param], positions = [k + 0.5], notch = True, patch_artist=True, boxprops=dict(facecolor=colors[tr + day], alpha = 0.75),
+                # medianprops = dict(linewidth=2.3, color = 'k'))
+                
+                # small boxplots on top of traces
+                ax.boxplot(df_plot[param], positions = [k + 1], notch = True, patch_artist = False, boxprops=dict(facecolor=colors[tr + day], alpha = 0.75),
+                medianprops = dict(linewidth=2.3, color = 'k'))
                 
                 # yerr = 1.253*(df_plot[param].std()/(math.sqrt(len(df_plot))))
                 # ax.scatter(1+k, median, color = 'k', marker = '_', s = 2000)
@@ -483,7 +514,83 @@ def plot_param_for_days_no_15mM_slice(df,
 
         date = str(datetime.date.today())
         os.makedirs(destination_dir, exist_ok=True)
-        plt.savefig(destination_dir  + date + '_plot_' + param + '.pdf')
+        # plt.savefig(destination_dir  + date + '_plot_' + param + '.pdf')
+        plt.savefig(destination_dir  + date + '_plot_' + param + '.svg', \
+            format = 'svg', bbox_inches = 'tight', dpi = 1000)
+        plt.close(fig2)
+
+
+def plot_param_for_days_no_15mM_slice_v2(df,
+    destination_dir='/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results' + \
+        '/human/paper_figs_collected_checked/plots/intrinsic/slice/'):
+    """
+    Plots parameters for different treatments and days 
+    Parameters:
+    Returns:
+    generates boxplots and scatter plots for each parameter, grouped by treatment and day. 
+    The plots are saved as .svg
+    """
+    w_cm = 10
+    h_cm = 7
+    box_line_width = 1.9
+
+    df = df.sort_values(['treatment', 'day'])
+    titles_dict = dict_for_plotting()
+    dict_label = {'Ctrl':'CTR', 'high K':'HiK'}
+
+    colors = get_color_dict(df.treatment.unique())
+
+    for param, item in titles_dict.items():
+        fig2 = plt.figure(figsize=(w_cm/2.54, h_cm / 2.54))
+        ax = plt.subplot(1,1,1)
+        label_ = []
+        num_cels = {}
+        data_boxplot = []
+        for i, tr in enumerate(df.treatment.unique()):
+            for j, day in enumerate(df['day'].unique()):
+                k = j + 2.5*i
+                df_plot = df[(df['treatment'] == tr) & (df['day'] == day)]
+                df_plot = df_plot[~df_plot[param].isna()]  # remove NaN values
+                # avg = np.nanmean(df_plot[param])
+                x = np.linspace(0.65+k, 1.35+k, len(df_plot))
+                
+                ax.scatter(x, df_plot[param], s = 30, alpha = 0.3,
+                            color = colors[tr + day], zorder = 5) # dots inside
+                ax.scatter(x, df_plot[param], s = 30, alpha = 0.75,
+                            edgecolor = colors[tr + day], linewidths = 2.3,
+                            facecolors='none')
+                #ax.scatter(k+1, avg, marker = 'D', s = 200, color = colors[tr + day], zorder = 5)
+                ax.boxplot(df_plot[param], positions = [k + 1], notch = True, patch_artist = False,
+                        medianprops = dict(color = 'k', linewidth = box_line_width),
+                        boxprops = dict(color = 'k', linewidth = box_line_width),
+                        whiskerprops = dict(color='k', linewidth = box_line_width),
+                        capprops = dict(color='k', linewidth = box_line_width),
+                        zorder = 10)
+                
+                label_.append(day + '\n' + dict_label[tr])
+                num_cels[tr + ' ' + day] = len(df_plot)
+                data_boxplot.append(df_plot[param])
+            
+                # ax.text(1 + 2*i, int(np.max(df[param])), tr, size = 17, c = colors[tr + day])
+                ax.text(k + 0.65, int((1+0.15)*np.max(df[param])), 'n = ' + str(len(df_plot)), size = 12, c = colors[tr + day])
+
+        #plt.boxplot(data_boxplot, showbox = False)
+        ax.tick_params(axis = 'y', labelsize = 12)
+        ax.set_xticks(ticks = [1,2,3.5,4.5], labels = ['pre', 'post', 'pre', 'post'], size = 10)
+
+        # plt.title(item[0], fontsize = 19, x = 0.5, y = 1)
+        ax.set_ylabel(item[0] + ' (' + item[1] + ')', fontsize = 12)
+        ax.set_yticks(ticks = item[2])
+
+        plt.subplots_adjust(hspace=0.35)
+        fig2.patch.set_facecolor('white')
+        fig2.tight_layout()
+
+        date = str(datetime.date.today())
+        os.makedirs(destination_dir, exist_ok=True)
+        # plt.savefig(destination_dir  + date + '_plot_' + param + '.pdf')
+        plt.savefig(destination_dir  + date + 'V2_plot_' + param + '.svg', \
+            format = 'svg', bbox_inches = 'tight', dpi = 1000)
         plt.close(fig2)
 
 def plot_param_for_days_repatch(df,
@@ -585,20 +692,24 @@ destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/'
         plt.close(fig2)
     
 
-def plot_param_for_days_repatch_no_15mM(df, 
+def plot_param_for_days_repatch_no_15mM(df,
             destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/'+
-            '/results/human/paper_figs_collected_checked/plots/intrinsic/repatch/'):
+            'results/human/paper_figs_collected_checked/plots/intrinsic/repatch/'):
     '''
     plots the repatch data
     no coloring based on age
     cold be added but plot become too much
     '''
+    w_cm = 10
+    h_cm = 7
+
     titles_dict = dict_for_plotting()
     colors = get_color_dict(df.treatment.unique())
+    dict_label = {'Ctrl':'CTR', 'high K':'HiK'}
     df = df.sort_values(['treatment', 'day'])
 
     for param, item in titles_dict.items():
-        fig2 = plt.figure(figsize = (9,7))
+        fig2 = plt.figure(figsize = (w_cm/2.54, h_cm / 2.54))
         ax = plt.subplot(1,1,1)
         label_ = []
         num_cels = {}
@@ -606,10 +717,10 @@ def plot_param_for_days_repatch_no_15mM(df,
             x_plot =[]
             
             for j, day in enumerate(df['day'].unique()):
-                k = j + 2*i 
+                k = j + 2.5*i
                 df_plot = df[(df['treatment'] == tr) & (df['day'] == day)]
                 df_plot.reset_index(drop=True, inplace=True)
-                median = df_plot[param].median()
+                mean = np.nanmedian(df_plot[param])
                 x = np.linspace(0.7+k, 1.3+k, len(df_plot))
                 x_plot.append(x)
 
@@ -634,7 +745,81 @@ def plot_param_for_days_repatch_no_15mM(df,
                 #         #     plt.plot(x1, y, '-', color = op_color_dict[op], alpha = 0.5, linewidth = 2, zorder = 1)
 
                 # else:
-                ax.scatter(x, df_plot[param], c = colors[tr + day], s = 80, zorder = 2)
+                ax.scatter(x, df_plot[param], c = colors[tr + day], s = 30, zorder = 2, alpha = 0.9)
+                ax.scatter(1+k, mean, color = 'k', marker = '_', s = 900, zorder = 2)
+                ax.text(0.75+k, (1.05*mean), str(round(mean,2)), size = 10)
+                x_plot.append(x)
+                if k in [1,3.5,5]:
+                    for c, cell in enumerate(df_plot['cell_ID_new']):
+                        #indx = index_s[c]
+                        x1 = [x_plot[0][c], x[c]]
+                        y = df[param][df['cell_ID_new'] == cell]
+                        # op = df_plot['OP'][df_plot['cell_ID_new'] == cell].tolist()[0]
+                        # age = df_plot['patient_age_num'][df_plot['cell_ID_new'] == cell].tolist()[0]
+                        # if type(list(op_color_dict.keys())[0]) is not str :
+                        #     plt.plot(x1, y, '-', color = op_color_dict[age], alpha = 0.4, linewidth = 2, zorder = 1)
+                        # else:
+                        #     plt.plot(x1, y, '-', color = op_color_dict[op], alpha = 0.4, linewidth = 2, zorder = 1)
+                        plt.plot(x1, y, '-', color = colors[tr + day], alpha = 0.4, linewidth = 1.9, zorder = 1)
+                if day =='D1':
+                    x_ax = 'pre'
+                elif day =='D2':
+                    x_ax = 'post'
+                label_.append(x_ax + '\n' + dict_label[tr])
+                num_cels[tr + ' ' + day] = len(df_plot)
+
+                # ax.text(1 + 2*i, int(np.max(df[param])), tr, size = 17, c = colors[tr + day])
+            ax.text(k + 0.65, int((1 + 0.1)*np.max(df[param])), 'n = ' + str(len(df_plot)), size = 12, c = colors[tr + day])
+    
+        ax.tick_params(axis='y', labelsize=12)
+        ax.set_xticks(ticks = [1,2,3.5,4.5], labels = label_, size = 12)
+        ax.set_ylabel(item[0] + ' (' + item[1] + ')', fontsize = 13)
+        ax.set_yticks(ticks = item[2])
+
+        fig2.patch.set_facecolor('white')
+        fig2.tight_layout()
+
+        date = str(datetime.date.today())
+        # plt.savefig(destination_dir + date + '_plot_' + param + '.pdf')
+        plt.savefig(destination_dir  + date + '_plot_' + param + '.svg', \
+            format = 'svg', bbox_inches = 'tight', dpi = 1000)
+        plt.close(fig2)
+
+def plot_param_for_days_repatch_no_15mM_v2(df,
+            destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/'+
+            '/results/human/paper_figs_collected_checked/plots/intrinsic/repatch/'):
+    '''
+    plots the repatch data
+    empty circles D1
+    '''
+    titles_dict = dict_for_plotting()
+    colors = get_color_dict(df.treatment.unique())
+    dict_label = {'Ctrl':'CTR', 'high K':'HiK'}
+
+    df = df.sort_values(['treatment', 'day'])
+
+    for param, item in titles_dict.items():
+        fig2 = plt.figure(figsize = (9,7))
+        ax = plt.subplot(1,1,1)
+        label_ = []
+        num_cels = {}
+        for i, tr in enumerate(df.treatment.unique()):
+            x_plot =[]
+
+            for j, day in enumerate(df['day'].unique()):
+                k = j + 2*i 
+                df_plot = df[(df['treatment'] == tr) & (df['day'] == day)]
+                df_plot.reset_index(drop=True, inplace=True)
+                median = np.nanmedian(df_plot[param])
+                x = np.linspace(0.7+k, 1.3+k, len(df_plot))
+                x_plot.append(x)
+
+                if day == 'D1':
+                    ax.scatter(x, df_plot[param], facecolors = 'white', linewidths=3, \
+                               edgecolor = colors[tr + day], s = 80, zorder = 2, alpha = 0.6)
+                else:
+                    ax.scatter(x, df_plot[param], c = colors[tr + day], s = 80, zorder = 2,\
+                               linewidths=3, edgecolor = colors[tr + day], alpha = 0.9)
                 ax.scatter(1+k, median, color = 'k', marker = '_', s = 2000, zorder = 2)
                 ax.text(0.75+k, (1.05*median), str(round(median,2)), size = 15)
                 x_plot.append(x)
@@ -643,21 +828,15 @@ def plot_param_for_days_repatch_no_15mM(df,
                         #indx = index_s[c]
                         x1 = [x_plot[0][c], x[c]] 
                         y = df[param][df['cell_ID_new'] == cell]
-                        # op = df_plot['OP'][df_plot['cell_ID_new'] == cell].tolist()[0]
-                        # age = df_plot['patient_age_num'][df_plot['cell_ID_new'] == cell].tolist()[0]
-                        # if type(list(op_color_dict.keys())[0]) is not str :
-                        #     plt.plot(x1, y, '-', color = op_color_dict[age], alpha = 0.4, linewidth = 2, zorder = 1)
-                        # else:
-                        #     plt.plot(x1, y, '-', color = op_color_dict[op], alpha = 0.4, linewidth = 2, zorder = 1)
+
                         plt.plot(x1, y, '-', color = colors[tr + day], alpha = 0.4, linewidth = 2, zorder = 1)
 
-                label_.append(day + '\n' + tr)
+                label_.append(day + '\n' + dict_label[tr])
                 num_cels[tr + ' ' + day] = len(df_plot)
 
-                # ax.text(1 + 2*i, int(np.max(df[param])), tr, size = 17, c = colors[tr + day])
             ax.text(k + 0.65, int((1 + 0.1)*np.max(df[param])), 'n = ' + str(len(df_plot)), size = 12, c = colors[tr + day])
     
-        ax.tick_params(axis='y', labelsize=22) 
+        ax.tick_params(axis='y', labelsize=22)
         ax.set_xticks(ticks = [1,2,3,4], labels = label_, size = 20)
         ax.set_ylabel(item[1], fontsize = 24)
         ax.set_yticks(ticks = item[2])
@@ -666,9 +845,9 @@ def plot_param_for_days_repatch_no_15mM(df,
         fig2.tight_layout()
 
         date = str(datetime.date.today())
-        plt.savefig(destination_dir + date + '_plot_' + param + '.pdf')
+        plt.savefig(destination_dir  + date + '_plot_V2_' + param + '.svg', \
+            format = 'svg', bbox_inches = 'tight', dpi = 1000)
         plt.close(fig2)
-
 
 def plot_param_for_days_repatch_all_params(df, op_color_dict,
 destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/plots/intrinsic_properties/adult_repatch/'):
@@ -784,7 +963,7 @@ destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/p
     colors = get_color_dict(df.treatment.unique())
     df = df.sort_values(['treatment', 'day'])
 
-    for u, param in enumerate(titles_dict.keys()): 
+    for u, param in enumerate(titles_dict.keys()):
         fig2 = plt.figure(figsize=(4,7))
         ax = plt.subplot(1,1,1)
         day_label = []
@@ -1151,6 +1330,53 @@ def remove_non_firing_cells_D1 (repatched_IFF_df):
 
     return repatched_IFF_df
 
+def non_firing_cells_D2 (repatched_IFF_df):
+    '''
+    use this function on the repatch dataframe
+    returns a list of cells that are not firing 
+    any APs at any current injecion on D2
+    '''
+    num_aps_indx = get_num_aps_and_iff_data_culumns(repatched_IFF_df)[0]
+
+    if 'cell_ID_new' not in repatched_IFF_df.columns:
+        create_new_cell_IDs(repatched_IFF_df)
+
+    not_firing_cells = []
+    for cell in repatched_IFF_df['cell_ID_new']:
+        df = repatched_IFF_df[(repatched_IFF_df['cell_ID_new'] == cell) & \
+            (repatched_IFF_df['day'] == 'D2')].iloc[:, num_aps_indx].reset_index(drop=True)
+
+        list_num_aps = df.loc[0, :].tolist()
+        if max(list_num_aps) <= 0:
+            not_firing_cells.append(cell)
+
+    return not_firing_cells
+
+def count_non_firing_cells_d2(repatched_IFF_df):
+    '''
+    counts the non_firing cells on D2 
+    for all injection steps
+    '''
+
+    num_aps_indx = get_num_aps_and_iff_data_culumns(repatched_IFF_df)[0]
+    inj = [int(a[2:-15]) for a in repatched_IFF_df.columns[num_aps_indx]]
+
+    count_zeros_aps = {}
+    for tr in repatched_IFF_df.treatment.unique():
+        for day in repatched_IFF_df.day.unique():
+            df_day = repatched_IFF_df[(repatched_IFF_df['day'] == day) &\
+                                      (repatched_IFF_df['treatment'] == tr)]
+            counts = []
+            for indx in num_aps_indx:
+                counts.append((df_day.iloc[:, indx] == 0).sum())
+
+            count_zeros_aps[tr + day] =  np.column_stack((inj, counts))
+
+    # for indx2 in iff_indx:
+    #     count_zeros_iff.append((repatched_IFF_df.iloc[:, indx2] == 0).sum())
+    
+    return count_zeros_aps
+
 def get_num_aps_and_iff_data_culumns(df):
     '''
     loops through coloumn names and takes the indices of columns for
@@ -1164,7 +1390,7 @@ def get_num_aps_and_iff_data_culumns(df):
             iff_indx.append(i)
     return num_aps_indx, iff_indx
 
-def plot_iff_distribution(iff_df, data_type, dv, 
+def plot_iff_distribution(iff_df, data_type, dv,
                           destination_dir =  '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/' + \
     'results/human/paper_figs_collected_checked/plots/iff/'):
     ''' 
@@ -1208,12 +1434,12 @@ def plot_iff_distribution(iff_df, data_type, dv,
         plt.figlegend(loc = 'upper right', bbox_to_anchor = (0.93, 0.96))
         fig.patch.set_facecolor('white')
 
-        fig.suptitle(dv_dict[dv][1] + ' ' +  data_type + ' ' + treatment, size = 20)
+        fig.suptitle(dv_dict[dv][1] + ' ' +  data_type + ' ' + treatment, size = 12)
         plt.savefig(destination_dir + treatment + '_' + dv +  '_distibution.png')
         plt.close(fig)
 
 
-def plot_iff_avg_against_current_inj(iff_df, data_type, dv, num_inj_plot,
+def plot_iff_avg_against_current_inj(iff_df, data_type, dv, num_inj_plot, nans_remove = False,
                                      destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/' + \
     'results/human/paper_figs_collected_checked/plots/iff/'):
 
@@ -1222,6 +1448,8 @@ def plot_iff_avg_against_current_inj(iff_df, data_type, dv, num_inj_plot,
     dv - (dependent variable): num_aps or IFF
     for each current injection >0 plots the dv for D1 and D2 with
     mean with standard error around the mean
+
+    if nans_remove = True, removing the non-firing cells for this particular injection
     '''
 
     iff_df = iff_df.sort_values(['treatment', 'day'])
@@ -1236,6 +1464,7 @@ def plot_iff_avg_against_current_inj(iff_df, data_type, dv, num_inj_plot,
 
     fig, ax = plt.subplots(1, len(iff_df.treatment.unique()), figsize=(21,8), sharey = True)
 
+    count_all_dps = 0
     for k, treatment in enumerate(iff_df.treatment.unique()):
         tr_df = iff_df[iff_df['treatment'] == treatment]
 
@@ -1245,6 +1474,13 @@ def plot_iff_avg_against_current_inj(iff_df, data_type, dv, num_inj_plot,
             avgs, sems, inj = [], [], []
             for i, col in enumerate(dv_dict[dv][0][5:5+num_inj_plot]):
                 data = day_df.iloc[:,col]
+                
+                if nans_remove:
+                    data.replace(0, np.nan, inplace=True)
+                    data.replace(int(0), np.nan, inplace=True)
+                    data.dropna(inplace=True)
+                
+                count_all_dps += len(data)
                 x = np.linspace(0.75+i, 1.25+i, len(data))
                 ax[k].scatter(x, data, alpha = 0.7, s = 7, c = colors[treatment + day])
 
@@ -1289,12 +1525,230 @@ def plot_iff_avg_against_current_inj(iff_df, data_type, dv, num_inj_plot,
 
     #plt.figlegend(loc = 'upper right', bbox_to_anchor=(1, 1), fontsize = 25)
 
+    print(data_type + dv + str(count_all_dps))
+
     fig.patch.set_facecolor('white')
     #fig.tight_layout()
     fig.suptitle(dv_dict[dv][1] + ' ' +  data_type, size = 30)
     plt.savefig(destination_dir + data_type + dv + '_vs_curernt_inj.png')
     plt.close(fig)
 
+
+def plot_non_firing_cells_d2(df, data_type):
+    '''
+    data_type = 'repatch' or 'slice'
+    plots the number of non-firing cells per injection current
+    for D1 and D2
+    '''
+
+    non_firing_dict = count_non_firing_cells_d2(df)
+
+    col = get_color_dict(df.treatment.unique())
+
+    fig, ax = plt.subplots(1, 2, sharey = True, figsize = (21, 8))
+
+    ax[0].plot(non_firing_dict['CtrlD1'][:,0], non_firing_dict['CtrlD1'][:,1], \
+               c = col['CtrlD1'])
+    ax[0].scatter(non_firing_dict['CtrlD1'][:,0], non_firing_dict['CtrlD1'][:,1], \
+                  c = col['CtrlD1'], label = 'Ctrl D1')
+
+    ax[0].plot(non_firing_dict['CtrlD2'][:,0], non_firing_dict['CtrlD2'][:,1], \
+               c = col['CtrlD2'])
+    ax[0].scatter(non_firing_dict['CtrlD2'][:,0], non_firing_dict['CtrlD2'][:,1], \
+                  c = col['CtrlD2'], label = 'Ctrl D2')
+
+    ax[1].plot(non_firing_dict['high KD1'][:,0], non_firing_dict['high KD1'][:,1], \
+               c = col['high KD1'])
+    ax[1].scatter(non_firing_dict['high KD1'][:,0], non_firing_dict['high KD1'][:,1], \
+                  c = col['high KD1'], label = 'high K D1')
+
+    ax[1].plot(non_firing_dict['high KD2'][:,0], non_firing_dict['high KD2'][:,1],\
+               c = col['high KD2'])
+    ax[1].scatter(non_firing_dict['high KD2'][:,0], non_firing_dict['high KD2'][:,1],
+                c = col['high KD2'], label = 'high K D2')
+    
+
+    # ax[1].errorbar(range(1, len(inj)+1), non_firing_dict['high KD2'][:,1],\
+    #                 yerr = sem, label = day, color = colors[treatment + day])
+
+    inj_len = len(non_firing_dict['high KD2'][:,0])
+    ax[0].set_xticks(ticks = np.arange(-300, 100 * len(np.arange(1, inj_len+2, 2)), 200), \
+                    labels = np.arange(-300, 100 * len(np.arange(1, inj_len+2, 2)), 200),
+                    rotation = 45)
+
+    ax[1].set_xticks(ticks = np.arange(-300, 100 * len(np.arange(1, inj_len+2, 2)), 200), \
+                    labels = np.arange(-300, 100 * len(np.arange(1, inj_len+2, 2)), 200),
+                    rotation = 45)
+
+    ax[0].set_title('Ctrl')
+    ax[1].set_title('high K')
+
+    ax[0].set_ylabel('Count of non-firing cells')
+    ax[0].set_xlabel('Injection current (pA)')
+    ax[1].set_xlabel('Injection current (pA)')
+    ax[0].legend()
+    ax[1].legend()
+
+    fig.suptitle('Number of non-firing cells per inj ' + data_type, size = 30)
+    fig.patch.set_facecolor('white')
+    plt.savefig('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/'+\
+                'paper_figs_collected_checked/plots/iff/' + data_type + '_non_firing_cells.png')
+    plt.close()
+
+
+
+def plot_iff_avg_against_current_inj_plus_hist(iff_df, data_type, dv, num_inj_plot, nans_remove = False,
+                                     destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/' + \
+                                     'results/human/paper_figs_collected_checked/plots/iff/'):
+
+    ''' 
+    data_type - all, repatch, repatch firing cells D1
+    dv - (dependent variable): num_aps or IFF
+    for each current injection >0 plots the dv for D1 and D2 with
+    mean with standard error around the mean
+
+    if nans_remove = True, removing the non-firing cells for this particular injection
+    '''
+
+    iff_df = iff_df.sort_values(['treatment', 'day'])
+    # destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/' + \
+    # 'results/human/paper_figs_collected_checked/plots/iff/'
+    num_aps_indx, iff_indx = get_num_aps_and_iff_data_culumns(iff_df)
+
+    colors = get_color_dict(iff_df.treatment.unique())
+
+    dv_dict = {'IFF' : [iff_indx, 'Initial firing frequency (AP#1 to AP#2)',  'Initial firing \n frequency (Hz)'],
+    'num_aps' : [num_aps_indx, 'Number of fired action potentials', 'AP count']}
+    
+    w_cm = 24
+    h_cm = 11
+
+    fig, ax = plt.subplots(3, len(iff_df.treatment.unique()), figsize=(w_cm / 2.54, h_cm/2.54),\
+                           sharex = True,\
+                           gridspec_kw = {'height_ratios': [5, 1, 1]})
+
+    counts_firing = {}
+    for k, treatment in enumerate(iff_df.treatment.unique()):
+        tr_df = iff_df[iff_df['treatment'] == treatment]
+
+        for d, day in enumerate(tr_df['day'].unique()):
+            day_df = tr_df[tr_df['day'] == day]
+            print(treatment, day)
+            avgs, sems, inj = [], [], []
+
+            counts = []
+            for i, col in enumerate(dv_dict[dv][0][5:5+num_inj_plot]):
+                data = day_df.iloc[:,col]
+
+                if nans_remove:
+                    data.replace(0, np.nan, inplace=True)
+                    data.dropna(inplace=True)
+    
+                counts.append(len(data))
+
+                x = np.linspace(0.75 + i, 1.25 + i, len(data))
+                ax[0,k].scatter(x, data, alpha = 0.6, s = 5, c = colors[treatment + day])
+
+                avg = np.mean(data)
+                sem = np.std(data, ddof=1) / np.sqrt(np.size(data))
+
+                ax[0,k].errorbar(i + 1, avg, yerr = sem)
+
+                avgs.append(avg)
+                sems.append(sem) #standard error of the mean
+                inj.append(day_df.columns[col][2:(day_df.columns[col]).rfind('pA')])
+
+            counts_firing[treatment + day] = counts
+
+            ax[0,k].scatter(range(1, len(inj)+1), avgs, label = day, color = colors[treatment + day], s = 30)
+            ax[0,k].plot(range(1, len(inj)+1), avgs, label = day, color = colors[treatment + day])
+
+            ax[0,k].set_title(treatment, color = colors[treatment + 'D2'], fontsize = 12)
+            ax[0,0].set_ylabel(dv_dict[dv][2], fontsize = 12)
+        
+            if dv == 'num_aps':
+                ax[0,k].set_yticks(ticks = [0, 10, 20, 30, 40, 50, 60])
+                last = 50
+            else:
+                ax[0,k].set_yticks(ticks = [0, 40, 80, 120, 160, 200, 240])
+                last = 220
+        
+            ax[0,k].tick_params(axis='y', labelsize = 12)
+            ax[0,k].spines['top'].set_visible(False)
+            ax[0,k].spines['right'].set_visible(False)
+
+            # max_val = max(tr_df.max(numeric_only = True))
+            if 'repatch' in data_type:
+                ax[0,k].text(len(inj)-4, last, 'n = ' + str(int(len(day_df))), size = 12, c = 'k')
+            else:
+                ax[0,k].text(len(inj)-4, last + d*20, day + 'n = ' + str(int(len(day_df))), size = 12, c = 'k')
+
+    x = np.arange(1, num_inj_plot+1, 1)
+    # ax[1,0].plot(x, counts_firing['CtrlD1'], color = colors['CtrlD1'], linewidth = 5)
+    # ax[1,0].scatter(x, counts_firing['CtrlD1'], color = colors['CtrlD1'], s = 40)
+    ax[1,0].bar(x, counts_firing['CtrlD1'], color = colors['CtrlD1'])
+    # ax[1,0].axhline(y = 20, color = '#ff81c0', linestyle='--', linewidth = 2)
+
+    # ax[2,0].plot(x, counts_firing['CtrlD2'], color = colors['CtrlD2'], linewidth = 5)
+    # ax[2,0].scatter(x, counts_firing['CtrlD2'], color = colors['CtrlD2'], s = 40)
+    ax[2,0].bar(x, counts_firing['CtrlD2'], color = colors['CtrlD2'])
+    # ax[2,0].axhline(y = 20, color = '#ff81c0', linestyle='--', linewidth = 2)
+
+    # ax[1,1].plot(x, counts_firing['high KD1'], color = colors['high KD1'], linewidth = 5)
+    # ax[1,1].scatter(x, counts_firing['high KD1'], color = colors['high KD1'], s = 40)
+    ax[1,1].bar(x, counts_firing['high KD1'], color = colors['high KD1'])
+    # ax[1,1].axhline(y = 20, color = '#ff81c0', linestyle='--', linewidth = 2)
+
+    # ax[2,1].plot(x, counts_firing['high KD2'], color = colors['high KD2'], linewidth = 5)
+    # ax[2,1].scatter(x, counts_firing['high KD2'], color = colors['high KD2'], s = 40)
+    ax[2,1].bar(x, counts_firing['high KD2'], color = colors['high KD2'])
+    # ax[2,1].axhline(y = 20, color = '#ff81c0', linestyle='--', linewidth = 2)
+
+    ax[2,0].set_xlabel('Current injection (pA)', fontsize = 12)
+    # ax[2,1].set_xlabel('Current injection (pA)')
+
+    ax[1,0].set_ylabel('pre', fontsize = 12)
+    ax[2,0].set_ylabel('firing cells (count) \n post', fontsize = 12)
+
+    if num_inj_plot <= 14: # if not all inj_current used
+        ticks_ = np.arange(1,  num_inj_plot+1, 2)
+        labels_ = [inj[a] for a in np.arange(0,  num_inj_plot, 2)]
+    else: # when all values plotted
+        ticks_ = np.concatenate([np.arange(0, 14, 2) ,  np.arange(15, num_inj_plot, 1)])
+        labels_ = [inj[a] for a in ticks_]
+
+    ax[2,0].set_xticks(ticks = ticks_, labels = labels_, rotation = 30, fontsize = 12)
+    ax[2,1].set_xticks(ticks = ticks_, labels = labels_, rotation = 30, fontsize = 12)
+
+    ax[1,0].spines['bottom'].set_visible(False)
+    ax[1,1].spines['bottom'].set_visible(False)
+    ax[1,1].spines['left'].set_visible(False)
+    ax[2,1].spines['left'].set_visible(False)
+
+    # ax[0,0].tick_params(axis='y', which='both', left=True, top=False, labelleft=False, labelsize = 12)
+    # ax[0,1].tick_params(axis='y', which='both', left=True, top=False, labelleft=False, labelsize = 12)
+    ax[1,0].tick_params(axis='y', which='both', left=False, top=False, labelsize = 12)
+    ax[1,1].tick_params(axis='y', left=False, top=False, labelsize = 12)
+    ax[2,0].tick_params(axis='y', which='both', left=False, top=False, labelsize = 12)
+    ax[2,1].tick_params(axis='y', left=False, top=False, labelsize = 12)
+
+    for row in ax:
+        for ax in row[0:]:
+            ax.sharey(row[0])
+
+    fig.patch.set_facecolor('white')
+    plt.subplots_adjust(hspace = 0.12, wspace = 0.15)
+
+    all_cells = 0
+    for val in counts_firing.values():
+        all_cells += sum(val)
+    print(f"{data_type}: {all_cells}")
+    
+    fig.suptitle(dv_dict[dv][1] + ' ' +  data_type, size = 15)
+    plt.savefig(destination_dir + data_type + dv + '_vs_curernt_inj.svg', \
+                format = 'svg', bbox_inches = 'tight', dpi = 1000)
+    # plt.savefig(destination_dir + data_type + dv + '_vs_curernt_inj.png')
+    plt.close(fig)
 
 
 #%%
@@ -1408,7 +1862,7 @@ destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/p
             max_ = np.max([np.max(df).Lat1, np.max(df).Lat2,np.max(df).Lat3,np.max(df).Lat4]) + 0.5
             ax[a].set_ylim([-0.5, int(max_)])
         #ax[a].set_xticks(ticks = list(range(1,len(day_label) +1)), labels = day_label)
-        ax[a].set_xticks(ticks = [1, 2, 3, 4], labels = ['D1', 
+        ax[a].set_xticks(ticks = [1, 2, 3, 4], labels = ['D1',
         'D2 \n Ctrl', 'D1', 'D2 \n high K'], size = 20)
         #ax[a].set_title('#' + str(a+1), fontsize = 15)
         ax[a].set_xlabel('Day', fontsize = 15)
@@ -1591,3 +2045,269 @@ destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/p
 
 
  # %%
+def plot_AIS_data(df, destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/'+\
+                    'results/human/paper_figs_collected_checked/plots/ais_mea/'):
+
+    df = df.sort_values(['treatment'])
+    dict_label = {'NI':'after \n slicing', 'Ctrl':'18h+ CTR', 'HighK':'18h+ HiK'}
+    colors = {
+        'NI': 'darkgrey', #'#dede00', 'MediumPurple2'
+        'Ctrl':  '#c875c4', # '#ff7f00' - orange,
+        'HighK': '#4daf4a'
+    }
+
+
+    fig, ax = plt.subplots(1, 1, figsize=(8,8))
+    labels_ = []
+    for i, treatment in enumerate(colors.keys()):
+        df_tr = df[df['treatment'] == treatment]
+        x = np.linspace(0.7 + i, 1.3 + i, len(df_tr))
+        ax.scatter(x, df_tr.Length, c = colors[treatment], s = 80, zorder = 2, alpha = 0.75)
+        # median = df_tr.Length.median()
+        # ax.scatter(1 + i, median, color = 'k', marker = '_', s = 2000, zorder = 2)
+        # ax.text(0.75+i, (1.05*median), str(round(median,2)), size = 15)
+                
+        ax.boxplot(df_tr.Length, positions = [i + 1], notch = True, patch_artist = False,
+                    medianprops = dict(linewidth=2.3, color = 'k'), boxprops = dict(color = 'k', linewidth=2.3),
+                    whiskerprops = dict(color='k', linewidth=2.3),capprops = dict(color='k', linewidth=2.3),
+                    zorder = 10)
+        
+        labels_.append(dict_label[treatment])
+
+    ax.tick_params(axis = 'y', labelsize = 24)
+    ax.set_xticks(ticks = [1,2,3], labels = labels_, size = 20)
+    ax.set_ylabel('AIS length (µm)', fontsize = 24)
+    ax.set_yticks(ticks = [10,20,30,40,50,60])
+
+    fig.patch.set_facecolor('white')
+    fig.tight_layout()
+
+    date = str(datetime.date.today())
+    plt.savefig(destination_dir  + date + '_plot_AIS.svg', \
+        format = 'svg', bbox_inches = 'tight', dpi = 1000)
+    plt.close(fig)
+
+
+def plot_MEA_data(df, destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/'+\
+                    'results/human/paper_figs_collected_checked/plots/ais_mea/'):
+
+    dict_label = {'Ctrl':'CTR', 'high K':'HiK'}
+    colors = {
+        'Ctrl':  '#c875c4', # '#ff7f00' - orange,
+        'high K': '#4daf4a'
+    }
+    w_cm = 8
+    h_cm = 7
+    box_line_width = 1.9
+    fig, ax = plt.subplots(1, 1, figsize=(w_cm/2.54, h_cm/2.54))
+    labels_ = []
+    for i, treatment in enumerate(colors.keys()):
+        df_tr = df[df['treatment'] == treatment]
+        x = np.linspace(0.7 + i, 1.3 + i, len(df_tr))
+        ax.scatter(x, df_tr.value, c = colors[treatment], s = 30, zorder = 2, alpha = 0.75)
+        # median = df_tr.Length.median()
+        # ax.scatter(1 + i, median, color = 'k', marker = '_', s = 2000, zorder = 2)
+        # ax.text(0.75+i, (1.05*median), str(round(median,2)), size = 15)
+                
+        ax.boxplot(df_tr.value, positions = [i + 1], notch = True, patch_artist = False,
+                    medianprops = dict(color = 'k', linewidth = box_line_width),
+                    boxprops = dict(color = 'k', linewidth = box_line_width),
+                    whiskerprops = dict(color='k', linewidth = box_line_width),
+                    capprops = dict(color='k', linewidth = box_line_width),
+                    zorder = 10)
+        
+        labels_.append(dict_label[treatment])
+
+    ax.tick_params(axis = 'y', labelsize = 12)
+    ax.set_xticks(ticks = [1,2], labels = labels_, size = 10)
+    ax.set_ylabel('Normalized \n (Incub. Sol - BL)/BL', fontsize = 12)
+    ax.set_yticks(ticks = [0, 3, 6, 9, 12, 15, 18])
+
+    fig.patch.set_facecolor('white')
+    fig.tight_layout()
+
+    date = str(datetime.date.today())
+    plt.savefig(destination_dir  + date + '_plot_MEA.svg', \
+        format = 'svg', bbox_inches = 'tight', dpi = 1000)
+    plt.close(fig)
+
+
+ ## PLAYGROUND
+
+def plot_color_sex(dfs, dest_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/' + \
+                    'results/human/paper_figs_collected_checked/plots/correlations/sex/'):
+    '''
+    plots intrinsic properties colored by sex
+    '''
+    w_cm = 18
+    h_cm = 7
+    ivs = {'patient_age': ['Age (years)',
+                    [16.5, 26.5, 36.5, 46.5, 56.5, 66.5, 75],
+                    ['12-21', '22-31', '32-42', '42-52', '53-62', '63-72','75']],
+                'hrs_after_OP': ['Time after tissue extraction (hrs)', 
+                        [11.5, 21.5, 31.5, 41.5, 51.5],
+                        ['7-16', '17-26', '27-36', '37-46', '47-57']]}
+
+    titles_dict = dict_for_plotting()
+    dict_label = {'Ctrl':'CTR', 'high K':'HiK'}
+    colors = get_color_dict(['Ctrl', 'high K'])
+    shape_dict = {'female':'o', 'male':'d'}
+    for iv, iv_att in ivs.items():
+        for param, param_att in titles_dict.items():
+            fig, ax = plt.subplots(1,2, figsize=(w_cm/2.54, h_cm / 2.54))
+
+            for i, df in enumerate(dfs):
+                df = df.sort_values(['treatment', 'day'])
+                df = df[df['sex'].notna()]
+
+                for day in df['day'].unique():
+                    for tr in ['Ctrl', 'high K']:
+                        for sex, shap in shape_dict.items():
+                            df_plot = df[(df['day'] == day) & (df['treatment'] == tr) & (df['sex'] == sex)]
+                            ax[i].scatter(df_plot[iv], df_plot[param], c = colors[tr+day], marker = shap,\
+                                    alpha = 0.45, label = dict_label[tr] + ' ' + day)
+
+                            ax[i].set_xticks(ticks = iv_att[1], labels = iv_att[2], size = 20, rotation = 30)
+                            
+                ax[0].set_xlabel(iv_att[0])
+                ax[0].set_ylabel(param_att[1])
+            #fig.legend(loc = 'upper right', fontsize = 'small', bbox_to_anchor=(1, 1))
+            fig.suptitle(param_att[0])
+            fig.savefig(dest_dir + 'treatment_separated_' + iv + param + '.svg', \
+            format = 'svg', bbox_inches = 'tight', dpi = 500)
+            plt.close()
+
+def plot_sex_simple(dfs, dest_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/' + \
+                    'results/human/paper_figs_collected_checked/plots/correlations/sex/'):
+    '''
+    plots intrinsic properties colored by sex
+    '''
+    w_cm = 18
+    h_cm = 7
+    ivs = {'patient_age': ['Age (years)',
+                    [16.5, 26.5, 36.5, 46.5, 56.5, 66.5, 75],
+                    ['12-21', '22-31', '32-42', '42-52', '53-62', '63-72','75']],
+                'hrs_after_OP': ['Time after tissue extraction (hrs)', 
+                        [11.5, 21.5, 31.5, 41.5, 51.5],
+                        ['7-16', '17-26', '27-36', '37-46', '47-57']]}
+
+    titles_dict = dict_for_plotting()
+    color_dict = {'female':'blue', 'male':'orange'}
+    for iv, iv_att in ivs.items():
+        for param, param_att in titles_dict.items():
+            fig, ax = plt.subplots(1,2, figsize=(w_cm/2.54, h_cm / 2.54))
+
+            for i, df in enumerate(dfs):
+                df = df.sort_values(['treatment', 'day'])
+                df = df[df['sex'].notna()]
+
+                for sex, shap in color_dict.items():
+                    df_plot = df[df['sex'] == sex]
+                    ax[i].scatter(df_plot[iv], df_plot[param], c = color_dict[sex],\
+                            alpha = 0.45, label = sex)
+
+                    ax[i].set_xticks(ticks = iv_att[1], labels = iv_att[2], size = 20, rotation = 30)
+                    
+                ax[0].set_xlabel(iv_att[0])
+                ax[0].set_ylabel(param_att[1])
+            #fig.legend(loc = 'upper right', fontsize = 'small', bbox_to_anchor=(1, 1))
+            fig.suptitle(param_att[0])
+            fig.savefig(dest_dir + 'simple_sex_' + iv + param + '.svg', \
+            format = 'svg', bbox_inches = 'tight', dpi = 500)
+            plt.close()
+
+
+
+def plot_hrs_age(er_type = 'SE',
+                  data_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/'+\
+                  'paper_figs_collected_checked/stats/'):
+    '''
+    plots the mean and CI/SE of intrinsic properties against age and time after OP
+    '''
+    df = pd.read_excel(data_dir + 'sum_data_age_hrs_temporal.xlsx')
+    destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/' + \
+        'results/human/paper_figs_collected_checked/plots/correlations/mean_and_CI/'
+    w = 16
+    h = 10
+
+    color_dict =  {'slice':
+                   {'CTRD1':'darkgrey', #'#dede00', 'MediumPurple2'
+                   'CTRD2': "#d383cf", # pink
+                   'HiKD1': 'darkgrey', # '#dede00',
+                   'HiKD2': "#3a9837"}, #lightgreen
+                   'cell_ID_new':
+                   {'CTRD1': 'darkgrey', #'#dede00', 'MediumPurple2'
+                   'CTRD2': '#ff7f00', # - orange
+                   'HiKD1': 'darkgrey', # '#dede00',
+                   'HiKD2': "#6c2de0" }}# 'MediumPurple2'}}
+    shape_dict = {'D1': 'o', 'D2': 'v'}
+    y_plot_dict = dict_for_plotting()
+    if er_type == 'CI':
+        y_plot_dict = dict_for_plotting_CI()
+    x_plot_dict = {'hrs_after_OP':
+                 {'ticks': np.linspace(10, 50, 5),
+                  'labels': ['5-15', '16-25', '26-35', '36-45', '46-55'],
+                  'axis_label': 'Time after tissue extraction (hrs)'},
+                 'patient_age':
+                 {'ticks': [15, 25, 35, 45, 60],
+                  'labels': ['11-20', '21-30', '31-40', '41-50', '51+'],
+                  'axis_label': 'Age (years)'}}
+
+    for var in df['var'].unique():
+        fig, ax = plt.subplots(2, 2,figsize = (w/2.54, h/2.54))
+        for i, data_type in enumerate(df['data_type'].unique()):
+            for j, x_param in enumerate(df.param.unique()):
+                for d, day in enumerate(df.day.unique()):
+                    for t, tr in enumerate(df.treatment_word.unique()):
+                        k = d + 1.5*t
+                        df_plot = df[(df['var'] == var) & \
+                                        (df['data_type'] == data_type) & \
+                                        (df['param'] == x_param) & \
+                                        (df['day']== day) & \
+                                        (df['treatment_word'] == tr)]
+                        ax[j,i].scatter(df_plot['group'] + k, df_plot['mean'],
+                                        marker = shape_dict[day], s = 20,
+                                        color = color_dict[data_type][tr+day])   
+                        # !!! check for sure that the CIs are calcualteed correctly!
+                        # for the python formula
+                        if er_type == 'SE':
+                            ebars = df_plot['SE']
+                        elif er_type == 'CI':
+                            upper = abs((df_plot['mean'] - df_plot['CI.U']).values)
+                            lower = abs((df_plot['mean'] - df_plot['CI.L']).values)
+                            ebars = np.concat([upper, lower]).reshape(2,(len(upper)))
+
+                        ax[j,i].errorbar(df_plot['group'] + k, df_plot['mean'],
+                                            yerr = ebars, alpha = 0.8,
+                                            color = color_dict[data_type][tr+day])
+                        ax[j,i].set_xticks(ticks = x_plot_dict[x_param]['ticks'],
+                                            labels = x_plot_dict[x_param]['labels'],
+                                            size = 12, rotation = 25)
+                        ax[j,i].set_yticks(ticks = y_plot_dict[var][2])
+                        ax[j,i].tick_params(axis='y', labelsize=12)
+                        ax[j,i].set_xlabel(x_plot_dict[x_param]['axis_label'], fontsize = 13)
+
+        ax[0,0].set_ylabel(y_plot_dict[var][0] + ' (' + y_plot_dict[var][1] + ')',
+                            fontsize = 13)
+        ax[1,0].set_ylabel(y_plot_dict[var][0] + ' (' + y_plot_dict[var][1] + ')',
+                            fontsize = 13)
+
+        fig.patch.set_facecolor('white')
+        plt.subplots_adjust(hspace = 1, wspace = 0.3)
+        date = str(datetime.date.today())
+        plt.savefig(destination_dir  + er_type + '_' + date + '_' +var + '.svg', \
+            format = 'svg', bbox_inches = 'tight', dpi = 1000)
+        plt.close(fig)
+
+
+    
+# %%
+# funcs for plotting figures paper
+
+# plot_param_for_days_repatch_no_15mM(df_repatch)
+# plot_param_for_days_no_15mM_slice_v2(df_slice)
+# plot_iff_avg_against_current_inj_plus_hist(df_repatch, 'firing cells repatch', dv, 13, True)
+
+# # same for slice
+# # pl_intr.plot_iff_distribution(df_slice, 'slice', dv)
+# plot_iff_avg_against_current_inj_plus_hist(df_slice, 'firing cells slice', dv, 13, True)

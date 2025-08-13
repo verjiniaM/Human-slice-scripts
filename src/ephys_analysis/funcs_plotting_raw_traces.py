@@ -172,7 +172,7 @@ clrs = ["b", "g", "r", "c", "m", "y", "#FF4500", "#800080"]):
                 plt.scatter(onset, bl, c='r')
                 plt.ylabel('mV')
         plt.annotate('  Baseline', (onset, bl))
-        fig.patch.set_facecolor('white')    
+        fig.patch.set_facecolor('white')
         plt.title(key)
         plt.savefig(dir_onset + '/Char_onset_plot_' + filename[end_fn:-4]+'_'+ key + '.png')
         plt.close()
@@ -702,7 +702,7 @@ def plot_trace(fn, sweep, channel, save_dir = None):
         channel_name = 'Ch' + str(channel+1)
 
     plt.style.use(['fast'])
-    fig, ax = plt.subplots(2,1, sharex = False, figsize = (14,8))
+    fig, ax = plt.subplots(2,1, sharex = True, figsize = (14,8))
     if sweep == 'all':
         data_long = trace.data[channel]
         ax[0].plot(data_long)

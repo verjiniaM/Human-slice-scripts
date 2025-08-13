@@ -1,3 +1,4 @@
+from operator import ne
 import neo
 import numpy as np
 from ephys_analysis.detect_peaks import detect_peaks
@@ -229,7 +230,7 @@ def get_hyperpolar_param(charact_data, channels, inj, onset = 2624, offset = 226
     assumes sampling rate of 20 kHz!
     '''
     params = tau_all, capacitance_all, mc_all, V65_all, RMPs_char = [], [], [], [], []
-    #RMPs_char = []
+    #   RMPs_char = []
     for ch in channels:
         key = 'Ch' + str(ch)
         ch1 = charact_data[key][0]
@@ -704,8 +705,6 @@ def reshape_data(data_, swps_keep = 'all', start_point_cut = False, end_point_cu
         swps_keep = np.array(swps_keep) - 1
         return np.delete(data_plot, swps_delete, 0).ravel()
 
-import matplotlib.pyplot as plt
-
 def cap_values_adjustment(fn, chans):
 
     val = 1
@@ -788,3 +787,44 @@ def cap_values_adjustment(fn, chans):
     #     # plt.show()
     #     plt.savefig(dir_onset + '/Char_onset_plot_2' + fn[end_fn:-4]+'_'+ key + '.png')
         return mc[[1,1], [0, 2]] # by injection -200
+
+
+def sag(fn, chans):
+    '''
+    calculates sag ratio for each channel
+    '''
+    data_dict = load_traces(fn)
+    hyp_onset, offset = find_charact_onset_offset(fn)
+    inj = get_inj_current_steps(fn)
+
+    sag_ratios, min_inj = [], []
+    for ch in chans:
+        key = 'Ch' + str(ch)
+        ch1 = data_dict[key][0]
+        indx_most_neg = inj.index(min(inj))
+        min_inj.append(min(inj))
+        if min(inj) >= 0:
+            print('no negative steps in inj for ' + fn[fn.rfind('/')+1:-4])
+            sag_ratios.append(math.nan)
+            continue
+
+        # mc = np.ndarray([3,len(neg_inj)]) # sag and sag ratio
+        # for i, neg_ in enumerate(neg_inj):
+        #     bl = np.median(ch1[0:hyp_onset-20,i])
+        #     ss = np.median(ch1[offset-2000:offset-1,i]) #steady state, during the current step
+
+        #     # indx_min = np.argmin(ch1[hyp_onset:hyp_onset+4000,i]) + hyp_onset # index min
+        #     min_val = np.min(ch1[hyp_onset:hyp_onset+4000,i]) # min value
+
+        #     mc[0,i] = min_val - bl # delta peak deflection
+        #     mc[1,i] = ss - bl # delta ss deflection
+        #     mc[2,i] = (ss - bl)/ (min_val - bl) # sag ratio
+
+        bl = np.median(ch1[0:hyp_onset-20,indx_most_neg])
+        ss = np.median(ch1[offset-2000:offset-1,indx_most_neg]) #steady state, during step
+        min_val = np.min(ch1[hyp_onset:hyp_onset+4000,indx_most_neg]) # min value
+
+        sag_ratios.append((ss - bl)/ (min_val - bl))
+
+    return sag_ratios, min_inj
+    

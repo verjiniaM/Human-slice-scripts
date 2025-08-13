@@ -1,0 +1,46 @@
+# AXES 
+axes.labelcolor:    black
+axes.facecolor:     white
+axes.spines.right:  False
+axes.spines.top:    False
+axes.edgecolor:     black
+axes.grid:          False
+axes.axisbelow:     line 
+axes.titlesize:     medium   # font size of the axes title
+axes.prop_cycle: cycler('color', ['darkgreen']) # default plot color is green
+
+# LINES
+lines.linewidth : 1.9
+lines.markersize: 4.2
+
+# FONTS
+font.size :         12
+font.family         : sans-serif
+font.sans-serif     : Arial
+svg.fonttype :        none
+
+# FIGURE
+figure.autolayout: True # if false everything very tight. False for firing; True for intrinsic
+figure.subplot.hspace: 0.2
+figure.subplot.wspace: 0.2
+savefig.facecolor: white
+text.color: black
+
+# TICKS
+xtick.color: black
+ytick.color: black
+
+# BOXPLOT
+boxplot.showfliers:  False
+boxplot.showmeans:   False
+boxplot.notch:       True
+boxplot.patchartist: False
+boxplot.boxprops.linewidth:     1.6
+boxplot.boxprops.color:     black
+boxplot.capprops.linewidth:     1.6
+boxplot.capprops.color:     black
+boxplot.whiskerprops.linewidth: 1.6
+boxplot.whiskerprops.color:     black
+boxplot.medianprops.linewidth:    1.6
+boxplot.medianprops.color:     black
+
