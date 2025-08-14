@@ -13,8 +13,8 @@ plt.style.use('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/code/Human-slice-sc
 def figure_colors():
     color_dict =  {'inc_only':{
                     'Ctrl': "#570b77",
-                    'high K':  "#1bd7e0",
-                    },
+                    'high K':  "#1bd7e0"},
+                    'slice_all_CTR': {'CTR': "#0e62ff"},
                    'slice':
                     {'CTRD1':'darkgrey', #'#dede00', 'MediumPurple2'
                     'CTRD2': "#d383cf", # pink
@@ -105,14 +105,19 @@ def fig_order():
                     'resting_potential': (0,2),
                     'rheo_ramp_c' : (1,0),
                     'TH': (1,1),
-                    'sag': (1,2)
-                 },
+                    'sag': (1,2)},
                   'other':{
                     'resting_potential': (1,2),
                     'rheo_ramp_c' : (2,0),
                     'Rin': (0,2),
                     'sag': (2,2),
-                    'TH': (2,1)}}
+                    'TH': (2,1)},
+                  'slice_all_CTR':{
+                      'Rin': (0,1),
+                      'resting_potential': (0,2),
+                      'TH': (1,0),
+                      'rheo_ramp_c' : (1,1),
+                      'sag': (1,2)}}
 
     return order_dict
 
@@ -710,7 +715,7 @@ def intr_ext_single(dest_dir, w_cm = 17, h_cm = 9.5, er_type = 'SE'):
             format = 'svg', bbox_inches = 'tight', dpi = 1000)
         plt.close(fig)
 
-def intr_ext_fig4(dest_dir, w_cm = 22, h_cm = 21, er_type = 'SE'):
+def OLD_intr_ext_fig4(dest_dir, w_cm = 22, h_cm = 21, er_type = 'SE'):
     '''
     plots the mean and CI/SE of intrinsic properties against age and time after OP
     '''
@@ -999,10 +1004,85 @@ def firing_props_inc_only_V2(iff_df, error_type, dest_dir,
                     format = 'svg', bbox_inches = 'tight', dpi = 1000)
         plt.close(fig)
 
+def intr_slice_CTR(dest_dir, w_cm = 21, h_cm = 12, er_type = 'SE',
+                   params = ['Rin', 'resting_potential', 'TH', 'rheo_ramp_c', 'sag']):
+    '''
+    plots the mean and CI/SE of intrinsic properties against age and time after OP
+    '''
+    stats_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/'+\
+                  'paper_figs_collected_checked/stats/for_plot/'
+    
+    df = pd.read_excel(stats_dir + 'sum_data_slice_CTR_hrs.xlsx')
 
+    color_dict = figure_colors()['slice_all_CTR']
+    ax_elements = fig_order()['slice_all_CTR']
+    y_plot_dict = pl_intr.dict_for_plotting_reduced(er_type)
+    x_plot_dict = {'ticks': np.linspace(10, 50, 5),
+                  'labels': ['5-15', '16-25', '26-35', '36-45', '46-55'],
+                  'axis_label': 'Time after tissue extraction (hrs)'}
+
+    fig, ax = plt.subplots(2, 3,figsize = (w_cm/2.54, h_cm/2.54),
+                           gridspec_kw={'hspace': 0.7, 'wspace': 0.65})
+    for v, var in enumerate(params):
+        pos = ax_elements[var]
+
+        df_plot = df[df['var'] == var]
+        ax[pos].scatter(df_plot['group'], df_plot['mean'],
+                        marker = 's',
+                        color = color_dict['CTR'])
+        
+        # for the python formula
+        if er_type == 'SE':
+            df_plot['SE'] = df_plot['SE'].fillna(0)
+            ebars = df_plot['SE']
+            ax[pos].fill_between(df_plot['group'], df_plot['mean'] - df_plot['SE'],
+                        df_plot['mean'] + df_plot['SE'],
+                        color = color_dict['CTR'], alpha = 0.3)
+        elif er_type == 'CI':
+            upper = abs(abs(df_plot['CI.U']) - abs(df_plot['mean'])).values
+            lower = abs(abs(df_plot['mean']) - abs(df_plot['CI.L'])).values
+            ebars = np.concat([upper, lower]).reshape(2,(len(upper)))
+            ax[pos].fill_between(df_plot['group'], df_plot['CI.L'],
+                        df_plot['CI.U'], color = color_dict['CTR'],
+                        alpha = 0.3)
+
+        ax[pos].errorbar(df_plot['group'], df_plot['mean'],
+                            yerr = ebars, alpha = 0.8,
+                            color = color_dict['CTR'])
+        ax[pos].set_xticks(ticks = x_plot_dict['ticks'],
+                                labels = x_plot_dict['labels'], rotation=35)
+        ax[pos].set_yticks(ticks = y_plot_dict[var][2], labels = y_plot_dict[var][3])
+        ax[pos].set_ylabel(y_plot_dict[var][0] + '\n'  + '(' + y_plot_dict[var][1] + ')')
+        ax[0,1].set_xlabel(x_plot_dict['axis_label'])
+        ax[1,1].set_xlabel(x_plot_dict['axis_label'])
+
+        date = str(datetime.date.today())
+        plt.savefig(dest_dir  + er_type + '_' + date + '_slice_all_CTR.svg', \
+            format = 'svg', bbox_inches = 'tight', dpi = 1000)
+        # plt.close(fig)
+
+def slice_all_CTR_hist(df, dest_dir, w_cm = 6.5, h_cm = 5.5):
+    '''
+    plots a histogram of the time after OP for all CTR cells in slice condition
+    '''
+    df = df[ ((df['treatment'] == 'Ctrl') & (df['day'] == 'D2')) |
+                                    (df['day'] == 'D1')]
+    df.reset_index(drop = True, inplace = True)
+    print('Number of cells in slice CTR:', len(df))
+
+    fig, ax = plt.subplots(1,1, figsize = (w_cm/2.54, h_cm/2.54))
+    ax.hist(df.hrs_after_OP, bins = np.arange(5, 60, 5), alpha = 0.8,
+            color = figure_colors()['slice_all_CTR']['CTR'], edgecolor = figure_colors()['slice_all_CTR']['CTR'])
+
+    ax.set_xticks(ticks = np.arange(0,60,10), labels = ['', 10, '', 30, '', 50])
+    ax.set_yticks(ticks = np.arange(0,100,10), labels = ['', 10, '', 30, '', 50, '', 70, '',90])
+    ax.set_ylabel('Number of cells')
+
+    date = str(datetime.date.today())
+    plt.savefig(dest_dir + 'hist' + date + '_slice_all_CTR.svg', \
+        format = 'svg', bbox_inches = 'tight', dpi = 1000)
 
 # %%
-
 
 #start from fig 2 --> decide size of text, itcks,labels, ratios
 data_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/'+\
@@ -1034,25 +1114,29 @@ destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/'
 # firing_props_fig3(df_repatch, 'SE', destination_dir)
 # firing_props_fig3(df_repatch, 'CI', destination_dir)
 
-# # fig 4
-# intr_ext_fig4(destination_dir, er_type = 'SE')
+# # slice CTR all vs hrs_after_OP
+intr_slice_CTR(destination_dir, er_type = 'SE')
+intr_slice_CTR(destination_dir, er_type = 'CI') # doesn't complete teh figure
 
+df_slice_all = pd.read_excel(data_dir + 'slice_all.xlsx')
+slice_all_CTR_hist(df_slice_all, destination_dir)
+   
 # fig 5
 # df_AIS = pd.read_excel(data_dir + 'AIS_all_data.xlsx')
 # AIS_fig5(df_AIS, destination_dir)
 
 # # incubation only
-df_slice_short_inc = pd.read_excel(data_dir + '10.07.25_slice_incubation_only_no_move.xlsx')
-df_slice_short_inc = df_slice_short_inc[df_slice_short_inc['hrs_after_OP'] < 35]
-df_slice_short_inc = df_slice_short_inc[df_slice_short_inc['hrs_incubation'] > 15.9]
-df_slice_short_inc.reset_index(drop = True, inplace = True)
-df_slice_short_inc = df_slice_short_inc.loc[[i for i, sl in enumerate(df_slice_short_inc.slice) if len(sl) <= 2], :]
-intr_params_inc_only(df_slice_short_inc, destination_dir)
-firing_props_inc_only_V2(df_slice_short_inc, 'SE', destination_dir)
+# df_slice_short_inc = pd.read_excel(data_dir + '10.07.25_slice_incubation_only_no_move.xlsx')
+# df_slice_short_inc = df_slice_short_inc[df_slice_short_inc['hrs_after_OP'] < 35]
+# df_slice_short_inc = df_slice_short_inc[df_slice_short_inc['hrs_incubation'] > 15.9]
+# df_slice_short_inc.reset_index(drop = True, inplace = True)
+# df_slice_short_inc = df_slice_short_inc.loc[[i for i, sl in enumerate(df_slice_short_inc.slice) if len(sl) <= 2], :]
+# intr_params_inc_only(df_slice_short_inc, destination_dir)
+# firing_props_inc_only_V2(df_slice_short_inc, 'SE', destination_dir)
 
-cell_IDs_inc = {'Ctrl': '25220S3c3',
-            'high K': '25220S2c3'}
-plot_example_firing('inc_only', df_slice_short_inc, destination_dir, cell_IDs_inc)
+# cell_IDs_inc = {'Ctrl': '25220S3c3',
+#             'high K': '25220S2c3'}
+# plot_example_firing('inc_only', df_slice_short_inc, destination_dir, cell_IDs_inc)
 
 # TO do - check carefully the proper tables that are the sum,m,ary and don't use them!!!
 # do not use the presaves summary tables

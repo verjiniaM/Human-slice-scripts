@@ -249,16 +249,16 @@ def dict_for_plotting_reduced(er_type):
     '''
     if er_type == 'SE':
         titles_dict = {'membra_time_constant_tau': ['Membrane time constant', 'ms', [10, 13, 16, 19, 22, 25]],
-                   'resting_potential': ['RMP', 'mV',[-80, -75, -70, -65, -60, -55]],
+                   'resting_potential': ['RMP', 'mV',[-80, -75, -70, -65, -60, -55], [-80, '', -70, '', -60, '']],
                    'rheo_ramp_c' : ['Rheobase (ramp)', 'pA', [100, 275, 450, 625, 800], [100, '', 450, '', 800]],
-                   'Rin': ['Input resistance', 'MΩ', [35,  70, 105, 140, 175, 210]],
+                   'Rin': ['Input resistance', 'MΩ', [35,  70, 105, 140, 175, 210], [35, '', 105, '', 175, '']],
                    'sag': ['Sag ratio', 'sag ratio', [0.8  , 0.875, 0.95, 1.025, 1.1], [0.8, '', 0.95, '', 1.1]],
                    'TH': ['AP threshold', 'mV', [-45, -40, -35, -30, -25], [-45, '',  -35, '', -25]]}
     elif er_type == 'CI':
         titles_dict = {'membra_time_constant_tau': ['Membrane time constant', 'ms', [10, 20, 30, 40, 50]],
-                   'resting_potential': ['RMP', 'mV',[-100, -90, -80, -70, -60, -50]],
+                   'resting_potential': ['RMP', 'mV',[-100, -90, -80, -70, -60, -50],  [-100, '', -80, '', -60, '']],
                    'rheo_ramp_c' : ['Rheobase (ramp)', 'pA', [-1000, -600, -200, 200, 600, 1000 ]],
-                   'Rin': ['Input resistance', 'MΩ', [-250, -250, -50, 50, 150, 250]],
+                   'Rin': ['Input resistance', 'MΩ', [-250, -250, -50, 50, 150, 250], [-250, '', -50, '', 150, '']],
                    'sag': ['Sag ratio', 'sag ratio', [0.5, 0.7, 0.9, 1.1, 1.3, 1.5]],
                    'TH': ['AP threshold', 'mV', [-50, -45, -40, -35, -30, -25]]}
     return titles_dict
