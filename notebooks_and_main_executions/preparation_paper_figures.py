@@ -3,13 +3,14 @@ import os
 from collections import Counter
 # import importlib
 import shutil
+from matplotlib.pylab import f
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import ephys_analysis.funcs_sorting as sort
 import ephys_analysis.funcs_plot_intrinsic_props as pl_intr
 from ephys_analysis.funcs_human_characterisation import cap_values_adjustment
-from ephys_analysis.funcs_for_results_tables import collect_intrinsic_df, collect_IFF_dfs
+import ephys_analysis.funcs_for_results_tables as funcs_results
 
 #%%
 def main():
@@ -139,7 +140,7 @@ def load_intr_data(treatment):
 
     type (str): 'all', 'Ctrl', 'high K'
     '''
-    df_intr_complete = collect_intrinsic_df() # for most updated version
+    df_intr_complete = funcs_results.collect_intrinsic_df() # for most updated version
     df_intr_complete = combine_columns(df_intr_complete)
     df_intr_complete = fix_cap_tau(df_intr_complete)
     # df_intr = pl_intr.get_column_RMPs_from_char(df_intr_complete)
@@ -459,8 +460,12 @@ def get_match_cell_id(df):
 
     cell_IDs_match, cell_IDs_match_re = [], []
     for i in range(len(df)):
-        chan = df.cell_ch[i]
+        if 'cell_ch' in df.columns:
+            chan = df.cell_ch[i]
+        elif 'Channels to use' in df.columns:
+            chan = df['Channels to use'][i]
         slic = df.slice[i]
+        
         if isinstance(chan, (float, int, np.int64)):
             chan = str(int(chan))
             chan_re = chan
@@ -495,6 +500,8 @@ def find_repeats(df):
 
     if len(repeats) > 0:
         print('repeats adults_df', repeats)
+    
+    return repeats
 
 def data_recordings_on_both_days(df):
     '''
@@ -741,7 +748,7 @@ def get_intrinsic_dfs(_15mm = False):
     df_qc_hold = get_match_cell_id(df_qc_hold)
     adult_df = get_match_cell_id(adult_df)
 
-    iffs = collect_IFF_dfs()
+    iffs = funcs_results.collect_IFF_dfs()
     # remove ops not present in adult_df_qc
     ops_remove = set(iffs.OP.unique()) - set(adult_df.OP.unique())
     iffs = iffs[~iffs['OP'].isin(ops_remove)].reset_index(drop = True)
@@ -799,6 +806,84 @@ def get_intrinsic_dfs(_15mm = False):
     # adult_repatch.to_csv('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/'+ \
     #                      'data/summary_data_tables/intrinsic_properties/2025-02-05_repatch.csv')
    #  return adult_df_repatch, adult_df_slice_no_rep
+
+def get_spontan_df():
+    '''
+    collects all spontan dfs
+    cross compares with alreadhy QC checked intrinsic data
+    saves the results for statistical analysis
+    '''
+    # collecting and cross checking spontan / mini dataframes
+    meta_df_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/data/manual_events_analysis/meta_dfs/'
+
+    # collect event meta_dfs
+    meta_spontan = funcs_results.collect_events_dfs('spontan')
+    # remove cells where nothing to analyse and OP210615
+    meta_spontan = meta_spontan[meta_spontan['OP'] != 'OP210615']
+    meta_spontan = meta_spontan[meta_spontan['OP'] != 'OP210319']
+    meta_spontan = meta_spontan[meta_spontan['OP'] != 'OP210323']
+    meta_spontan = meta_spontan[meta_spontan['swps_to_analyse'] != '[]'].reset_index(drop=True)
+    meta_spontan = get_match_cell_id(meta_spontan)
+    repeats = find_repeats(meta_spontan)
+
+    # load QC checked intrinsic data
+    data_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/paper_figs_collected_checked/data/'
+    df_repatch = pd.read_excel(data_dir + 'repatch_data_temporal.xlsx')
+    df_repatch.insert(len(df_repatch.columns), 'source', ['repatch'] * len(df_repatch))
+    df_slice = pd.read_excel(data_dir + 'slice_data_temporal.xlsx')
+    df_slice.insert(len(df_slice.columns), 'source', ['slice'] * len(df_slice))
+    slice_inc = pd.read_excel(data_dir + '10.07.25_slice_incubation_only_no_move.xlsx')
+    slice_inc.insert(len(slice_inc.columns), 'source', ['incubation'] * len(slice_inc))
+    # combine in one df
+    df_intr_complete = pd.concat([df_repatch, df_slice, slice_inc], ignore_index = True)
+    df_intr_complete.reset_index(drop = True, inplace = True)
+
+    df_intr_complete = get_match_cell_id(df_intr_complete)
+    find_repeats(df_intr_complete) # Check if worked
+
+    # with cell_ID from slice
+    cells_not_in_spontan = set(df_intr_complete.cell_IDs_match.unique()) - \
+        set(meta_spontan.cell_IDs_match.unique())
+    print('removing ', str(len(cells_not_in_spontan)), 'cells,missing from spontan_meta')
+    # remove from intr_df
+    df_intr_complete = df_intr_complete[~df_intr_complete['cell_IDs_match'].isin(cells_not_in_spontan)]
+    _remove = list(df_intr_complete.columns[df_intr_complete.columns.str.contains('_y')]) # all doubles
+    df_intr_complete = df_intr_complete.drop(columns = _remove)
+    df_intr_complete = df_intr_complete.reset_index(drop=True)
+
+    # join QC and adult_df based on unique cell_ID
+    spontan_qc = pd.merge(meta_spontan, df_intr_complete, on = 'cell_IDs_match', \
+                        suffixes = (None, '_y')).reset_index(drop=True)
+
+    # remove unnecessary columns
+    col_remove = list(spontan_qc.columns[spontan_qc.columns.str.contains('_y')]) # all doubles
+    col_remove = list(set(col_remove) - set(['cell_ID_y', 'treatment_y', 'hrs_incubation_y'])) # keep these
+    col_remove += ['cell_ID', 'treatment', 'hrs_incubation']
+    spontan_qc = spontan_qc.drop(columns = col_remove)
+    spontan_qc = spontan_qc.loc[:, ~ spontan_qc.columns.str.contains('Unnamed')]
+    # Rename the columns. to keep the ones from intr
+    spontan_qc = spontan_qc.rename(columns={
+        'cell_ID_y': 'cell_ID',
+        'treatment_y': 'treatment', 
+        'hrs_incubation_y': 'hrs_incubation'
+    })
+    qc_check_wrong_day(spontan_qc)
+
+    spontan_repatch = pl_intr.get_repatch_df(spontan_qc)
+    spontan_slice_all = spontan_qc[spontan_qc.repatch == 'no']
+    spontan_slice_no_rep = data_recordings_on_both_days(spontan_slice_all)
+    spontan_inc_only = spontan_qc[spontan_qc.source == 'incubation']
+
+    save_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/paper_figs_collected_checked/data/events'
+    spontan_repatch.to_csv(save_dir + '/spontan_repatch.csv')
+    spontan_slice_all.to_csv(save_dir + '/spontan_slice_all.csv')
+    spontan_inc_only.to_csv(save_dir + '/spontan_inc_only.csv')
+    
+    spontan_repatch.to_excel(save_dir + '/spontan_repatch.xlsx')
+    spontan_slice_all.to_excel(save_dir + '/spontan_slice_all.xlsx')
+    spontan_inc_only.to_excel(save_dir + '/spontan_inc_only.xlsx')
+
+
 
 class Correlations:
     '''
@@ -1384,13 +1469,11 @@ def add_treatment_r():
 # if __name__ == "__main__":
 #     main()
 
-## TO DO
-# add histograms of how many measures to the boxplots if that's the best one?
 
 # %%
 ## FOR JUV DATA
 
-# df_intr_complete = collect_intrinsic_df() # for most updated version
+# df_intr_complete = funcs_results.collect_intrinsic_df() # for most updated version
 # df_intr_complete = combine_columns(df_intr_complete)
 
 # # df_intr = pl_intr.get_column_RMPs_from_char(df_intr_complete)
@@ -1420,7 +1503,6 @@ def filter_adult_hrs_incubation_data(df_intr_props, min_age, hrs_inc, max_age = 
 # juv_df = filter_adult_hrs_incubation_data(df_intr_complete, min_age = 0, hrs_inc = 0, max_age = 10)
 # juv_df = juv_df[juv_df.hrs_incubation == 0]
 # juv_df = juv_df [pd.to_numeric(juv_df.patient_age, errors='coerce').notnull()]
-
 
 
 # dest_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/juv_patients/'
@@ -1531,11 +1613,3 @@ def filter_adult_hrs_incubation_data(df_intr_props, min_age, hrs_inc, max_age = 
 # print('high K D2')
 # print(np.mean(df[param][(df.day == 'D2') & (df.treatment == 'high K')]))
 
-
-
-
-adult_df_slice_all.to_excel('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/paper_figs_collected_checked/data/slice_all.xlsx')
-adult_df_slice_all.to_csv('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/paper_figs_collected_checked/data/slice_all.csv')
-
-unused_df.to_excel('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/paper_figs_collected_checked/data/slice_incubation_only_no_move.xlsx')
-unused_df.to_csv('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/paper_figs_collected_checked/data/slice_incubation_only_no_move.csv')

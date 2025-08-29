@@ -1,4 +1,3 @@
-from operator import ne
 import neo
 import numpy as np
 from ephys_analysis.detect_peaks import detect_peaks

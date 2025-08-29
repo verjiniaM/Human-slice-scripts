@@ -190,7 +190,6 @@ def get_OP_metadata (human_dir, OP, patcher, V = 'new'):
 
     return work_dir, filenames, indices_dict, slice_names, pre_chans, post_chans
 
-
 def make_dir_if_not_existing(working_dir, new_dir):
     '''
     creates a dir new_dir in working_dir, if not already existing

@@ -321,6 +321,9 @@ def get_con_screen_VC (human_dir, OP, patcher):
     con_data.to_excel(work_dir + '/data_tables/' + OP + '_connected_cell_properties_post_in_VC.xlsx', index=False) 
 
 def get_spontan_QC(human_dir, OP, patcher):
+    '''
+    for analysis of spontan traces
+    '''
     work_dir, filenames, indices_dict, slice_names, pre_chans, post_chans = sort.get_OP_metadata(human_dir, OP, patcher)
     
     active_chans_meta = sort.get_json_meta(human_dir, OP, patcher, '_meta_active_chans.json')
@@ -553,7 +556,7 @@ def check_cell_IDs (human_dir, OP, patcher):
 
 
 # following functions for data organization adn collection preceeding automatic event analysis
-def get_metadata_for_event_analysis(human_dir, OP, patcher:str, event_type): # add event_type 
+def get_metadata_for_event_analysis(human_dir, OP, patcher:str, event_type): # add event_type
     '''
     event_type = 'minis', 'spontan', 'EPSPs'
     '''
@@ -620,15 +623,14 @@ def get_metadata_for_event_analysis(human_dir, OP, patcher:str, event_type): # a
     else: 
         print('Please enter a valid event type')
 
-    df_meta.to_excel(work_dir + 'data_tables/' + event_type + '_meta_' + OP + '.xlsx', index=False) 
-
+    df_meta.to_excel(work_dir + 'data_tables/' + event_type + '_meta_' + OP + '.xlsx', index=False)
 
 # Functions for full analysis (not OP-based)
 
 def prapare_for_event_analysis(human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'):
     '''
     checks mini or spontan experiments surgery in the '*experiments_overview.xlsx'
-    puts all files to be analyzed in human_dir + '/meta_events/[spontan/mini]_files/'
+    puts all files to be analyzed in human_dir + '/meta_events/spontan/mini]_files/'
     saves the meta_tables to be analyzed in human_dir + '/meta_events/meta_files_to_analyse/'
     '''
     #exp_view = pd.read_excel('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/2024-05-11_experiments_overview.xlsx')
@@ -638,7 +640,7 @@ def prapare_for_event_analysis(human_dir = '/Users/verjim/laptop_D_17.01.2022/Sc
     #op_to_analyse = ['OP230914', 'OP231005', 'OP231109', 'OP231123', 'OP231130']
     meta_df_mini, meta_df_spontan, meta_df_EPSPs = pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
     for i in range(len(exp_view)): #ran to range 22
-        if exp_view['minis'][i] == 'yes':    
+        if exp_view['minis'][i] == 'yes': 
             patcher =  exp_view['patcher'][i]
             OP = exp_view['OP'][i]
             get_metadata_for_event_analysis(human_dir, OP, patcher, 'minis') 
@@ -687,7 +689,7 @@ def prapare_for_event_analysis(human_dir = '/Users/verjim/laptop_D_17.01.2022/Sc
     #     if meta_df_EPSPs['swps_to_analyse'][i] == '[]':
     #         meta_df_EPSPs = meta_df_EPSPs.drop([meta_df_EPSPs.index[i]])
 
-    #save data 
+    #save data
     meta_df_mini.to_excel(human_dir + '/meta_events/meta_files_to_analyse/' + date + 'minis_meta.xlsx',index=False)
     meta_df_spontan.to_excel(human_dir + '/meta_events/meta_files_to_analyse/' + date + 'spontan_meta.xlsx',index=False)
     #meta_df_EPSPs.to_excel(human_dir + '/meta_events/EPSPs/meta_dfs/' + date + 'EPSPs_meta.xlsx',index=False)
@@ -967,10 +969,13 @@ def collect_events_dfs(event_type, human_dir = '/Users/verjim/laptop_D_17.01.202
     for dir_ in OP_dirs:
         dir_ = dir_ + '/'
 
+        #check if QC df for events
         df_QC_path = glob.glob(dir_ + '*data_tables/' + '*' + event_type + '.xlsx')
         if df_QC_path == []:
             continue
+
         QC_df = pd.read_excel(df_QC_path[0])
+        # check if df empty
         if len(QC_df) == 0:
             continue
         patcher = QC_df['patcher'][0]
@@ -978,41 +983,13 @@ def collect_events_dfs(event_type, human_dir = '/Users/verjim/laptop_D_17.01.202
 
         meta_data_path = glob.glob(dir_ + '*data_tables/' + '*' + event_type + '_meta' + '*.xlsx')
         if meta_data_path == []:
-            #create the metadata
+            # create the metadata
             get_metadata_for_event_analysis(human_dir, OP, patcher, event_type)
             meta_data_path = glob.glob(dir_ + '*data_tables/' + '*' + event_type + '_meta' + '*.xlsx')
+        
         df_meta = pd.read_excel(meta_data_path[0])
+        #remove missing data
         df_meta = df_meta.loc[~df_meta['Name of recording'].isna()]
         meta_df = pd.concat([meta_df.loc[:], df_meta]).reset_index(drop=True)
-
+    
     return meta_df
-
-# collect minis
-# fix or delete later
-def wrong():
-    exp_view_mini = exp_view[exp_view['minis'] == 'yes'].reset_index(drop=True)
-    patcher_dict = {'Rosie': 'data_rosie/', 'Verji': 'data_verji/'}
-    meta_df = pd.DataFrame()
-    for i in range(len(exp_view_mini)): #ran to range 22 
-        patcher =  exp_view_mini['patcher'][i]
-        OP_dir  = human_dir + patcher_dict[patcher] + exp_view_mini['OP'][i] + '/data_tables/'
-        QC_mini_path = glob.glob(OP_dir + '*' +'*final.xlsx')
-        if len(QC_mini_path) > 0:
-            df_QC_mini = pd.read_excel(QC_mini_path[0])
-        else:
-            print('No QC file found for ' + exp_view_mini['OP'][i])
-            continue
-
-        meta_df = pd.concat([meta_df[:], df_QC_mini]).reset_index(drop=True)
-            
-        # moving files directly to the recordings folder in event analysis
-        for f in df_QC_mini.filename:
-            shutil.copy(os.path.join(human_dir + patcher_dict[patcher] + exp_view_mini['OP'][i] + '/', f), \
-                        '/Users/verjim/miniML_data/data/minis_events/')
-
-    rows_to_delete = meta_df[meta_df.swps_to_analyse == '[]']
-
-    # Delete the identified rows
-    meta_df_cleaned = meta_df.drop(rows_to_delete.index)
-    meta_df_cleaned.reset_index(drop=True, inplace=True)
-    meta_df_cleaned.to_excel('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/meta_events/meta_files_to_analyse/' + date + 'minis_meta.xlsx')
