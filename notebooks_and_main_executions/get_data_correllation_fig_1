@@ -1,0 +1,273 @@
+# import importlib
+
+import pyabf
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import ephys_analysis.funcs_plot_intrinsic_props as pl_intr
+import ephys_analysis.funcs_for_results_tables as funcs_results
+import ephys_analysis.funcs_human_characterisation as hcf
+import preparation_paper_figures as prep
+import plot_paper_figures as plot_figs
+
+def plot_example_firing(data_type, df, dest_dir, cell_IDs):
+    '''
+    hi
+    '''
+    w_cm = 13
+    h_cm = 9
+    work_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/data_verji/'
+
+    swps = [9, 13, 17]
+    # colors = trace_colors_trace()[data_type]
+
+    colors = plot_figs.figure_colors()[data_type]
+    num_rows = len(cell_IDs)
+    fig, ax = plt.subplots(num_rows+1, 3, sharex = True, sharey = 'row',
+                           figsize = (w_cm/2.54, h_cm/2.54), \
+                        gridspec_kw = {'height_ratios': [6] * num_rows + [1]})
+    fig.subplots_adjust(hspace = 0.01,  wspace = 0.01)
+    # Plot examples traces
+    
+    for j, item in enumerate(cell_IDs.items()):
+        df_plot = df[df['cell_ID'] == item[1]]
+        fn = work_dir + df_plot.OP.values[0] + '/' + df_plot.filename.values[0]
+        channel = df_plot.cell_ch.values[0]
+        inj = hcf.get_inj_current_steps(fn)
+        trace = pyabf.ABF(fn)
+
+        if len(trace.channelList) < 8:
+            if '_Ipatch' in trace.adcNames:
+                trace.adcNames[trace.adcNames.index('_Ipatch')] = 'Ch1'
+            if 'IN0' in trace.adcNames:
+                trace.adcNames[trace.adcNames.index('IN0')] = 'Ch1'
+            channel_name = 'Ch' + str(channel)
+            channel = trace.channelList[trace.adcNames.index(channel_name)]
+        else:
+            channel = channel-1
+            channel_name = 'Ch' + str(channel+1)
+
+        for i, sweep in enumerate(swps):
+            trace.setSweep(sweepNumber = sweep, channel = channel)
+            # ax[0, i].plot(trace.sweepX[:-8000], trace.sweepY[:-8000], \
+            #                 color = colors[item[0]+ '.' + str(i+1)], alpha = 0.7)
+            ax[0+j, i].plot(trace.sweepX[:-8000], trace.sweepY[:-8000], \
+                            color = colors[item[0]], alpha = 0.7)
+            if i == 0:
+                ax[0+j, i].plot(trace.sweepX[:-8000], trace.sweepY[:-8000], \
+                            color = colors[item[0]], alpha = 0.7, label = item[0])
+            # x = trace.sweepX
+            # y = trace.sweepY
+
+            ax[0+j,i].set_ylabel(trace.sweepLabelY)
+            # ax[0,i].set_title(item[0])
+            ax[0+j,i].axis('off')
+
+            stim_inj = np.concatenate((np.zeros(2625), np.repeat(inj[sweep], 20_000), np.zeros(9375)))
+            ax[num_rows, i].plot(trace.sweepX [:-8000], stim_inj, c = 'black')
+            # ax[1, i].set_xlabel(trace.sweepLabelX)
+            # ax[1, i].set_ylabel(trace.sweepLabelC)
+            ax[1+j, i].axis('off')
+            ax[0, i].set_title(str(int(inj[sweep])) + ' pA')
+    
+    plt.subplots_adjust(hspace = 0.1, wspace = 0.01)
+    # fig.legend(loc = 'upper center', ncol = 3, bbox_to_anchor=(0.5, 1.3))
+    plt.savefig(dest_dir + data_type + 'I_O_curve.svg', \
+                format = 'svg', bbox_inches = 'tight', dpi = 1000)
+    plt.show()
+
+
+
+#%%
+# hrs_inc_ = 0
+
+# # collect all intrinsic dfs
+# df_intr_complete = funcs_results.collect_intrinsic_df() # for most updated version
+# df_intr_complete = prep.combine_columns(df_intr_complete)
+# df_intr_complete = prep.fix_cap_tau(df_intr_complete)
+# # df_intr = pl_intr.get_column_RMPs_from_char(df_intr_complete)
+
+# adult_df = pl_intr.filter_adult_hrs_incubation_data(df_intr_complete, min_age = 12, \
+#                                                     hrs_inc = hrs_inc_, max_age = 151) # + QC criteria
+# adult_df = adult_df.reset_index(drop=True)
+
+
+# QC data
+# mask_exclude = (adult_df['treatment'] == 'TTX') | \
+#         ((adult_df['treatment'] == 'high K') & (adult_df['high K concentration'] == '15 mM'))
+# adult_df = adult_df[~mask_exclude]
+# adult_df = adult_df.reset_index(drop=True)
+# # adult_df = data_recordings_on_both_days(adult_df)
+
+# prep.check_where_iff_needs_creating(adult_df)
+# df_qc_hold = prep.get_lab_book_info(adult_df)
+# df_qc_hold = prep.get_match_cell_id(df_qc_hold)
+# adult_df = prep.get_match_cell_id(adult_df)
+
+# iffs = funcs_results.collect_IFF_dfs()
+# # remove ops not present in adult_df_qc
+# ops_remove = set(iffs.OP.unique()) - set(adult_df.OP.unique())
+# iffs = iffs[~iffs['OP'].isin(ops_remove)].reset_index(drop = True)
+# iffs = prep.get_match_cell_id(iffs)
+
+# # find duplicates
+# # Filter the DataFrame to get the repeating values
+# fix_op = sorted(iffs.OP[iffs['cell_IDs_match'].duplicated(keep=False)].unique())
+# for op in fix_op:
+#     print(op)
+
+# if len(adult_df.cell_IDs_match.unique()) < len(adult_df):
+#     print('smth wrong with unique cell_IDs adult')
+
+# if len(df_qc_hold.cell_IDs_match.unique()) < len(df_qc_hold):
+#     print('smth wrong with unique cell_IDs QC')
+
+# if len(iffs.cell_IDs_match.unique()) < len(iffs):
+#     print('smth wrong with unique cell_IDs iff')
+
+# cells_not_in_qc=set(adult_df.cell_IDs_match.unique())-set(df_qc_hold.cell_IDs_match.unique())
+# cells_not_in_iffs =set(adult_df.cell_IDs_match.unique()) - set(iffs.cell_IDs_match.unique())
+# missing_cells = list(cells_not_in_qc) + list(cells_not_in_iffs)
+# print('missign cells [QC], [IFF]', missing_cells)
+
+# # remove the adult_df
+# adult_df = adult_df[~adult_df['cell_IDs_match'].isin(missing_cells)]
+# adult_df = adult_df.reset_index(drop=True)
+
+# # join QC and adult_df based on unique cell_ID
+# adult_df_qc = pd.merge(adult_df, df_qc_hold, on = 'cell_IDs_match', \
+#                     suffixes = (None, '_y')).reset_index(drop=True)
+
+# adult_df_complete = pd.merge(adult_df_qc, iffs, on = 'cell_IDs_match', \
+#                     suffixes = (None, '_y_iff')).reset_index(drop=True)
+
+# # if slices in new and old df identical --> remove the columns that contain '_y'
+# # remove repeating columns, without the cell_IDs_match_re_y
+# if False not in list((adult_df_qc.slice) == (adult_df_complete.slice_y)):
+#     col_remove = list(adult_df_complete.columns[adult_df_complete.columns.str.contains('_y')])
+#     col_remove.remove('cell_IDs_match_re_y')
+
+#     adult_df_complete = adult_df_complete.drop(columns = col_remove)
+# adult_df_complete=adult_df_complete[adult_df_complete.hold_start>-500].reset_index(drop = True)
+# prep.qc_check_wrong_day(adult_df_complete)
+# adult_df_repatch = pl_intr.get_repatch_df(adult_df_complete)
+# adult_df_slice_all = adult_df_complete[adult_df_complete.repatch == 'no']
+# adult_df_slice_no_rep = prep.data_recordings_on_both_days(adult_df_slice_all)
+# unused_df = adult_df_slice_all[~adult_df_slice_all['cell_IDs_match'].isin(adult_df_slice_no_rep['cell_IDs_match'])]
+
+
+# save data
+save_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/paper_figs_collected_checked/data/'
+# adult_df_slice_all.to_excel(save_dir + 'adult_df_slice_all.xlsx')
+adult_df_slice_all = pd.read_excel(save_dir + 'adult_df_slice_all.xlsx')
+
+
+# inspect data
+adult_df_slice_all = adult_df_slice_all[adult_df_slice_all.area == 'temporal']
+adult_df_slice_all['hrs_incubation'] = pd.to_numeric(adult_df_slice_all['hrs_incubation'], errors='coerce')
+adult_df_slice_all.hrs_incubation[adult_df_slice_all.hrs_incubation > 0].hist()
+
+df_ctrl_0_inc = adult_df_slice_all.loc[(adult_df_slice_all.hrs_after_OP < 11) &
+                                          (adult_df_slice_all.treatment == 'Ctrl')]
+
+df_ctrl_short_inc = adult_df_slice_all.loc[(adult_df_slice_all.hrs_after_OP >= 11) &
+                                            (adult_df_slice_all.hrs_after_OP < 30) &
+                                            (adult_df_slice_all.treatment == 'Ctrl')]
+
+df_ctrl_long_inc = adult_df_slice_all.loc[(adult_df_slice_all.hrs_after_OP > 30) &
+                                          (adult_df_slice_all.treatment == 'Ctrl')]
+
+df_ctrl_0_inc.to_csv(save_dir + 'df_ctrl_0_inc.csv')
+df_ctrl_short_inc.to_csv(save_dir + 'df_ctrl_short_inc.csv')
+df_ctrl_long_inc.to_csv(save_dir + 'df_ctrl_long_inc.csv')
+
+# plot example traces
+
+dest_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/paper_figs_collected_checked/figures/draft5_figs/parts/'
+# 0 hrs_incubation, 5 hrs after OP
+# 17 hrs_incubation, 24 hrs after OP
+# 24 hrs_incubation, 48 hrs after OP
+plot_example_firing('slice', adult_df_slice_all, dest_dir,
+                    {'pre': '23n09S1c6',
+                    'Ctrl': '25207S3c5',
+                     'CtrlD2': '22427S4c4'})
+
+
+# %%
+# get separated data
+import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
+import seaborn as sns
+
+
+plt.style.use('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/code/Human-slice-scripts/style_plot_paper.mplstyle')
+
+
+data_dir =  '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/paper_figs_collected_checked/data/'
+save_dir_corr = data_dir[0:89] + 'stats/correlations/intrinsic_time/'
+save_dir_figs = data_dir[0:89] +  '/figures/draft5_figs/parts/'
+x = 'hrs_after_OP'
+
+df_ctrl_0_inc = pd.read_csv(data_dir + 'df_ctrl_0_inc.csv')
+df_ctrl_short_inc = pd.read_csv(data_dir + 'df_ctrl_short_inc.csv')
+df_ctrl_long_inc = pd.read_csv(data_dir + 'df_ctrl_long_inc.csv')
+
+df_list = {'no_inc': [df_ctrl_0_inc, 'darkgrey'],
+           'short_inc': [df_ctrl_short_inc, 'pink'],
+            'long_inc': [df_ctrl_long_inc, 'purple']}
+
+for df_name, df_info in df_list.items():
+
+    df = df_info[0]
+    col = df_info[1]
+
+    df_cor = pd.read_excel(save_dir_corr + df_name + '.xlsx',  sheet_name = 'cor_estimate')
+    df_p_val = pd.read_excel(save_dir_corr + df_name + '.xlsx',  sheet_name = 'p_vals')
+    df_l_CI = pd.read_excel(save_dir_corr + df_name + '.xlsx',  sheet_name = 'lower_CI')
+    df_u_CI = pd.read_excel(save_dir_corr + df_name + '.xlsx',  sheet_name = 'upper_CI')
+
+    df_cor.index = [df_cor.columns]
+    df_p_val.index = [df_p_val.columns]
+    df_l_CI.index = [df_l_CI.columns]
+    df_u_CI.index = [df_u_CI.columns]
+
+    # cor.loc['hrs_after_OP', 'hrs_after_OP']
+    params_list = df_u_CI.columns.to_list()
+    params_list.remove(x)
+
+    fig, ax = plt.subplots(1, len(params_list), figsize = (42/2.54, 5.8/2.54))
+
+    for i, param in enumerate(params_list):
+
+        cor = df_cor.loc[x, param].iloc[0]
+        p_val = df_p_val.loc[x, param].iloc[0]
+        # l_CI = df_l_CI.loc[x, param].iloc[0]
+        # u_CI = df_u_CI.loc[x, param].iloc[0]
+
+        sns.regplot(x=df[x], y=df[param], ax = ax[i], color = col)
+        
+        # Add correlation info to plot
+        ax[i].text(0.05, 0.95, f'r = {cor:.3f}', transform=ax[i].transAxes,
+                   verticalalignment='top', fontsize=8)
+        ax[i].text(0.05, 0.85, f'p = {p_val:.3f}', transform=ax[i].transAxes,
+                   verticalalignment='top', fontsize=8)
+        # ax[i].text(0.05, 0.75, f'CI: [{l_CI:.3f}, {u_CI:.3f}]',
+        #            transform=ax[i].transAxes, verticalalignment='top', fontsize=8)
+        
+        # Set labels and title
+        ax[i].set_xlabel('Hours after OP')
+        ax[i].set_ylabel(param.replace('_', ' ').title())
+        ax[i].set_title(f'{param}')
+    
+    plt.savefig(f'{save_dir_figs}{df_name}corr_plots.svg',
+                format='svg', bbox_inches='tight', dpi=300)
+    # plt.savefig(f'{save_dir_figs}{df_name}corr_plots.png')
+        
+
+
+
+
+
+
+

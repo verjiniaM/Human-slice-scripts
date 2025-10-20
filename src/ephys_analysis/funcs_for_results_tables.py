@@ -157,7 +157,7 @@ def get_QC_access_resistance_df (human_dir, OP, patcher):
         df_qc = pd.concat([df_qc.loc[:], data_to_add]).reset_index(drop=True)
 
     sort.to_json(work_dir, OP, '_meta_active_chans.json', active_chans_meta)
-    df_qc.to_excel(work_dir + 'data_tables/' + OP + '_QC_measures_rs.xlsx', index=False) 
+    df_qc.to_excel(work_dir + 'data_tables/' + OP + '_QC_measures_rs.xlsx', index=False)
     remove_bad_data(OP, patcher, human_dir)
     #df_qc.to_csv(work_dir + 'data_tables/' + OP[:-1] + '_QC_measures_rs.csv')
 
@@ -347,7 +347,7 @@ def get_spontan_QC(human_dir, OP, patcher):
     record_sorting = pd.DataFrame()
     for i, u in enumerate(indices_dict['spontan']):
         filename_spontan = work_dir + filenames[u]
-        slic = slice_names[u]   
+        slic = slice_names[u]
 
         #index_chans = active_chans_meta[0]['slices'].index(slic)
         active_channels = active_chans_meta[0]['active_chans_spontan'][i]
@@ -640,7 +640,7 @@ def prapare_for_event_analysis(human_dir = '/Users/verjim/laptop_D_17.01.2022/Sc
     #op_to_analyse = ['OP230914', 'OP231005', 'OP231109', 'OP231123', 'OP231130']
     meta_df_mini, meta_df_spontan, meta_df_EPSPs = pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
     for i in range(len(exp_view)): #ran to range 22
-        if exp_view['minis'][i] == 'yes': 
+        if exp_view['minis'][i] == 'yes':
             patcher =  exp_view['patcher'][i]
             OP = exp_view['OP'][i]
             get_metadata_for_event_analysis(human_dir, OP, patcher, 'minis') 
@@ -653,10 +653,10 @@ def prapare_for_event_analysis(human_dir = '/Users/verjim/laptop_D_17.01.2022/Sc
             #     shutil.copy(os.path.join(work_dir_mini, f), human_dir + '/meta_events/mini_files/')
             meta_df_mini = pd.concat([meta_df_mini.loc[:], df_mini]).reset_index(drop=True)
 
-        if exp_view['spontaneous'][i] == 'yes':    
+        if exp_view['spontaneous'][i] == 'yes':
             patcher =  exp_view['patcher'][i]
             OP = exp_view['OP'][i]
-            get_metadata_for_event_analysis(human_dir, OP, patcher, 'spontan') 
+            get_metadata_for_event_analysis(human_dir, OP, patcher, 'spontan')
             work_dir_spontan = sort.get_work_dir(human_dir, OP, patcher)
             df_spontan = pd.read_excel(work_dir_spontan + 'data_tables/spontan_meta_' + OP + '.xlsx') 
             df_spontan = df_spontan.loc[~df_spontan['Name of recording'].isna()]

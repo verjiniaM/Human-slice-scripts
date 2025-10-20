@@ -65,7 +65,7 @@ def postsynaptic_screen(con_screen_file, post_cell_chan, es):
     es2 = []
     for i in range(0,sweep_count): #intrasweep control for excessively depolarised
     #cells (above -50mV) or a drift in Vm of more than 10% from start to end of sweep
-        vm1 = np.mean(post_sig[:,i][0:4000]) #baseline 
+        vm1 = np.mean(post_sig[:,i][0:4000]) #baseline
         vm2 = np.mean(post_sig[:,i][197999:199999])
         post_amp = np.max(post_sig[:,i]) - np.min(post_sig[:,i])  
         if (vm1 > -45) or vm1 - (vm1 * -0.1) > vm2 or vm2 > vm1 + (vm1 * -0.1):
@@ -185,6 +185,10 @@ def get_onsets(preAPs_shifted, post_window, PSPs, bl):
 #uses onset to calculate latency defined as time between presynaptic AP peak
 #and foot of PSP (calculated as explained above in get_onsets)
 def latencies(onsets, preAPs_shifted):
+
+    '''
+    latency in ms, assumes sampling frequency of 20 kHz
+    '''
     latency = np.ndarray([4,1])
     num_aps = len(preAPs_shifted[0])
     for i in range(num_aps):

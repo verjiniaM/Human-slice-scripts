@@ -1,4 +1,3 @@
-from tkinter import font
 import numpy as np
 import matplotlib.pyplot as plt
 import math
@@ -7,14 +6,13 @@ import ephys_analysis.funcs_con_screen as con_param
 import ephys_analysis.funcs_sorting as sort
 import ephys_analysis.funcs_human_characterisation as hcf
 import pyabf
-from ipywidgets import interact
 
 plt.style.use('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/code/Human-slice-scripts/style_plot_intrinsic.mplstyle')
 
 
 # plots the middle sweep for each channel
 # check the traces to see which channels were active or if the protocol names are enetered correctly
-def plot_middle_sweep (filename): 
+def plot_middle_sweep (filename):
     end_fn = filename.rfind('/') + 1
     dir_plots = sort.make_dir_if_not_existing(filename[:end_fn], 'plots')
     dir_traces = sort.make_dir_if_not_existing(dir_plots, 'traces')
@@ -164,7 +162,7 @@ clrs = ["b", "g", "r", "c", "m", "y", "#FF4500", "#800080"]):
                 print("No hyperpolarization fig for " + filename[end_fn:-4] + key)
             else:
                 res = list(filter(lambda ii: ii < V65s[n][i], swp))[0] #takes the first value in swp < V65
-                tau65 = swp.index(res) #index of res    
+                tau65 = swp.index(res) #index of res
                 tc = tau65 - onset
                 plt.plot(ch_data[:,i], c = clrs[i])
                 plt.scatter(onset + tc, V65s[n][i], c=clrs[i])
@@ -682,10 +680,19 @@ def plot_rheobase_trace(fn, chans):
 
 def plot_trace(fn, sweep, channel, save_dir = None):
     ''' 
-    arguemnts : fn - filename, sweep - sweep number, channel - active channel from 1 to 8
+    arguemnts : fn - filename, sweep (list) - sweep number, channel - active channel from 1 to 8
     fast visualization of recordings and corresponding protocol
     accepts only 1 int for channel
     '''
+
+    # useful for plotting characterization
+    # mask = trace.sweepC != 0
+    # inj_trace[:, mask] = np.array(inj)[:, np.newaxis]
+    # inj = hcf.get_inj_current_steps(fn)
+    # ax[1].plot(trace.sweepX, inj_trace[swp,:], linewidth = 3)
+    # ax[0].plot(trace.data[0], c = '#0000FF', linewidth = 3, alpha = 0.7)
+    # ax[1].plot(inj_trace.flatten(), linewidth = 3)
+
 
     end_fn = fn.rfind('/') + 1
     trace = pyabf.ABF(fn)
@@ -706,23 +713,35 @@ def plot_trace(fn, sweep, channel, save_dir = None):
     if sweep == 'all':
         data_long = trace.data[channel]
         ax[0].plot(data_long)
-    else:
+        ax[1].plot(trace.sweepX, trace.sweepC, linewidth = 6)
+    elif sweep == 'all_overlay':
+        for swp in range(trace.sweepCount):
+            trace.setSweep(sweepNumber = swp, channel = channel)
+            ax[0].plot(trace.sweepX, trace.sweepY, c = '#0000FF', linewidth = 3, alpha = 0.7)
+            ax[1].plot(trace.sweepX, trace.sweepC, linewidth = 6)
+    elif isinstance(sweep, list):
+        for swp in sweep:
+            trace.setSweep(sweepNumber = swp, channel = channel)
+            ax[0].plot(trace.sweepX, trace.sweepY, c = '#0000FF', linewidth = 3, alpha = 0.7)
+            ax[1].plot(trace.sweepX, trace.sweepC, linewidth = 6)
+    elif isinstance(sweep, int):
         trace.setSweep(sweepNumber = sweep, channel = channel)
         ax[0].plot(trace.sweepX, trace.sweepY, c = '#0000FF', linewidth = 6, alpha = 0.7)
-        x = trace.sweepX
-        y = trace.sweepY
+        ax[1].plot(trace.sweepX, trace.sweepC, linewidth = 6)
+    else:
+        print('Provide meaningful sweep input')
+        return
     
     ax[0].set_ylabel(trace.sweepLabelY)
-
-    ax[1].plot(trace.sweepX, trace.sweepC, linewidth = 6)
     ax[1].set_xlabel(trace.sweepLabelX)
     ax[1].set_ylabel(trace.sweepLabelC)
 
     fig.suptitle('{0}, sweep num {1} , channel {2}'.format(fn[end_fn:], str(sweep),channel_name))
 
     if save_dir:
-        plt.savefig('{0}trace_{1}_{2}_swp_{3}.png'.format(save_dir,fn[end_fn:], channel_name, sweep))
-
+        plt.savefig(f'{save_dir}trace_{fn[end_fn:]}_{channel_name}_swp_{sweep}.svg',
+        format = 'svg', bbox_inches = 'tight', dpi = 300)
+        
     plt.show()
     #return x,y
 

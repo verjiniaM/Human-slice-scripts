@@ -223,19 +223,19 @@ def dict_for_plotting():
     values[2] plot y ticks
     '''
     titles_dict = {'Rs': ['Series resistance', 'MΩ', [5,10,15,20,25,30]],
-    'AP_halfwidth': ['AP halfwidth', 'ms', [0.5, 1, 1.5, 2, 2.5]],
+    'AP_halfwidth': ['AP halfwidth', 'ms', np.linspace(0.5, 1.7, 5), [0.5, '', 1.1, '', 1.7]],
     'Rin': ['Input resistance', 'MΩ', [0, 75, 150, 225, 300],[0, '', 150, '', 300]],
     'resting_potential': ['RMP', 'mV',[-80, -70,-60, -50, -40], [-80, '',-60, '', -40]],
-    'max_spikes': ['Maximum number of spikes', 'count', [0,10,20,30,40,50]],
+    'max_spikes': ['Maximum number of spikes', 'count', np.linspace(0, 70, 5), [0,'', 35, '', 70]],
     'Rheobase': ['Rheobase', 'pA', [100,300,500,700,900]],
-    'AP_heigth': ['AP amplitude', 'mV', [50,60,70,80,90,100]],    
+    'AP_heigth': ['AP amplitude', 'mV', np.linspace(50, 100, 5),[50, '', 70, '', 100]],    
     'TH': ['AP threshold', 'mV', [-50, -40, -30, -20, -10 ],[-50, '', -30, '', -10 ]],
-    'max_depol': ['AP upstroke (min)', 'mV/ms', [100,200,300,400,500]],
-    'max_repol': ['AP downstroke (max)', 'mV/ms', [-100, -80, -60, -40, -20]],
-    'membra_time_constant_tau': ['Membrane time constant', 'ms', [10, 20, 30, 40, 50]],
+    'max_depol': ['AP upstroke (min)', 'mV/ms', np.linspace(0, 600, 5),[0,'',300,'',600]],
+    'max_repol': ['AP downstroke (max)', 'mV/ms', np.linspace(-130, -40, 5), [-130, '', -85, '', -40]],
+    'membra_time_constant_tau': ['Membrane time constant', 'ms', np.linspace(10, 50, 5),[10, '', 30, '', 50]],
     # 'capacitance': ['Capacitance', 'pF', [100, 300, 500, 700]],
     'rheo_ramp_c' : ['Rheobase', 'pA', [100,300,500,700,900],[100,'',500,'',900]],
-    'cap_adj': ['Capacitance', 'pF', [100, 300, 500, 700]],
+    'cap_adj': ['Capacitance', 'pF', np.linspace(100, 700, 5),[100, '', 400,'', 700]],
     'sag': ['Sag ratio', '', [0.50, 0.65, 0.80,  0.95, 1.10], [0.50, '', 0.80,  '', 1.10]]}
     # 'tau_adj': ['Membrane time constant', 'ms', [10, 20, 30, 40, 50]]}
     return titles_dict

@@ -18,7 +18,6 @@ exp_view = pd.read_excel(glob.glob(human_dir + '*experiments_overview.xlsx')[0])
 exp_view_new = sort.update_op_list(human_dir, exp_view)
 sort.add_cortex_out_time(human_dir, exp_view_new)
 
-
 #loading the latest data table, should be the last one in the folder
 latest_sum_data_table = sorted(glob.glob(results_dir + 'summary_data_tables/intrinsic_properties/' + '*.xlsx'))[-1]
 end_path = latest_sum_data_table.rfind('/')
@@ -34,7 +33,6 @@ last_update_op_list = summary_data_table.OP.unique().tolist()
 newest_op_list = exp_view_new.OP.unique().tolist()
 all_OPs = last_update_op_list + newest_op_list
 op_to_analyse = [i for i in all_OPs if all_OPs.count(i)==1]
-
 
 get_results.get_intrinsic_properties_df(human_dir, OP, tissue_source, patcher, age, inj)
 for OP in op_to_analyse:

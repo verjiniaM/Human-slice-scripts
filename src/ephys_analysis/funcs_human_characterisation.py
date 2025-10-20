@@ -85,7 +85,7 @@ def find_charact_onset_offset(char_fn):
         trace.setSweep(sweepNumber = 0, channel = 0)
         onset = np.where(trace.sweepC != 0)[0][0] - 1
         offset = np.where(trace.sweepC != 0)[0][-1]
- 
+
         return onset, offset
     offset = np.where(trace.sweepC != 0)[0][-1]
 
@@ -232,6 +232,11 @@ def get_hyperpolar_param(charact_data, channels, inj, onset = 2624, offset = 226
     #   RMPs_char = []
     for ch in channels:
         key = 'Ch' + str(ch)
+        if key not in charact_data.keys():
+            print('channel not presdent. Skipping it')
+            for i, param in enumerate(params):
+                param.append(math.nan)
+            continue
         ch1 = charact_data[key][0]
         if 0 not in inj:
             print('no 0mV step in the inj')
@@ -284,7 +289,7 @@ def get_max_spikes(charact_data, channels):
             if len(pks)> max_spikes:
                 max_spikes = len(pks) #find the max number of spikes (peaks)
         max_spikes_all.append(max_spikes)
-    return max_spikes_all 
+    return max_spikes_all
 
 def get_ap_param(charact_data, channels, inj, max_spikes):
     '''
@@ -519,7 +524,7 @@ def get_rheobase_from_ramp(fn, chans):
     rheos, THs, THs_in_trace, swps = [], [], [], []
     for ch in chans:
         key = 'Ch' + str(ch)
-        ramp = ramp_dict[key][0][:, swp]        
+        ramp = ramp_dict[key][0][:, swp]
         AP1_peak = detect_peaks(ramp, mph = 20, mpd = 30)
         if len(AP1_peak) == 0:
             #runs through the rest of the swps to find peaks
@@ -551,7 +556,7 @@ def get_rheobase_from_ramp(fn, chans):
         THloc_in_trace = np.where(ramp == TH)[0][0]
 
         ramp_abf = pyabf.ABF(fn)
-        ramp_abf.setSweep(sweepNumber = swp, channel = 0) #because the stimulus is the same for all channels
+        ramp_abf.setSweep(sweepNumber = swp, channel = 0) #because stimulus is the same for all channels
         rheobase = ramp_abf.sweepC[THloc_in_trace-1]
 
         rheos.append(rheobase)

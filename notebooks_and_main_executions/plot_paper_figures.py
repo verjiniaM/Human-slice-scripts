@@ -302,9 +302,8 @@ def firing_props_fig2_slice(iff_df, data_type, dv, error_type, dest_dir,
     colors = figure_colors()['slice']
     dt_sum = 'slice'
 
-    dv_dict = {'IFF' : [iff_indx, 'Initial firing frequency (AP#1 to AP#2)',
-                'Initial firing \n frequency (Hz)'],
-                'num_aps' : [num_aps_indx, 'Number of fired action potentials', 'AP count']}
+    dv_dict = {'IFF' : [iff_indx, 'Initial firing \n frequency (Hz)'],
+                'num_aps' : [num_aps_indx, 'Firing frequency (Hz)']}
 
     fig, ax = plt.subplots(1, len(iff_df.treatment.unique()), figsize=(w_cm / 2.54, h_cm/2.54),\
                             sharex = True)
@@ -344,19 +343,18 @@ def firing_props_fig2_slice(iff_df, data_type, dv, error_type, dest_dir,
                                     np.array(avgs) - np.array(sems), color = colors[treatment + day], alpha = 0.3)
             ax[k].plot(range(1, len(inj)+1), avgs, label = day, color = colors[treatment + day])
             counts_firing[treatment + day] = counts
-            ax[0].set_ylabel(dv_dict[dv][2])
 
             if dv == 'num_aps':
                 ax[k].set_yticks(ticks = [0, 7.5, 15, 22.5, 30], labels = [0, '', 15, '', 30])
             else:
-                ax[k].set_yticks(ticks = [0, 40, 80, 120, 160, 200])
+                ax[k].set_yticks(ticks = np.linspace(0, 100, 5), labels = [0, '', 50, '', 100])
 
     ticks_ = np.arange(1, 14, 2)
     labels_ = [inj[a] for a in np.arange(0,  13, 2)]
     ax[0].set_xticks(ticks = ticks_, labels = labels_, rotation = 30)
     ax[1].set_xticks(ticks = ticks_, labels = labels_, rotation = 30)
     ax[1].set_xlabel('Current injection (pA)')
-    ax[0].set_ylabel('Firing cells count')
+    ax[0].set_ylabel(dv_dict[dv][1])
     ax[0].set_title('CTR', color = colors['CtrlD2'])
     ax[1].set_title('HiK', color = colors['high KD2'])
 
@@ -367,7 +365,7 @@ def firing_props_fig2_slice(iff_df, data_type, dv, error_type, dest_dir,
 
 def plot_example_firing(data_type, df, dest_dir, cell_IDs):
     '''
-    hi
+    cell_IDs - dictionary {'treatment': 'cell_ID}
     '''
     w_cm = 13
     h_cm = 9
@@ -378,7 +376,7 @@ def plot_example_firing(data_type, df, dest_dir, cell_IDs):
 
     colors = figure_colors()[data_type]
 
-    fig, ax = plt.subplots(3, 3, sharex = True, sharey = 'row', 
+    fig, ax = plt.subplots(3, 3, sharex = True, sharey = 'row',
                            figsize = (w_cm/2.54, h_cm/2.54), \
                         gridspec_kw = {'height_ratios': [6, 6, 1]})
     fig.subplots_adjust(hspace = 0.01,  wspace = 0.01)
@@ -427,6 +425,7 @@ def plot_example_firing(data_type, df, dest_dir, cell_IDs):
     
     plt.subplots_adjust(hspace = 0.1, wspace = 0.01)
     # fig.legend(loc = 'upper center', ncol = 3, bbox_to_anchor=(0.5, 1.3))
+    plt.show()
     plt.savefig(dest_dir + data_type + 'I_O_cureve.svg', \
                 format = 'svg', bbox_inches = 'tight', dpi = 1000)
 
@@ -1115,11 +1114,11 @@ destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/'
 # firing_props_fig3(df_repatch, 'CI', destination_dir)
 
 # # slice CTR all vs hrs_after_OP
-intr_slice_CTR(destination_dir, er_type = 'SE')
-intr_slice_CTR(destination_dir, er_type = 'CI') # doesn't complete teh figure
+# intr_slice_CTR(destination_dir, er_type = 'SE')
+# intr_slice_CTR(destination_dir, er_type = 'CI') # doesn't complete teh figure
 
-df_slice_all = pd.read_excel(data_dir + 'slice_all.xlsx')
-slice_all_CTR_hist(df_slice_all, destination_dir)
+# df_slice_all = pd.read_excel(data_dir + 'slice_all.xlsx')
+# slice_all_CTR_hist(df_slice_all, destination_dir)
    
 # fig 5
 # df_AIS = pd.read_excel(data_dir + 'AIS_all_data.xlsx')
@@ -1138,524 +1137,527 @@ slice_all_CTR_hist(df_slice_all, destination_dir)
 #             'high K': '25220S2c3'}
 # plot_example_firing('inc_only', df_slice_short_inc, destination_dir, cell_IDs_inc)
 
+
+
+# VERY UNREADALE CODE PROBABLY 
 # TO do - check carefully the proper tables that are the sum,m,ary and don't use them!!!
 # do not use the presaves summary tables
 
-# for sag
-work_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/data_verji/'
-
-df = df_slice
-w_cm = 8
-h_cm = 8
-
-# SAG
-# example_cell = '24201S2c5'
-fn = work_dir + 'OP240201' + '/'+ '24201018.abf'
-channel = 5
-w_cm = 8
-h_cm = 8
-
-onset = 2624
-offset = 22624
-charact_data = hcf.load_traces(fn)
-inj = hcf.get_inj_current_steps(fn)
-tau_all, capacitance_all, mcs, V65s, RMPs_char = hcf.get_hyperpolar_param(charact_data, [channel], inj)
-
-key = 'Ch' + str(channel)
-ch_data = charact_data[key][0]
-
-fig = plt.figure(figsize = (w_cm/2.54, h_cm/2.54))
-i = 0
-swp = list(ch_data[:,i])
-bl = np.median(ch_data[0:onset-20,i])
-
-ss = np.median(ch_data[15_000:20_000, i])
-plt.plot(ch_data[:,i], c = 'darkgrey')
-
-plt.xticks(ticks = [0, 10_000, 20_000], labels = [0, 10_000/20, 20_000/20])
-plt.axhline(y = ss, c = 'darkgrey', linestyle = '--')
-plt.axhline(y = min(ch_data[:,i]), c = 'darkgrey', linestyle = '--')
-plt.axhline(y = bl,c = 'darkgrey', linestyle = '--')
-plt.axvline(x = onset + 2000, c = 'darkgrey', linestyle = '--')
-# plt.savefig(destination_dir + 'sag.svg', \
-#             format = 'svg', bbox_inches = 'tight', dpi = 1000)
-
-
-# AP TH
-w_cm = 8
-h_cm = 8
-example_cell = '24201S1c8'
-df_plot = df[df['cell_ID'] == example_cell]
-channel = df_plot.cell_ch.values[0]
-fn = work_dir + df_plot.OP.values[0] + '/' + df_plot.filename.values[0]
-
-inj = hcf.get_inj_current_steps(fn)
-max_spikes = hcf.get_max_spikes(charact_data, [channel])
-first_spikes, peaks_all, spike_counts_all, first_spiking_sweeps_all = hcf.get_ap_param_for_plotting(charact_data, [channel], inj, max_spikes)
-AP_all, THloc_all, TH_all, = hcf.get_ap_param(charact_data, [channel], inj, max_spikes)[1:4]
-
-key = 'Ch' + str(channel)
-ch_data = charact_data[key][0]
-
-fig = plt.figure(figsize = (w_cm/2.54, h_cm/2.54))
-plt.plot(AP_all[0])
-plt.scatter(THloc_all[0] ,TH_all[0], color = 'red')
-plt.scatter(200,peaks_all[0][first_spiking_sweeps_all[0], 1, 2], color = 'green')
-# plt.savefig(destination_dir + 'TH.svg', \
-#             format = 'svg', bbox_inches = 'tight', dpi = 1000)
-
-
-
-# REHOBASE PLOT
-w_cm = 8
-h_cm = 8
-
-fn = work_dir + df_plot.OP.values[0] + '/'+ '24201002.abf'
-channel = 8
-
-rheos, THs, THs_in_trace, swps = hcf.get_rheobase_from_ramp(fn, [channel])
-ramp_abf = pyabf.ABF(fn)
-ramp_dict = hcf.load_traces(fn)
-
-fig, ax = plt.subplots(2,1,figsize = (w_cm/2.54, h_cm/2.54))
-swp = swps[0]
-start = 12_500
-end = THs_in_trace[0] + 500
-ramp = ramp_dict['Ch' + str(channel)][0][:, swp]
-ramp_abf.setSweep(sweepNumber = swp, channel = 0)
-ax[0].plot(ramp_abf.sweepX[start:end], ramp[start:end]) 
-ax[1].plot(ramp_abf.sweepX[start:end], ramp_abf.sweepC[start:end])
-ax[0].scatter(ramp_abf.sweepX[THs_in_trace[0]], THs[0], c = '#ff7f00')
-ax[1].scatter(ramp_abf.sweepX[THs_in_trace[0]], rheos[0], c = '#ff7f00')
-# for a in ax:
-#     a.axis('off')
-# plt.savefig(destination_dir + 'rheo.svg', \
-#             format = 'svg', bbox_inches = 'tight', dpi = 1000)
-
-
-#%% 
-
-# plot firing in a grid
-cell_IDs = {'pre': '24201S1c8',
-            'post CTR': '24117S2_D2c1',
-            'post HiK': '23420S2_D2c7'}
-data_type = 'slice'
-df = df_slice
-dest_dir = destination_dir
-
-w_cm = 15
-h_cm = 4
-work_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/data_verji/'
-
-swps = [9, 13, 17]
-# colors = trace_colors_trace()[data_type]
-colors = figure_colors()[data_type]
-
-fig, ax = plt.subplots(4, 3, sharex = True, sharey = 'row', 
-                        figsize = (w_cm/2.54, h_cm/2.54), \
-                    gridspec_kw = {'height_ratios': [6, 6, 6, 2]})
-fig.subplots_adjust(hspace = 0.01,  wspace = 0.01)
-# Plot examples traces
-
-for j, item in enumerate(cell_IDs.items()):
-    df_plot = df[df['cell_ID'] == item[1]]
-    fn = work_dir + df_plot.OP.values[0] + '/' + df_plot.filename.values[0]
-    channel = df_plot.cell_ch.values[0]
-    inj = hcf.get_inj_current_steps(fn)
-    trace = pyabf.ABF(fn)
-
-    if len(trace.channelList) < 8:
-        if '_Ipatch' in trace.adcNames:
-            trace.adcNames[trace.adcNames.index('_Ipatch')] = 'Ch1'
-        if 'IN0' in trace.adcNames:
-            trace.adcNames[trace.adcNames.index('IN0')] = 'Ch1'
-        channel_name = 'Ch' + str(channel)
-        channel = trace.channelList[trace.adcNames.index(channel_name)]
-    else:
-        channel = channel-1
-        channel_name = 'Ch' + str(channel+1)
-
-    for i, sweep in enumerate(swps):
-        trace.setSweep(sweepNumber = sweep, channel = channel)
-        # ax[0, i].plot(trace.sweepX[:-8000], trace.sweepY[:-8000], \
-        #                 color = colors[item[0]+ '.' + str(i+1)], alpha = 0.7)
-        ax[j, i].plot(trace.sweepX[:-8000], trace.sweepY[:-8000], \
-                        color = colors[item[0]], alpha = 0.7)
-        if i == 0:
-            ax[j, i].plot(trace.sweepX[:-8000], trace.sweepY[:-8000], \
-                        color = colors[item[0]], alpha = 0.7, label = item[0])
-        # x = trace.sweepX
-        # y = trace.sweepY
-
-        ax[j,i].set_ylabel(trace.sweepLabelY)
-        # ax[0,i].set_title(item[0])
-        ax[j,i].axis('off')
-
-        stim_inj = np.concatenate((np.zeros(2625), np.repeat(inj[sweep], 20_000), np.zeros(9375)))
-        ax[3, i].plot(trace.sweepX [:-8000], stim_inj, c = 'black')
-        # ax[1, i].set_xlabel(trace.sweepLabelX)
-        # ax[1, i].set_ylabel(trace.sweepLabelC)
-        ax[3, i].axis('off')
-        ax[0,i].set_title(str(int(inj[sweep])) + ' pA')
-    # fig.legend(loc = 'upper center', ncol = 3, bbox_to_anchor=(0.5, 1.3))
-# plt.savefig(dest_dir + data_type + 'I_O_curve_grid.svg', \
-#            format = 'svg', bbox_inches = 'tight', dpi = 1000)
-
-
-
-
-#%%
-# count types of firing cells
-
-def count_firing_cells(df, data_type):
-    '''
-    clasification of the firing cells based on type
-    no AP, single AP, multiple APs
-    '''
-
-    df_slice = pd.read_excel(data_dir + 'slice_data_temporal.xlsx')
-    df_repatch = pd.read_excel(data_dir + 'repatch_data_temporal.xlsx')
-
-    df = df_slice
-    data_type = 'slice'
-
-
-    firing_type = []
-    for i, spikes in enumerate(df.max_spikes):
-        if spikes == 0 or np.isnan(spikes):
-            firing_type.append('no_APs')
-        elif spikes == 1:
-            firing_type.append('single_AP')
-        elif spikes > 1:
-            firing_type.append('multiple_APs')
-    df.insert(len(df.columns), 'firing_type', firing_type)
-
-
-    w_cm = 8
-    h_cm = 8
-    colors = figure_colors()['slice']
-
-
-    count_firing_cells = {}
-    labels_, ticks_ = [], []
-    fig, ax = plt.subplots(1,1, figsize = (w_cm/2.54, h_cm/2.54))
-    for j, day in enumerate(df.day.unique()):
-        for i, treatment in enumerate(['Ctrl', 'high K']):
-            condition_df = df[(df['day'] == day) & (df['treatment'] == treatment)]
-            for f, f_type in enumerate(['no_APs', 'single_AP', 'multiple_APs']):
-                df_plot = df[(df['day'] == day) &\
-                                (df['treatment'] == treatment) &\
-                                (df['firing_type'] == f_type)]
-                x = f + 0.2 * (i + 2*j)
-                print(x)
-                ax.bar(x, len(df_plot) / len(condition_df), 
-                    width = 0.1, color = figure_colors()[data_type][treatment + day])
-                labels_.append(treatment + day + f_type)
-                ticks_.append(x)
-                count_firing_cells[treatment + day + f_type] = len(df_plot)
-
-    ax.set_xticks(ticks = ticks_, labels = labels_, rotation = 45)
-    plt.show()
-    plt.close()
-
-
-
-
-
-
-
-
-
-
-#%% might be useful
-
-# filtered_df = adult_df_slice_all[~adult_df_slice_all['cell_IDs_match'].isin(adult_df_slice_no_repeats['cell_IDs_match'])]
-
-
-# df_folder = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/paper_figs_collected_checked/data/'
-# human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'
-# patchers_dict = {'Rosie': 'data_rosie/', 'Verji':'data_verji/'}
-
-# unused_df = pd.read_excel(df_folder + 'slice_incubation_only_no_move.xlsx')
-# slice_all = pd.read_excel(df_folder + 'slice_all.xlsx')
-
-# df_dict = {'slice_all.xlsx' : slice_all, 
-#            'slice_incubation_only_no_move.xlsx': unused_df}
-
-# for key, df in df_dict.items():
-#     df = df.drop(columns=['sag'])
-#     sag = []
-#     for i in range(len(df)):
-#         patcher = df.patcher[i]
-#         fn = human_dir + patchers_dict[patcher] + df.OP[i] + '/' + df.filename[i]
-#         chan = [int(df.cell_ch[i])]
-#         sag.append(hcf.sag(fn, chan)[0][0])
-
-#     df.insert(len(df.columns), 'sag', sag)
-#     df.to_excel(df_folder + key)
-#     df.to_csv(df_folder + key[:-5] + '.csv')
-
-
-
-## PLAYGROUND
-df_sllice_short_inc = pd.read_excel(data_dir + 'slice_all.xlsx')
-df_sllice_short_inc = df_sllice_short_inc[df_sllice_short_inc['hrs_after_OP'] < 31]
-iff_df = df_sllice_short_inc
-background_dot_size = 3
-error_type = 'CI'
-dest_dir = destination_dir
-def firing_props_inc_only(iff_df, error_type, dest_dir,
-                 background_dot_size = 3, w_cm = 14.7, h_cm = 12):
-    """
-    Plots the initial firing frequency and number of APs for only incubated slices
-    """
-    df_summary = pd.read_excel('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results'+ \
-                            '/human/paper_figs_collected_checked/stats/'+ \
-                            'sum_data_CIs_SEs_for_plotting/firing_plot_CIs_inc_only.xlsx')
-    iff_df = iff_df.sort_values(['treatment', 'day'])
-    num_aps_indx, iff_indx = pl_intr.get_num_aps_and_iff_data_culumns(iff_df)
-    dt_sum = 'slice'
-    colors = figure_colors()[dt_sum]
-
-    dv_dict = {'IFF' : [iff_indx, 'Initial firing frequency (AP#1 to AP#2)',
-                'Initial firing \n frequency (Hz)'],
-                'num_aps' : [num_aps_indx, 'Number of fired action potentials', 'AP frequency (Hz)']}
-
-
-    for v, dv in enumerate(['num_aps', 'IFF']):
-        fig, ax = plt.subplots(1, 1, figsize=(w_cm / 2.54, h_cm/2.54))
-        counts_firing = {}
-        for k, treatment in enumerate(iff_df.treatment.unique()):
-            
-            for d, day in enumerate(iff_df['day'].unique()):
-                if day == 'D1':
-                    day_df = iff_df[iff_df['day'] == day]
-                else:
-                    day_df = iff_df[(iff_df['treatment'] == treatment) & \
-                                (iff_df['day'] == day)]
-                print(treatment, day)
-
-                avgs, inj, counts = [], [], []
-                for i, col in enumerate(dv_dict[dv][0][5:5+13]):
-                    
-                    data = day_df.iloc[:,col]
-                    inj_val = int(day_df.columns[col][2:day_df.columns[col].rfind('pA')])
-
-                    # removing non-firing cells
-                    data.replace(0, np.nan, inplace = True)
-                    data.dropna(inplace = True)
-                    avg = np.mean(data)
-
-                    if error_type == 'SE':
-                        x = np.linspace(0.75 + i , 1.25 + i, len(data))
-                        # ax.scatter(x, data, alpha = 0.15, s = background_dot_size,
-                        #             c = colors[treatment + day])
-                        sum_data = df_summary[(df_summary['var_firing'] == dv) & \
-                                        (df_summary['treatment'] == treatment) & \
-                                        (df_summary['day'] == d) & \
-                                        (df_summary['inj_current'] == inj_val)]
-                        # if there is enough data for SE
-                        if len(sum_data['SE']) > 0:
-                            sem = sum_data['SE'].values[0]
-                            ax.errorbar(i + 1, avg, yerr = sem, color = colors[treatment + day])
-
-                    inj.append(inj_val)
-                    counts.append(len(data))
-                    avgs.append(avg)
-
-                counts_firing[treatment + day] = counts
-
-                sum_data_tr = df_summary[(df_summary['var_firing'] == dv) & \
-                                        (df_summary['treatment'] == treatment) & \
-                                        (df_summary['day'] == d)]
-
-                ax.plot(range(1, len(inj)+1), avgs, label = day, color = colors[treatment + day])
-
-                if error_type == 'CI':
-                    start_summary = len(inj) - len(sum_data_tr) + 1
-                    # ax.scatter(range(1, len(inj)+1), avgs, label = day, color = colors[treatment + day])
-                    ax.fill_between(range(start_summary, len(inj)+1), sum_data_tr['CI_L'], 
-                                        sum_data_tr['CI_U'], color = colors[treatment + day],alpha = 0.3)
-                #     if dv == 'num_aps':
-                #         ax.set_yticks(ticks = [0, 10, 20, 30])
-                #     else:
-                #         ax.set_yticks(ticks = [0, 20, 40, 60, 80, 100])
-                # else:
-                #     if dv == 'num_aps':
-                #         ax.set_yticks(ticks = [0, 10, 20, 30, 40, 50])
-                #     else:
-                #         ax.set_yticks(ticks = [0, 40, 80, 120, 160, 200])
-
-                ax.set_ylabel(dv_dict[dv][2])
-
-        if dv == 'num_aps':
-            ax.set_yticks(ticks = [0, 5, 10, 15, 20, 25])
-        else:
-            ax.set_yticks(ticks = [0, 20, 40,60, 80, 100])
-
-        ticks_ = np.arange(1, 14, 2)
-        labels_ = [inj[a] for a in np.arange(0,  13, 2)]
-        
-        ax.set_xticks(ticks_)
-        ax.set_xticklabels(labels_, rotation=30)
-
-        ax.set_xlabel('Current injection (pA)')
-
-
-        plt.subplots_adjust(hspace = 0.12, wspace = 0.15)
-        plt.savefig(dest_dir + error_type + dv + '_vs_curernt_inj_inc_only.svg', \
-                    format = 'svg', bbox_inches = 'tight', dpi = 1000)
-        plt.close(fig)
-
-
-
-
-
-#%% 
-
-
-# # trying to figure out firing error
-# iff_df = pd.read_excel('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/paper_figs_collected_checked/data/inc_only_for_python_plot_delete_soon2.xlsx')
-
-# treat_iff = ['CTR' if a == 0 else 'HiK' for a in iff_df.treatment_r]
-# iff_df.drop('treatment', axis = 1, inplace = True)
-# iff_df.insert(0, 'treatment', treat_iff)
-
-# iff_df = iff_df.sort_values(['treatment', 'day'])
-# num_aps_indx, iff_indx = pl_intr.get_num_aps_and_iff_data_culumns(iff_df)
-# dt_sum = 'slice'
-# colors = figure_colors()[dt_sum]
-
-# dv_dict = {'IFF' : [iff_indx, 'Initial firing frequency (AP#1 to AP#2)',
-#             'Initial firing \n frequency (Hz)'],
-#             'num_aps' : [num_aps_indx, 'Number of fired action potentials', 'AP frequency (Hz)']}
-
-# df_summary = pd.read_excel('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/paper_figs_collected_checked/stats/sum_data_CIs_SEs_for_plotting/firing_plot_temporary_inc_only_temporal.xlsx')
-
-# treat = ['CTR' if a == 0 else 'HiK' for a in df_summary.treatment_r]
-# df_summary.insert(0, 'treatment', treat)
-
-# treat_iff = ['CTR' if a == 'Ctrl' else 'HiK' for a in iff_df.treatment]
-# iff_df.drop('treatment', axis = 1, inplace = True)
-# iff_df.insert(0, 'treatment', treat_iff)
-
-# for v, dv in enumerate(['num_aps', 'IFF']):
-#     fig, ax = plt.subplots(1, 1, figsize=(w_cm / 2.54, h_cm/2.54))
-#     counts_firing = {}
-#     for k, treatment in enumerate(iff_df.treatment.unique()):
-        
-#         day_df = iff_df[(iff_df['treatment'] == treatment)]
-      
-#         avgs, inj, counts = [], [], []
-#         for i, col in enumerate(dv_dict[dv][0][5:5+13]):
-            
-#             data = day_df.iloc[:,col]
-#             # inj_val = int(day_df.columns[col][2:day_df.columns[col].rfind('pA')])
-#             # when dataframes comes from R:
-#             inj_val = int(day_df.columns[col][3:day_df.columns[col].rfind('pA')])
-
-#             # removing non-firing cells
-#             data.replace(0, np.nan, inplace = True)
-#             data.dropna(inplace = True)
-#             avg = np.mean(data)
-
-#             if error_type == 'SE':
-#                 x = np.linspace(0.75 + i , 1.25 + i, len(data))
-
-#                 sum_data = df_summary[(df_summary['var_firing'] == dv) & \
-#                                 (df_summary['treatment'] == treatment) & \
-#                                 (df_summary['inj_current'] == inj_val)]
-#                 # if there is enough data for SE
-#                 if len(sum_data['SE']) > 0:
-#                     sem = sum_data['SE'].values[0]
-#                     ax.errorbar(i + 1, avg, yerr = sem, color = colors[treatment + 'D2'])
-
-#             inj.append(inj_val)
-#             counts.append(len(data))
-#             avgs.append(avg)
-
-#         counts_firing[treatment + 'D2'] = counts
-
-#         sum_data_tr = df_summary[(df_summary['var_firing'] == dv) & \
-#                                 (df_summary['treatment'] == treatment)]
-
-#         ax.plot(range(1, len(inj)+1), avgs, label = 'D2', color = colors[treatment + 'D2'])
-
-#         if error_type == 'CI':
-#             start_summary = len(inj) - len(sum_data_tr) + 1
-#             ax.fill_between(range(start_summary, len(inj)+1), sum_data_tr['CI_L'], 
-#                                 sum_data_tr['CI_U'], color = colors[treatment + 'D2'],alpha = 0.3)
-
-#         ax.set_ylabel(dv_dict[dv][2])
-
-#     if dv == 'num_aps':
-#         ax.set_yticks(ticks = [0, 5, 10, 15, 20, 25])
+# # for sag
+# work_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/data_verji/'
+
+# df = df_slice
+# w_cm = 8
+# h_cm = 8
+
+# # SAG
+# # example_cell = '24201S2c5'
+# fn = work_dir + 'OP240201' + '/'+ '24201018.abf'
+# channel = 5
+# w_cm = 8
+# h_cm = 8
+
+# onset = 2624
+# offset = 22624
+# charact_data = hcf.load_traces(fn)
+# inj = hcf.get_inj_current_steps(fn)
+# tau_all, capacitance_all, mcs, V65s, RMPs_char = hcf.get_hyperpolar_param(charact_data, [channel], inj)
+
+# key = 'Ch' + str(channel)
+# ch_data = charact_data[key][0]
+
+# fig = plt.figure(figsize = (w_cm/2.54, h_cm/2.54))
+# i = 0
+# swp = list(ch_data[:,i])
+# bl = np.median(ch_data[0:onset-20,i])
+
+# ss = np.median(ch_data[15_000:20_000, i])
+# plt.plot(ch_data[:,i], c = 'darkgrey')
+
+# plt.xticks(ticks = [0, 10_000, 20_000], labels = [0, 10_000/20, 20_000/20])
+# plt.axhline(y = ss, c = 'darkgrey', linestyle = '--')
+# plt.axhline(y = min(ch_data[:,i]), c = 'darkgrey', linestyle = '--')
+# plt.axhline(y = bl,c = 'darkgrey', linestyle = '--')
+# plt.axvline(x = onset + 2000, c = 'darkgrey', linestyle = '--')
+# # plt.savefig(destination_dir + 'sag.svg', \
+# #             format = 'svg', bbox_inches = 'tight', dpi = 1000)
+
+
+# # AP TH
+# w_cm = 8
+# h_cm = 8
+# example_cell = '24201S1c8'
+# df_plot = df[df['cell_ID'] == example_cell]
+# channel = df_plot.cell_ch.values[0]
+# fn = work_dir + df_plot.OP.values[0] + '/' + df_plot.filename.values[0]
+
+# inj = hcf.get_inj_current_steps(fn)
+# max_spikes = hcf.get_max_spikes(charact_data, [channel])
+# first_spikes, peaks_all, spike_counts_all, first_spiking_sweeps_all = hcf.get_ap_param_for_plotting(charact_data, [channel], inj, max_spikes)
+# AP_all, THloc_all, TH_all, = hcf.get_ap_param(charact_data, [channel], inj, max_spikes)[1:4]
+
+# key = 'Ch' + str(channel)
+# ch_data = charact_data[key][0]
+
+# fig = plt.figure(figsize = (w_cm/2.54, h_cm/2.54))
+# plt.plot(AP_all[0])
+# plt.scatter(THloc_all[0] ,TH_all[0], color = 'red')
+# plt.scatter(200,peaks_all[0][first_spiking_sweeps_all[0], 1, 2], color = 'green')
+# # plt.savefig(destination_dir + 'TH.svg', \
+# #             format = 'svg', bbox_inches = 'tight', dpi = 1000)
+
+
+
+# # REHOBASE PLOT
+# w_cm = 8
+# h_cm = 8
+
+# fn = work_dir + df_plot.OP.values[0] + '/'+ '24201002.abf'
+# channel = 8
+
+# rheos, THs, THs_in_trace, swps = hcf.get_rheobase_from_ramp(fn, [channel])
+# ramp_abf = pyabf.ABF(fn)
+# ramp_dict = hcf.load_traces(fn)
+
+# fig, ax = plt.subplots(2,1,figsize = (w_cm/2.54, h_cm/2.54))
+# swp = swps[0]
+# start = 12_500
+# end = THs_in_trace[0] + 500
+# ramp = ramp_dict['Ch' + str(channel)][0][:, swp]
+# ramp_abf.setSweep(sweepNumber = swp, channel = 0)
+# ax[0].plot(ramp_abf.sweepX[start:end], ramp[start:end]) 
+# ax[1].plot(ramp_abf.sweepX[start:end], ramp_abf.sweepC[start:end])
+# ax[0].scatter(ramp_abf.sweepX[THs_in_trace[0]], THs[0], c = '#ff7f00')
+# ax[1].scatter(ramp_abf.sweepX[THs_in_trace[0]], rheos[0], c = '#ff7f00')
+# # for a in ax:
+# #     a.axis('off')
+# # plt.savefig(destination_dir + 'rheo.svg', \
+# #             format = 'svg', bbox_inches = 'tight', dpi = 1000)
+
+
+# #%% 
+
+# # plot firing in a grid
+# cell_IDs = {'pre': '24201S1c8',
+#             'post CTR': '24117S2_D2c1',
+#             'post HiK': '23420S2_D2c7'}
+# data_type = 'slice'
+# df = df_slice
+# dest_dir = destination_dir
+
+# w_cm = 15
+# h_cm = 4
+# work_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/data_verji/'
+
+# swps = [9, 13, 17]
+# # colors = trace_colors_trace()[data_type]
+# colors = figure_colors()[data_type]
+
+# fig, ax = plt.subplots(4, 3, sharex = True, sharey = 'row', 
+#                         figsize = (w_cm/2.54, h_cm/2.54), \
+#                     gridspec_kw = {'height_ratios': [6, 6, 6, 2]})
+# fig.subplots_adjust(hspace = 0.01,  wspace = 0.01)
+# # Plot examples traces
+
+# for j, item in enumerate(cell_IDs.items()):
+#     df_plot = df[df['cell_ID'] == item[1]]
+#     fn = work_dir + df_plot.OP.values[0] + '/' + df_plot.filename.values[0]
+#     channel = df_plot.cell_ch.values[0]
+#     inj = hcf.get_inj_current_steps(fn)
+#     trace = pyabf.ABF(fn)
+
+#     if len(trace.channelList) < 8:
+#         if '_Ipatch' in trace.adcNames:
+#             trace.adcNames[trace.adcNames.index('_Ipatch')] = 'Ch1'
+#         if 'IN0' in trace.adcNames:
+#             trace.adcNames[trace.adcNames.index('IN0')] = 'Ch1'
+#         channel_name = 'Ch' + str(channel)
+#         channel = trace.channelList[trace.adcNames.index(channel_name)]
 #     else:
-#         ax.set_yticks(ticks = [0, 20, 40,60, 80, 100])
+#         channel = channel-1
+#         channel_name = 'Ch' + str(channel+1)
 
-#     ticks_ = np.arange(1, 14, 2)
-#     labels_ = [inj[a] for a in np.arange(0,  13, 2)]
-    
-#     ax.set_xticks(ticks_)
-#     ax.set_xticklabels(labels_, rotation=30)
+#     for i, sweep in enumerate(swps):
+#         trace.setSweep(sweepNumber = sweep, channel = channel)
+#         # ax[0, i].plot(trace.sweepX[:-8000], trace.sweepY[:-8000], \
+#         #                 color = colors[item[0]+ '.' + str(i+1)], alpha = 0.7)
+#         ax[j, i].plot(trace.sweepX[:-8000], trace.sweepY[:-8000], \
+#                         color = colors[item[0]], alpha = 0.7)
+#         if i == 0:
+#             ax[j, i].plot(trace.sweepX[:-8000], trace.sweepY[:-8000], \
+#                         color = colors[item[0]], alpha = 0.7, label = item[0])
+#         # x = trace.sweepX
+#         # y = trace.sweepY
 
-#     ax.set_xlabel('Current injection (pA)')
+#         ax[j,i].set_ylabel(trace.sweepLabelY)
+#         # ax[0,i].set_title(item[0])
+#         ax[j,i].axis('off')
+
+#         stim_inj = np.concatenate((np.zeros(2625), np.repeat(inj[sweep], 20_000), np.zeros(9375)))
+#         ax[3, i].plot(trace.sweepX [:-8000], stim_inj, c = 'black')
+#         # ax[1, i].set_xlabel(trace.sweepLabelX)
+#         # ax[1, i].set_ylabel(trace.sweepLabelC)
+#         ax[3, i].axis('off')
+#         ax[0,i].set_title(str(int(inj[sweep])) + ' pA')
+#     # fig.legend(loc = 'upper center', ncol = 3, bbox_to_anchor=(0.5, 1.3))
+# # plt.savefig(dest_dir + data_type + 'I_O_curve_grid.svg', \
+# #            format = 'svg', bbox_inches = 'tight', dpi = 1000)
 
 
 
 
-# data_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/paper_figs_collected_checked/data/sanity_check/'
+# #%%
+# # count types of firing cells
 
-# melt_df = pd.read_excel(data_dir + 'slice_melt_df_temporal.xlsx')
-# iff_df = pd.read_csv(data_dir + 'slice_data_temporal.csv')
+# def count_firing_cells(df, data_type):
+#     '''
+#     clasification of the firing cells based on type
+#     no AP, single AP, multiple APs
+#     '''
+
+#     df_slice = pd.read_excel(data_dir + 'slice_data_temporal.xlsx')
+#     df_repatch = pd.read_excel(data_dir + 'repatch_data_temporal.xlsx')
+
+#     df = df_slice
+#     data_type = 'slice'
 
 
-# fig, ax = plt.subplots(1, 1)
-# for treatment in melt_df.treatment_r.unique():
-#     avgs = []
-#     for i, inj in enumerate(melt_df.inj_current.unique()):
-#         df_plot = melt_df[(melt_df['treatment_r'] == treatment) & \
-#                           (melt_df['inj_current'] == inj)]
-#         avg = df_plot['VAL'].mean()
-#         sem = df_plot['VAL'].std() / np.sqrt(len(df_plot))
+#     firing_type = []
+#     for i, spikes in enumerate(df.max_spikes):
+#         if spikes == 0 or np.isnan(spikes):
+#             firing_type.append('no_APs')
+#         elif spikes == 1:
+#             firing_type.append('single_AP')
+#         elif spikes > 1:
+#             firing_type.append('multiple_APs')
+#     df.insert(len(df.columns), 'firing_type', firing_type)
 
-#         x = np.linspace(0.75 + inj , 1.25 + inj, len(df_plot))
-#         ax.scatter(x, df_plot['VAL'], alpha = 0.15)
-#         ax.errorbar(inj + 1, avg, yerr = sem, label = treatment)
-#         avgs.append(df_plot['VAL'].mean())
 
-#     ax.plot(melt_df.inj_current.unique(), avgs, label = treatment)
+#     w_cm = 8
+#     h_cm = 8
+#     colors = figure_colors()['slice']
 
-# # data pre-processing for plotting
-# iff_df = iff_df.sort_values(['treatment'])
-# num_aps_indx, iff_indx = pl_intr.get_num_aps_and_iff_data_culumns(iff_df)
 
-# dv_dict = {'IFF' : [iff_indx, 'Initial firing frequency (AP#1 to AP#2)',
-#             'Initial firing \n frequency (Hz)'],
-#             'num_aps' : [num_aps_indx, 'Number of fired action potentials', 'AP frequency (Hz)']}
+#     count_firing_cells = {}
+#     labels_, ticks_ = [], []
+#     fig, ax = plt.subplots(1,1, figsize = (w_cm/2.54, h_cm/2.54))
+#     for j, day in enumerate(df.day.unique()):
+#         for i, treatment in enumerate(['Ctrl', 'high K']):
+#             condition_df = df[(df['day'] == day) & (df['treatment'] == treatment)]
+#             for f, f_type in enumerate(['no_APs', 'single_AP', 'multiple_APs']):
+#                 df_plot = df[(df['day'] == day) &\
+#                                 (df['treatment'] == treatment) &\
+#                                 (df['firing_type'] == f_type)]
+#                 x = f + 0.2 * (i + 2*j)
+#                 print(x)
+#                 ax.bar(x, len(df_plot) / len(condition_df), 
+#                     width = 0.1, color = figure_colors()[data_type][treatment + day])
+#                 labels_.append(treatment + day + f_type)
+#                 ticks_.append(x)
+#                 count_firing_cells[treatment + day + f_type] = len(df_plot)
 
-# fig, ax = plt.subplots(1, 1)
-# dv = 'num_aps'
-# for k, treatment in enumerate(iff_df.treatment.unique()):
-    
-#     avgs, inj= [], []
-#     for i, col in enumerate(dv_dict[dv][0][5:5+13]):
-#         data = iff_df[(iff_df['treatment'] == treatment)].iloc[:,col]
-#         # if error 3 when from R, 2 when from python. try both
-#         inj_val = int(iff_df.columns[col][2:iff_df.columns[col].rfind('pA')])
+#     ax.set_xticks(ticks = ticks_, labels = labels_, rotation = 45)
+#     plt.show()
+#     plt.close()
 
-#         # removing non-firing cells
-#         data.replace(0, np.nan, inplace = True)
-#         data.dropna(inplace = True)
+
+
+
+
+
+
+
+
+
+# #%% might be useful
+
+# # filtered_df = adult_df_slice_all[~adult_df_slice_all['cell_IDs_match'].isin(adult_df_slice_no_repeats['cell_IDs_match'])]
+
+
+# # df_folder = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/paper_figs_collected_checked/data/'
+# # human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'
+# # patchers_dict = {'Rosie': 'data_rosie/', 'Verji':'data_verji/'}
+
+# # unused_df = pd.read_excel(df_folder + 'slice_incubation_only_no_move.xlsx')
+# # slice_all = pd.read_excel(df_folder + 'slice_all.xlsx')
+
+# # df_dict = {'slice_all.xlsx' : slice_all, 
+# #            'slice_incubation_only_no_move.xlsx': unused_df}
+
+# # for key, df in df_dict.items():
+# #     df = df.drop(columns=['sag'])
+# #     sag = []
+# #     for i in range(len(df)):
+# #         patcher = df.patcher[i]
+# #         fn = human_dir + patchers_dict[patcher] + df.OP[i] + '/' + df.filename[i]
+# #         chan = [int(df.cell_ch[i])]
+# #         sag.append(hcf.sag(fn, chan)[0][0])
+
+# #     df.insert(len(df.columns), 'sag', sag)
+# #     df.to_excel(df_folder + key)
+# #     df.to_csv(df_folder + key[:-5] + '.csv')
+
+
+
+# ## PLAYGROUND
+# df_sllice_short_inc = pd.read_excel(data_dir + 'slice_all.xlsx')
+# df_sllice_short_inc = df_sllice_short_inc[df_sllice_short_inc['hrs_after_OP'] < 31]
+# iff_df = df_sllice_short_inc
+# background_dot_size = 3
+# error_type = 'CI'
+# dest_dir = destination_dir
+# def firing_props_inc_only(iff_df, error_type, dest_dir,
+#                  background_dot_size = 3, w_cm = 14.7, h_cm = 12):
+#     """
+#     Plots the initial firing frequency and number of APs for only incubated slices
+#     """
+#     df_summary = pd.read_excel('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results'+ \
+#                             '/human/paper_figs_collected_checked/stats/'+ \
+#                             'sum_data_CIs_SEs_for_plotting/firing_plot_CIs_inc_only.xlsx')
+#     iff_df = iff_df.sort_values(['treatment', 'day'])
+#     num_aps_indx, iff_indx = pl_intr.get_num_aps_and_iff_data_culumns(iff_df)
+#     dt_sum = 'slice'
+#     colors = figure_colors()[dt_sum]
+
+#     dv_dict = {'IFF' : [iff_indx, 'Initial firing frequency (AP#1 to AP#2)',
+#                 'Initial firing \n frequency (Hz)'],
+#                 'num_aps' : [num_aps_indx, 'Number of fired action potentials', 'AP frequency (Hz)']}
+
+
+#     for v, dv in enumerate(['num_aps', 'IFF']):
+#         fig, ax = plt.subplots(1, 1, figsize=(w_cm / 2.54, h_cm/2.54))
+#         counts_firing = {}
+#         for k, treatment in enumerate(iff_df.treatment.unique()):
+            
+#             for d, day in enumerate(iff_df['day'].unique()):
+#                 if day == 'D1':
+#                     day_df = iff_df[iff_df['day'] == day]
+#                 else:
+#                     day_df = iff_df[(iff_df['treatment'] == treatment) & \
+#                                 (iff_df['day'] == day)]
+#                 print(treatment, day)
+
+#                 avgs, inj, counts = [], [], []
+#                 for i, col in enumerate(dv_dict[dv][0][5:5+13]):
+                    
+#                     data = day_df.iloc[:,col]
+#                     inj_val = int(day_df.columns[col][2:day_df.columns[col].rfind('pA')])
+
+#                     # removing non-firing cells
+#                     data.replace(0, np.nan, inplace = True)
+#                     data.dropna(inplace = True)
+#                     avg = np.mean(data)
+
+#                     if error_type == 'SE':
+#                         x = np.linspace(0.75 + i , 1.25 + i, len(data))
+#                         # ax.scatter(x, data, alpha = 0.15, s = background_dot_size,
+#                         #             c = colors[treatment + day])
+#                         sum_data = df_summary[(df_summary['var_firing'] == dv) & \
+#                                         (df_summary['treatment'] == treatment) & \
+#                                         (df_summary['day'] == d) & \
+#                                         (df_summary['inj_current'] == inj_val)]
+#                         # if there is enough data for SE
+#                         if len(sum_data['SE']) > 0:
+#                             sem = sum_data['SE'].values[0]
+#                             ax.errorbar(i + 1, avg, yerr = sem, color = colors[treatment + day])
+
+#                     inj.append(inj_val)
+#                     counts.append(len(data))
+#                     avgs.append(avg)
+
+#                 counts_firing[treatment + day] = counts
+
+#                 sum_data_tr = df_summary[(df_summary['var_firing'] == dv) & \
+#                                         (df_summary['treatment'] == treatment) & \
+#                                         (df_summary['day'] == d)]
+
+#                 ax.plot(range(1, len(inj)+1), avgs, label = day, color = colors[treatment + day])
+
+#                 if error_type == 'CI':
+#                     start_summary = len(inj) - len(sum_data_tr) + 1
+#                     # ax.scatter(range(1, len(inj)+1), avgs, label = day, color = colors[treatment + day])
+#                     ax.fill_between(range(start_summary, len(inj)+1), sum_data_tr['CI_L'], 
+#                                         sum_data_tr['CI_U'], color = colors[treatment + day],alpha = 0.3)
+#                 #     if dv == 'num_aps':
+#                 #         ax.set_yticks(ticks = [0, 10, 20, 30])
+#                 #     else:
+#                 #         ax.set_yticks(ticks = [0, 20, 40, 60, 80, 100])
+#                 # else:
+#                 #     if dv == 'num_aps':
+#                 #         ax.set_yticks(ticks = [0, 10, 20, 30, 40, 50])
+#                 #     else:
+#                 #         ax.set_yticks(ticks = [0, 40, 80, 120, 160, 200])
+
+#                 ax.set_ylabel(dv_dict[dv][2])
+
+#         if dv == 'num_aps':
+#             ax.set_yticks(ticks = [0, 5, 10, 15, 20, 25])
+#         else:
+#             ax.set_yticks(ticks = [0, 20, 40,60, 80, 100])
+
+#         ticks_ = np.arange(1, 14, 2)
+#         labels_ = [inj[a] for a in np.arange(0,  13, 2)]
         
-#         avg = np.mean(data)
-#         sem = np.std(data.values) / np.sqrt(len(data))
+#         ax.set_xticks(ticks_)
+#         ax.set_xticklabels(labels_, rotation=30)
 
-#         x = np.linspace(0.75 + inj_val , 1.25 + inj_val, len(data))
-#         ax.scatter(x, data, alpha = 0.15)
-#         ax.errorbar(inj_val + 1, avg, yerr = sem, label = treatment)
-#         avgs.append(avg)
-#         inj.append(inj_val)
+#         ax.set_xlabel('Current injection (pA)')
 
-#     ax.plot(inj, avgs, label = treatment)
+
+#         plt.subplots_adjust(hspace = 0.12, wspace = 0.15)
+#         # plt.savefig(dest_dir + error_type + dv + '_vs_curernt_inj_inc_only.svg', \
+#         #            format = 'svg', bbox_inches = 'tight', dpi = 1000)
+#         plt.close(fig)
+
+
+
+
+
+# #%% 
+
+
+# # # trying to figure out firing error
+# # iff_df = pd.read_excel('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/paper_figs_collected_checked/data/inc_only_for_python_plot_delete_soon2.xlsx')
+
+# # treat_iff = ['CTR' if a == 0 else 'HiK' for a in iff_df.treatment_r]
+# # iff_df.drop('treatment', axis = 1, inplace = True)
+# # iff_df.insert(0, 'treatment', treat_iff)
+
+# # iff_df = iff_df.sort_values(['treatment', 'day'])
+# # num_aps_indx, iff_indx = pl_intr.get_num_aps_and_iff_data_culumns(iff_df)
+# # dt_sum = 'slice'
+# # colors = figure_colors()[dt_sum]
+
+# # dv_dict = {'IFF' : [iff_indx, 'Initial firing frequency (AP#1 to AP#2)',
+# #             'Initial firing \n frequency (Hz)'],
+# #             'num_aps' : [num_aps_indx, 'Number of fired action potentials', 'AP frequency (Hz)']}
+
+# # df_summary = pd.read_excel('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/paper_figs_collected_checked/stats/sum_data_CIs_SEs_for_plotting/firing_plot_temporary_inc_only_temporal.xlsx')
+
+# # treat = ['CTR' if a == 0 else 'HiK' for a in df_summary.treatment_r]
+# # df_summary.insert(0, 'treatment', treat)
+
+# # treat_iff = ['CTR' if a == 'Ctrl' else 'HiK' for a in iff_df.treatment]
+# # iff_df.drop('treatment', axis = 1, inplace = True)
+# # iff_df.insert(0, 'treatment', treat_iff)
+
+# # for v, dv in enumerate(['num_aps', 'IFF']):
+# #     fig, ax = plt.subplots(1, 1, figsize=(w_cm / 2.54, h_cm/2.54))
+# #     counts_firing = {}
+# #     for k, treatment in enumerate(iff_df.treatment.unique()):
+        
+# #         day_df = iff_df[(iff_df['treatment'] == treatment)]
+      
+# #         avgs, inj, counts = [], [], []
+# #         for i, col in enumerate(dv_dict[dv][0][5:5+13]):
+            
+# #             data = day_df.iloc[:,col]
+# #             # inj_val = int(day_df.columns[col][2:day_df.columns[col].rfind('pA')])
+# #             # when dataframes comes from R:
+# #             inj_val = int(day_df.columns[col][3:day_df.columns[col].rfind('pA')])
+
+# #             # removing non-firing cells
+# #             data.replace(0, np.nan, inplace = True)
+# #             data.dropna(inplace = True)
+# #             avg = np.mean(data)
+
+# #             if error_type == 'SE':
+# #                 x = np.linspace(0.75 + i , 1.25 + i, len(data))
+
+# #                 sum_data = df_summary[(df_summary['var_firing'] == dv) & \
+# #                                 (df_summary['treatment'] == treatment) & \
+# #                                 (df_summary['inj_current'] == inj_val)]
+# #                 # if there is enough data for SE
+# #                 if len(sum_data['SE']) > 0:
+# #                     sem = sum_data['SE'].values[0]
+# #                     ax.errorbar(i + 1, avg, yerr = sem, color = colors[treatment + 'D2'])
+
+# #             inj.append(inj_val)
+# #             counts.append(len(data))
+# #             avgs.append(avg)
+
+# #         counts_firing[treatment + 'D2'] = counts
+
+# #         sum_data_tr = df_summary[(df_summary['var_firing'] == dv) & \
+# #                                 (df_summary['treatment'] == treatment)]
+
+# #         ax.plot(range(1, len(inj)+1), avgs, label = 'D2', color = colors[treatment + 'D2'])
+
+# #         if error_type == 'CI':
+# #             start_summary = len(inj) - len(sum_data_tr) + 1
+# #             ax.fill_between(range(start_summary, len(inj)+1), sum_data_tr['CI_L'], 
+# #                                 sum_data_tr['CI_U'], color = colors[treatment + 'D2'],alpha = 0.3)
+
+# #         ax.set_ylabel(dv_dict[dv][2])
+
+# #     if dv == 'num_aps':
+# #         ax.set_yticks(ticks = [0, 5, 10, 15, 20, 25])
+# #     else:
+# #         ax.set_yticks(ticks = [0, 20, 40,60, 80, 100])
+
+# #     ticks_ = np.arange(1, 14, 2)
+# #     labels_ = [inj[a] for a in np.arange(0,  13, 2)]
+    
+# #     ax.set_xticks(ticks_)
+# #     ax.set_xticklabels(labels_, rotation=30)
+
+# #     ax.set_xlabel('Current injection (pA)')
+
+
+
+
+# # data_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/paper_figs_collected_checked/data/sanity_check/'
+
+# # melt_df = pd.read_excel(data_dir + 'slice_melt_df_temporal.xlsx')
+# # iff_df = pd.read_csv(data_dir + 'slice_data_temporal.csv')
+
+
+# # fig, ax = plt.subplots(1, 1)
+# # for treatment in melt_df.treatment_r.unique():
+# #     avgs = []
+# #     for i, inj in enumerate(melt_df.inj_current.unique()):
+# #         df_plot = melt_df[(melt_df['treatment_r'] == treatment) & \
+# #                           (melt_df['inj_current'] == inj)]
+# #         avg = df_plot['VAL'].mean()
+# #         sem = df_plot['VAL'].std() / np.sqrt(len(df_plot))
+
+# #         x = np.linspace(0.75 + inj , 1.25 + inj, len(df_plot))
+# #         ax.scatter(x, df_plot['VAL'], alpha = 0.15)
+# #         ax.errorbar(inj + 1, avg, yerr = sem, label = treatment)
+# #         avgs.append(df_plot['VAL'].mean())
+
+# #     ax.plot(melt_df.inj_current.unique(), avgs, label = treatment)
+
+# # # data pre-processing for plotting
+# # iff_df = iff_df.sort_values(['treatment'])
+# # num_aps_indx, iff_indx = pl_intr.get_num_aps_and_iff_data_culumns(iff_df)
+
+# # dv_dict = {'IFF' : [iff_indx, 'Initial firing frequency (AP#1 to AP#2)',
+# #             'Initial firing \n frequency (Hz)'],
+# #             'num_aps' : [num_aps_indx, 'Number of fired action potentials', 'AP frequency (Hz)']}
+
+# # fig, ax = plt.subplots(1, 1)
+# # dv = 'num_aps'
+# # for k, treatment in enumerate(iff_df.treatment.unique()):
+    
+# #     avgs, inj= [], []
+# #     for i, col in enumerate(dv_dict[dv][0][5:5+13]):
+# #         data = iff_df[(iff_df['treatment'] == treatment)].iloc[:,col]
+# #         # if error 3 when from R, 2 when from python. try both
+# #         inj_val = int(iff_df.columns[col][2:iff_df.columns[col].rfind('pA')])
+
+# #         # removing non-firing cells
+# #         data.replace(0, np.nan, inplace = True)
+# #         data.dropna(inplace = True)
+        
+# #         avg = np.mean(data)
+# #         sem = np.std(data.values) / np.sqrt(len(data))
+
+# #         x = np.linspace(0.75 + inj_val , 1.25 + inj_val, len(data))
+# #         ax.scatter(x, data, alpha = 0.15)
+# #         ax.errorbar(inj_val + 1, avg, yerr = sem, label = treatment)
+# #         avgs.append(avg)
+# #         inj.append(inj_val)
+
+# #     ax.plot(inj, avgs, label = treatment)
 

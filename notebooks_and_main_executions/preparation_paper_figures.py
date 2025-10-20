@@ -391,7 +391,7 @@ def get_lab_book_info(df, human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz
                 continue
 
             df_qc_hold = pd.concat([df_qc_hold, hold_df], ignore_index = True)
-
+    
     df_qc_hold = df_qc_hold.reset_index(drop = True)
     # df_qc_hold.to_excel('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/'+ \
     #                     'data/summary_data_tables/metadata/holdings.xlsx')
@@ -754,7 +754,7 @@ def get_intrinsic_dfs(_15mm = False):
     iffs = iffs[~iffs['OP'].isin(ops_remove)].reset_index(drop = True)
     iffs = get_match_cell_id(iffs)
 
-    # find fuplicates
+    # find duplicates
     # Filter the DataFrame to get the repeating values
     fix_op = sorted(iffs.OP[iffs['cell_IDs_match'].duplicated(keep=False)].unique())
     for op in fix_op:
@@ -1465,6 +1465,18 @@ def add_treatment_r():
         df_repatch.insert(len(df_repatch.columns), 'treatment_r', tr_r)
         df_repatch.to_excel(data_dir + 'repatch_data_temporal.xlsx')
         df_repatch.to_csv(data_dir + 'repatch_data_temporal.csv')
+
+def get_meta_data_summary(meta_df):
+    # meta_df = pd.read_excel('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/paper_figs_collected_checked/data/meta_data.xlsx')
+    # filtered_meta_df = meta_df[meta_df['OP'].isin(used_ops)]
+    counts = meta_df['sex'].value_counts()
+    print(counts)
+    num_male = counts.get('male', 0)
+    num_female = counts.get('female', 0)
+    print(f"male: {num_male}, female: {num_female}")
+    print(f'median age {meta_df.age.median()}')
+    print(f'min age {meta_df.age.min()}')
+    print(f'max age {meta_df.age.max()}')
 
 # if __name__ == "__main__":
 #     main()
