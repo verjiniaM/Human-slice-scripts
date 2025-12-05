@@ -339,7 +339,7 @@ def get_json_meta_connect_all (human_dir, OP, patcher, file_out = '_con_screen_o
     if isinstance(indices_dict, list):
         indices_dict = indices_dict[0]
 
-    exp_view = pd.read_excel(glob.glob(human_dir + '*experiments_overview.xlsx')[0]) 
+    exp_view = pd.read_excel(glob.glob(human_dir + '*experiments_overview.xlsx')[0])
     op_time = exp_view['cortex_out'][exp_view.index[exp_view['OP'] == OP]].tolist()
     file_list = get_sorted_file_list(work_dir)
     

@@ -32,11 +32,11 @@ def presynaptic_screen(con_screen_file, pre_cell_chan):
             print("Excluding swp # " + str(i) + '; drift more than 0.1*RMP start to end or RMP > -50') 
         elif vmO - (vmO * -0.1) > vm1 or vm1 > vmO + (vmO * -0.1):
             es.append(i)
-            print("Excluding swp # " + str(i) + '; drift more than 0.1* RMP') 
+            print("Excluding swp # " + str(i) + '; drift more than 0.1* RMP')
         #this statement accounts for APs that reverse below 0
         elif max_val < 0:
             es.append(i)
-            print("Excluding swp # " + str(i) + '; APs < 0') 
+            print("Excluding swp # " + str(i) + '; APs < 0')
     exclude = 'no'
     if len(es) == sweep_count:
         print('Stop analsis')
@@ -46,6 +46,21 @@ def presynaptic_screen(con_screen_file, pre_cell_chan):
 
     pre_sig = np.delete(pre_sig, es, axis=1)
     return pre_sig, es, vmO
+
+def presynaptic_screen_ALLOW_ALL(con_screen_file, pre_cell_chan):
+    con_screen_data = hcf.load_traces(con_screen_file)
+    chan_name = 'Ch' + str(pre_cell_chan)
+
+    return con_screen_data[chan_name][0]
+
+def postsynaptic_screen_ALLOW_ALL(con_screen_file, post_cell_chan, es):
+    con_screen_data = hcf.load_traces(con_screen_file)
+    chan_name = 'Ch' + str(post_cell_chan)
+
+    post_sig = con_screen_data[chan_name][0]
+    post_sig = np.delete(post_sig, es, axis=1)
+
+    return post_sig, []
 
 #loads postsynaptic cell and quality checks sweeps. Automatically removes
 #sweeps excluded from presynaptic screen (presynaptic function should
@@ -166,7 +181,14 @@ def get_onsets(preAPs_shifted, post_window, PSPs, bl):
             # x1 = x[fit_start[0][0] : end_corr]
         else:
             x1 = x[fit_start[0][0] : fit_end[0][0]]
-        fit1 = np.polyfit(x1, PSP_window[x1], 1)
+
+        try:
+            fit1 = np.polyfit(x1, PSP_window[x1], 1)
+        except np.linalg.LinAlgError:
+            print('unable to fit')
+            onsets[i,0] = math.nan
+            continue
+   
         foot = (bl[i][0]-fit1[1])/fit1[0] #where the fit crosses the local baseline
         onsets[i,0] = int(foot) + preAPs_shifted[0][i]-5
         

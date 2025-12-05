@@ -77,7 +77,7 @@ save_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/plots/ev
 
 
 
-#some more fancy plotting 
+#some more fancy plotting
 
 mini_updated = pd.read_excel('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/meta_events/results/minis_all_2023-09-05.xlsx')
 exp_overview = pd.read_excel('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/2023-09-04_experiments_overview.xlsx')

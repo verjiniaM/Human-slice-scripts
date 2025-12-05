@@ -8,8 +8,9 @@ import matplotlib.pyplot as plt
 import ephys_analysis.funcs_human_characterisation as hcf
 import ephys_analysis.funcs_sorting as sort
 
+plt.style.use('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/code/Human-slice-scripts/style_plot_paper.mplstyle')
 
-plt.style.use('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/code/Human-slice-scripts/style_plot_intrinsic.mplstyle')
+# plt.style.use('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/code/Human-slice-scripts/style_plot_intrinsic.mplstyle')
 
 def get_color_dict(treatments):
     '''
@@ -111,10 +112,12 @@ def filter_on_hrs_incubation(df, min_inc_time, max_hrs_incubation):
         df = df.loc[mask, :]
     return df
 
-def filter_adult_hrs_incubation_data(df_intr_props, min_age, hrs_inc, max_age = 151, max_hrs_incubation = 50):
+def filter_adult_hrs_incubation_data(df_intr_props, min_age, hrs_inc, max_age = 151, max_hrs_incubation = 50,\
+                                     QC = True):
     adult_df = patient_age_to_float(df_intr_props, min_age, max_age)
     adult_df = change_to_numeric(adult_df)
-    adult_df = get_QC_data(adult_df)
+    if QC:
+        adult_df = get_QC_data(adult_df)
     adult_df = filter_on_hrs_incubation(adult_df, hrs_inc, max_hrs_incubation)
     return adult_df
 
@@ -222,7 +225,7 @@ def dict_for_plotting():
     values[1] y asix
     values[2] plot y ticks
     '''
-    titles_dict = {'Rs': ['Series resistance', 'MΩ', [5,10,15,20,25,30]],
+    titles_dict = {'Rs': ['Series resistance', 'MΩ', np.linspace(5, 35, 5),[5,'',20,'',35]],
     'AP_halfwidth': ['AP halfwidth', 'ms', np.linspace(0.5, 1.7, 5), [0.5, '', 1.1, '', 1.7]],
     'Rin': ['Input resistance', 'MΩ', [0, 75, 150, 225, 300],[0, '', 150, '', 300]],
     'resting_potential': ['RMP', 'mV',[-80, -70,-60, -50, -40], [-80, '',-60, '', -40]],
@@ -236,8 +239,28 @@ def dict_for_plotting():
     # 'capacitance': ['Capacitance', 'pF', [100, 300, 500, 700]],
     'rheo_ramp_c' : ['Rheobase', 'pA', [100,300,500,700,900],[100,'',500,'',900]],
     'cap_adj': ['Capacitance', 'pF', np.linspace(100, 700, 5),[100, '', 400,'', 700]],
-    'sag': ['Sag ratio', '', [0.50, 0.65, 0.80,  0.95, 1.10], [0.50, '', 0.80,  '', 1.10]]}
+    'sag': ['Sag ratio', '', [0.50, 0.65, 0.80,  0.95, 1.10], [0.50, '', 0.80,  '', 1.10]],
+    'hrs_after_OP': ['Time after tissue extraction', 'hrs', np.linspace(10, 50, 5), np.linspace(10, 50, 5)]}
     # 'tau_adj': ['Membrane time constant', 'ms', [10, 20, 30, 40, 50]]}
+    return titles_dict
+
+def dict_for_plotting_conn():
+    '''
+    key is the param as in the data table column
+    values[0] plot title
+    values[1] y asix
+    values[2] plot y ticks
+    '''
+    titles_dict = {'Amp 1': ['1st EPSP amplitude', 'mV', np.linspace(0, 4, 5), [0, '', 2, '', 4]],
+                'Amp 2': ['2nd EPSP amplitude', 'mV', np.linspace(0, 4, 5), [0, '', 2, '', 4]],
+                'Amp 3': ['3rd EPSP amplitude', 'mV', np.linspace(0, 4, 5), [0, '', 2, '', 4]],
+                'Amp 4': ['4th EPSP amplitude', 'mV', np.linspace(0, 4, 5), [0, '', 2, '', 4]],
+                'Lat1': ['1st EPSP latency', 'ms', np.linspace(0, 8, 5), [0, '', 4, '', 8]],
+                'amp': ['Norm. amplitude', '', np.linspace(0, 1, 5), [0, '', 0.5, '', 1]],
+                'lat': ['Norm. latency', '', np.linspace(1, 1.6, 5), [1, '', 1.3, '', 1.6]],
+                'con_percentage_fixed': ['Connection probability', 'percent (%)', np.linspace(0, 60, 5), [0, '', 30, '', 60]],
+                'hrs_after_OP': ['Time after tissue extraction', 'hrs', np.linspace(10, 50, 5), np.linspace(10, 50, 5)]}
+
     return titles_dict
 
 def dict_for_plotting_reduced(er_type):
@@ -1352,7 +1375,7 @@ def non_firing_cells_D2 (repatched_IFF_df):
 
     return not_firing_cells
 
-def count_non_firing_cells_d2(repatched_IFF_df):
+def count_non_firing_cells_d2(repatched_IFF_df, save_dir, data_type):
     '''
     counts the non_firing cells on D2 
     for all injection steps
@@ -1361,7 +1384,8 @@ def count_non_firing_cells_d2(repatched_IFF_df):
     num_aps_indx = get_num_aps_and_iff_data_culumns(repatched_IFF_df)[0]
     inj = [int(a[2:-15]) for a in repatched_IFF_df.columns[num_aps_indx]]
 
-    count_zeros_aps = {}
+    df_counts = pd.DataFrame(columns = ['treatment', 'day', 'injection',
+                                        'count_non_firing_cells'])
     for tr in repatched_IFF_df.treatment.unique():
         for day in repatched_IFF_df.day.unique():
             df_day = repatched_IFF_df[(repatched_IFF_df['day'] == day) &\
@@ -1370,12 +1394,18 @@ def count_non_firing_cells_d2(repatched_IFF_df):
             for indx in num_aps_indx:
                 counts.append((df_day.iloc[:, indx] == 0).sum())
 
-            count_zeros_aps[tr + day] =  np.column_stack((inj, counts))
-
+            df_temp = pd.DataFrame({'treatment': tr,
+                                    'day': day, 
+                                    'injection': inj, 
+                                    'count_non_firing_cells': counts})
+            df_counts = pd.concat([df_counts.loc[:], df_temp]).reset_index(drop=True)
     # for indx2 in iff_indx:
     #     count_zeros_iff.append((repatched_IFF_df.iloc[:, indx2] == 0).sum())
-    
-    return count_zeros_aps
+    df_counts.to_excel(f'{save_dir}{data_type}_non_firing_cells_count.xlsx')
+    df_counts.to_csv(f'{save_dir}{data_type}_non_firing_cells_count.csv')
+    print(f'saved df non_firing_cell_counts at {save_dir}')
+    return df_counts
+
 
 def get_num_aps_and_iff_data_culumns(df):
     '''
@@ -1534,7 +1564,7 @@ def plot_iff_avg_against_current_inj(iff_df, data_type, dv, num_inj_plot, nans_r
     plt.close(fig)
 
 
-def plot_non_firing_cells_d2(df, data_type):
+def plot_non_firing_cells_d2(df, data_type, save_dir):
     '''
     data_type = 'repatch' or 'slice'
     plots the number of non-firing cells per injection current
@@ -1591,8 +1621,7 @@ def plot_non_firing_cells_d2(df, data_type):
 
     fig.suptitle('Number of non-firing cells per inj ' + data_type, size = 30)
     fig.patch.set_facecolor('white')
-    plt.savefig('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/'+\
-                'paper_figs_collected_checked/plots/iff/' + data_type + '_non_firing_cells.png')
+    plt.savefig(save_dir + data_type + '_non_firing_cells.png')
     plt.close()
 
 
@@ -1823,7 +1852,7 @@ destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/p
         for i, tr in enumerate(df.treatment.unique()):
             x_plot =[]
             for j, day in enumerate(sorted(df['day'].unique())):
-                k = j + 2*i 
+                k = j + 2*i
                 df_plot = df[(df['treatment'] == tr) & (df['day'] == day)]
                 median = df_plot[amp].median()
                 x = np.linspace(0.65+k, 1.35+k, len(df_plot))
@@ -1843,7 +1872,7 @@ destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/p
                 for c, cell in enumerate(df_plot[con_ID_col]):
                     if k == 1 and len(df_plot[con_ID_col])-1 == c:
                         print(str(c+1) + 'Gencho')
-                    x1 = [x_plot[0][c], x[c]] 
+                    x1 = [x_plot[0][c], x[c]]
                     y = df[amp][df[con_ID_col] == cell]
                     op = df_plot['OP'][df_plot[con_ID_col] == cell].tolist()[0]
                     #age = df_plot['_new'][df_plot[con_ID_col] == cell].tolist()[0]
@@ -1856,10 +1885,11 @@ destination_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/p
             ax[a].set_ylabel('Amplitude (pA)', fontsize = 24)
         else:
             ax[a].set_ylabel(label_y, fontsize = 20)
+        
         if results_ == 'amp':
             ax[a].set_ylim([-0.5, int(np.max(df['Amp 1']))+1])
         else:
-            max_ = np.max([np.max(df).Lat1, np.max(df).Lat2,np.max(df).Lat3,np.max(df).Lat4]) + 0.5
+            max_ = np.max([np.max(df.Lat1), np.max(df.Lat2),np.max(df.Lat3),np.max(df.Lat4)]) + 0.5
             ax[a].set_ylim([-0.5, int(max_)])
         #ax[a].set_xticks(ticks = list(range(1,len(day_label) +1)), labels = day_label)
         ax[a].set_xticks(ticks = [1, 2, 3, 4], labels = ['D1',

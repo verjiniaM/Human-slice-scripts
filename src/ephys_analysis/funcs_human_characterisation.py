@@ -150,7 +150,7 @@ def load_traces(filename):
         for i in range(0,sweep_count):
             ch_data[:,i] = block.segments[i].analogsignals[ch].view(np.recarray).reshape(sweep_len)
 
-        data_dict[name]=[ch_data]  
+        data_dict[name]=[ch_data]
     return data_dict
     #len(data_dict) # number of channels
     #np.shape(data_dict1['Ch1'][0])[0] - sweep len
@@ -581,6 +581,11 @@ def try_other_swps(num_swps, ramp_dict, key):
 #quality control step, deciding whether spontaneous or mini recording is going to be analyzed
 #checking on which sweeps the dynamic range (max - min signal, disregarding minis) is smaller than a value
 def rec_stability (mini_filename, active_chans, max_drift, min_holding = -800):
+    '''
+    # quality control step, deciding whether spontaneous or mini recording is going to be analyzed
+    # checking on which sweeps the dynamic range (max - min signal, disregarding minis) is 
+    # smaller than a value
+    '''
     mini_dict = load_traces(mini_filename)
 
     rec_stability = {}
@@ -602,7 +607,7 @@ def rec_stability (mini_filename, active_chans, max_drift, min_holding = -800):
                 continue
 
         #if more than 1 location have the same max, find the biggest average interval (200ms around max_val)
-            max_val = np.amax(signal_no_test_pulse)   
+            max_val = np.amax(signal_no_test_pulse)
             loc_max = np.where(signal_no_test_pulse == max_val)[0][-1] #take the last loc of max
             if loc_max <= 1000:
                 avg_max_interval = np.mean(signal_no_test_pulse[loc_max: loc_max + 2000])

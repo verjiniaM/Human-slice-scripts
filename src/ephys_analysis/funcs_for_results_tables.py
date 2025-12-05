@@ -357,7 +357,7 @@ def get_spontan_QC(human_dir, OP, patcher):
 
         spontan_QC = hcf.rec_stability(filename_spontan, active_channels , 60)
         df_QC = pd.DataFrame(spontan_QC).T
-        df_QC['cell_ch'] = df_QC.index 
+        df_QC['cell_ch'] = df_QC.index
         df_QC.insert(0, 'cell_ch', df_QC.pop('cell_ch'))
         df_QC.insert(0, 'slice', slic)
         df_QC.insert(0, 'cell_ID', cell_IDs)
@@ -512,7 +512,6 @@ def get_intrinsic_properties_df_no_VM_file (human_dir, OP, tissue_source, patche
     #df_intrinsic.to_csv(work_dir + 'data_tables/' + OP + '_Intrinsic_and_synaptic_properties.csv')
 
     print('Intrinsic properties DataFrame for  ' + OP + ' saved successfully. ' + '\n' + 'Exclude recordings if necessary.')
-
 
 def remove_bad_data (OP, patcher, human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'):
     work_dir, filenames, indices_dict, slice_names, pre_chans, post_chans = sort.get_OP_metadata(human_dir, OP, patcher)
@@ -959,13 +958,14 @@ def check_if_data_missing_in_results_df():
     print(missing_data)
 
 
-def collect_events_dfs(event_type, human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'):
+def collect_events_dfs(event_type, QC = False, human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'):
     ''' 
     event_type = 'minis' or 'spontan'
+    if QC = True spits out a meta_df and QC_df for all collected data
     '''
     OP_dirs = glob.glob(human_dir + 'data*' + '/' + 'OP*')
 
-    meta_df = pd.DataFrame()
+    meta_df, QC_df_all = pd.DataFrame(), pd.DataFrame()
     for dir_ in OP_dirs:
         dir_ = dir_ + '/'
 
@@ -978,6 +978,8 @@ def collect_events_dfs(event_type, human_dir = '/Users/verjim/laptop_D_17.01.202
         # check if df empty
         if len(QC_df) == 0:
             continue
+        QC_df_all = pd.concat([QC_df_all.loc[:], QC_df]).reset_index(drop=True)
+        
         patcher = QC_df['patcher'][0]
         OP = QC_df['OP'][0]
 
@@ -992,4 +994,7 @@ def collect_events_dfs(event_type, human_dir = '/Users/verjim/laptop_D_17.01.202
         df_meta = df_meta.loc[~df_meta['Name of recording'].isna()]
         meta_df = pd.concat([meta_df.loc[:], df_meta]).reset_index(drop=True)
     
-    return meta_df
+    if QC:
+        return meta_df, QC_df_all
+    else:
+        return meta_df

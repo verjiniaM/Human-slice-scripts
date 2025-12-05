@@ -8,54 +8,26 @@ import ephys_analysis.funcs_plotting_raw_traces as funcs_plotting_raw_traces
 import ephys_analysis.funcs_con_screen as con_param
 import PyQt5
 
-def check_which_to_analyse (human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'
-):
-    # Lists to store folders without connection_analysis and with empty connection_analysis
-    no_connection_analysis = []
-    empty_connection_analysis = []
-
-    # Iterate through the folders in human_dir
-    for root, dirs, files in os.walk(human_dir):
-        # Get the folder name
-        folder_name = os.path.basename(root)
-        
-        # Check if the folder name starts with 'OP'
-        if folder_name.startswith('OP'):
-            # Check if 'connection_analysis' is not in the list of directories
-            if 'connection_analysis' not in dirs:
-                no_connection_analysis.append(folder_name)
-            else:
-                connection_analysis_path = os.path.join(root, 'connection_analysis')
-                # Check if the connection_analysis folder is empty
-                if not os.listdir(connection_analysis_path):
-                    empty_connection_analysis.append(folder_name)
-
-    # Print the results
-    print("Folders without 'connection_analysis/' folder:")
-    for folder in sorted(no_connection_analysis):
-        print(folder)
-
-    print("\nFolders with empty 'connection_analysis/' folder:")
-    for folder in sorted(empty_connection_analysis):
-        print(folder)
-
+# useful when you want to add/ check connectivity for a given siurgery
+# plots interactively each entered connectiity file and lets user inspect
 
 human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'
 results_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/data/'
 
 exp_view = pd.read_excel(glob.glob(human_dir + '*experiments_overview.xlsx')[0]) 
 
-OP = 'OP241120' 
+OP = 'OP230420'
 patcher = 'Verji'
 
 work_dir, filenames, indices_dict, slice_names = sort.get_OP_metadata(human_dir, OP, patcher, 'old')
-dir_plots = sort.make_dir_if_not_existing (work_dir, 'connection_analysis')
+dir_plots = sort.make_dir_if_not_existing(work_dir, 'connection_analysis')
 
 con_screen_json = sort.get_json_meta_connect_all(human_dir, OP, patcher)
 
 # inspect each plot and check if the connections in the lab_book are correctly noted
 for a, i in enumerate(con_screen_json[0]['con_screen_file']):
     %matplotlib qt
+    print(f'plotting fn {filenames[i]} chans {con_screen_json[0]['active_chans'][a]}')
     funcs_plotting_raw_traces.plot_con_screen_all(work_dir + filenames[i], con_screen_json[0]['active_chans'][a])
     %matplotlib
 
@@ -71,6 +43,8 @@ con_data = pd.DataFrame(columns = ['OP', 'fn', 'slice', 'day', 'connection_ID', 
 'Amp 1','Amp 2','Amp 3', 'Amp 4',	'Lat1',	'Lat2',	'Lat3',	'Lat4', 'num excluded swps', 'comments'])
 
 for i, indx in enumerate(con_screen_json[0]['con_screen_file']):
+    # i = 4
+    # indx = con_screen_json[0]['con_screen_file'][i]
     con_screen_file = work_dir + filenames[indx]
 
     if len(con_screen_json[0]['pre_chans']) == 0:

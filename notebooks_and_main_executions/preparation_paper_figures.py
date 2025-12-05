@@ -3,7 +3,6 @@ import os
 from collections import Counter
 # import importlib
 import shutil
-from matplotlib.pylab import f
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -11,6 +10,7 @@ import ephys_analysis.funcs_sorting as sort
 import ephys_analysis.funcs_plot_intrinsic_props as pl_intr
 from ephys_analysis.funcs_human_characterisation import cap_values_adjustment
 import ephys_analysis.funcs_for_results_tables as funcs_results
+import ast
 
 #%%
 def main():
@@ -36,6 +36,19 @@ def main():
     # cor1.sl_repatch_separate_means_confidence_ints()
     cor1.sl_repatch_separate_means_D1_all_ctrl()
 
+def get_passing_meta_df(analysis_df, meta_df):
+    # meta_complete = pd.read_excel("/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/paper_figs_collected_checked/data/meta_data.xlsx")
+
+    ops, tissue_source = [], []
+    for OP in analysis_df.OP.unique():
+        ops.append(OP)
+        tissue_source.append(analysis_df.tissue_source[analysis_df['OP'] == OP].to_list()[0])
+
+    OPs_interest = pd.DataFrame({'OP': ops, 'tissue_source': tissue_source})
+    relevant_meta = pd.merge(OPs_interest, meta_df)
+
+    return relevant_meta
+ 
 def plot_intrinsic_props(min_holding = -200 ):
     '''
     plot all the intrinsic properties for repatch data
@@ -883,7 +896,148 @@ def get_spontan_df():
     spontan_slice_all.to_excel(save_dir + '/spontan_slice_all.xlsx')
     spontan_inc_only.to_excel(save_dir + '/spontan_inc_only.xlsx')
 
+def find_mini_xlsx_files(root_directory):
+    """
+    Search for .xlsx files containing 'connected' in filename within all subfolders
+    """
+    connected_files = []
+    
+    # Method 1: Using glob with recursive search
+    pattern = os.path.join(root_directory, '**', '*connections*.xlsx')
+    connected_files = glob.glob(pattern, recursive=True)
+    
+    return connected_files
 
+def QC_mini_min_holding(mini_df, min_baseline = -300):
+    '''
+    goes through the mini_df
+    if max val for all swps is < -300, excludes the fn
+    '''
+    mini_df = mini_df.reset_index(drop = True)
+
+    indx_exclude = []
+    for i, _ in enumerate(mini_df.min_vals_each_swp):
+        list_max = ast.literal_eval(mini_df.max_vals_each_swp[i])
+
+        if max(list_max) < min_baseline:
+            indx_exclude.append(i)
+
+    return mini_df.drop(index=indx_exclude).reset_index(drop=True)
+
+def get_mini_df():
+    '''
+    collects all mini dfs
+    cross compares and keeps only OPs with intrinsic data
+    saves the results for statistical analysis
+    '''
+    # collecting and cross checking spontan / mini dataframes
+
+    # collect event meta_dfs
+    meta_mini, QC_df_all = funcs_results.collect_events_dfs('minis', QC = True)
+    # remove cells where nothing to analyse and OP210615
+    # meta_mini = meta_mini[meta_mini['OP'] != 'OP210615']
+    meta_mini = meta_mini[meta_mini['swps_to_analyse'] != '[]'].reset_index(drop=True)
+    QC_df_all = QC_df_all[QC_df_all['swps_to_analyse'] != '[]'].reset_index(drop=True)
+    meta_mini = get_match_cell_id(meta_mini)
+    QC_df_all = get_match_cell_id(QC_df_all)
+
+    print(f'len mini_meta {len(meta_mini)}')
+    print(f'len QC_df_all {len(QC_df_all)}')
+    print(f'len QC_df_all cells unique {len(meta_mini.cell_IDs_match.unique())}')
+    print(f'len QC_df_all cells unique {len(QC_df_all.cell_IDs_match.unique())}')
+
+    set1 = set(QC_df_all.cell_IDs_match.unique()) - set(meta_mini.cell_IDs_match.unique())
+    set2 = set(meta_mini.cell_IDs_match.unique()) - set(QC_df_all.cell_IDs_match.unique()) 
+
+    if len(set1) > 0 or len(set2) >2:
+        print('something wrong different cells in meta and QC')
+
+    mini_all = pd.merge(meta_mini, QC_df_all, on = 'cell_IDs_match', \
+                        suffixes = (None, '_y')).reset_index(drop=True)
+
+    # load QC checked intrinsic data
+    data_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/paper_figs_collected_checked/data/'
+ 
+    df_intr_complete = pd.read_excel(data_dir + 'adult_16min_hrs_inc_temporal.xlsx')
+    df_intr_complete = get_match_cell_id(df_intr_complete)
+
+    # with cell_ID from slice
+    ops_exclude = set(meta_mini.OP.unique()) - set(df_intr_complete.OP.unique())
+    print('removing ', str(len(ops_exclude)), 'OPs, missing from intr_df')
+    
+    mini_all = mini_all[~mini_all['OP'].isin(ops_exclude)].reset_index(drop = True)
+
+    # remove unnecessary columns
+    col_remove = list(mini_all.columns[mini_all.columns.str.contains('_y')]) # all doubles
+    mini_all = mini_all.drop(columns = col_remove)
+    mini_all = mini_all.loc[:, ~ mini_all.columns.str.contains('Unnamed')]
+
+    mini_all = mini_all[mini_all.treatment != 'TTX']
+
+    mini_all = QC_mini_min_holding(mini_all)
+    save_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/paper_figs_collected_checked/data/'
+    mini_all.to_csv(save_dir + '/mini_QC_temporal_adult.csv')
+    mini_all.to_excel(save_dir + '/mini_QC_temporal_adult.xlsx')
+
+
+def get_counts_non_firing_cells():
+    data_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/paper_figs_collected_checked/data/'
+
+    df_repatch = pd.read_excel(data_dir+ 'repatch_data_temporal.xlsx')
+    df_slice = pd.read_excel(data_dir+ 'slice_data_temporal.xlsx')
+    df_slice_short_inc = pd.read_excel(data_dir + '10.07.25_slice_incubation_only_no_move.xlsx')
+    df_slice_short_inc = df_slice_short_inc[df_slice_short_inc['hrs_after_OP'] < 35]
+    df_slice_short_inc = df_slice_short_inc[df_slice_short_inc['hrs_incubation'] > 15.9]
+    df_slice_short_inc.reset_index(drop = True, inplace = True)
+    df_inc = df_slice_short_inc.loc[[i for i, sl in enumerate(df_slice_short_inc.slice) if len(sl) <= 2], :]
+
+    df_dict = {'repatch': df_repatch,
+            'slice': df_slice,
+            'inc_only': df_inc}
+    for data_type, df in df_dict.items():
+        pl_intr.count_non_firing_cells_d2(df, data_dir, data_type)
+
+def get_match_cell_id_connectivity(df):
+    '''
+    cell_ID = patcher_initial + OP_date + slice + channel
+    '''
+    if 'cell_IDs_match_pre' in df.columns:
+        df = df.drop(columns = ['cell_IDs_match_pre'])
+
+    if 'cell_IDs_match_post' in df.columns:
+        df = df.drop(columns = ['cell_IDs_match_post'])
+
+    patcher_dict = {'Verji':'vm', 'Rosie': 'rs'}
+
+    cell_IDs_match_pre, cell_IDs_match_post = [], []
+    for i in range(len(df)):
+
+        print(df.OP[i])
+        chan_pre = df.chan_pre[i]
+        chan_post = df.chan_post[i]
+
+        slic = df.slice[i]
+        
+        if isinstance(chan_pre, (float, int, np.int64)):
+            chan_pre = str(int(chan_pre))
+            chan_post = str(int(chan_post))
+        else:
+            chan_pre = str(chan_pre)[-1] # ch repatched form D1
+            chan_post = str(chan_post)[-1]
+
+        cell_IDs_match_pre.append(patcher_dict[df.patcher[i]] +
+                              df.OP[i][2:] +
+                              slic +
+                              'c' + chan_pre)
+        cell_IDs_match_post.append(patcher_dict[df.patcher[i]] +
+                              df.OP[i][2:] +
+                              slic +
+                              'c' + chan_post)
+
+    df.insert(len(df.columns), 'cell_IDs_match_pre', cell_IDs_match_pre)
+    df.insert(len(df.columns), 'cell_IDs_match_post', cell_IDs_match_post)
+
+    return df
 
 class Correlations:
     '''
@@ -1512,116 +1666,21 @@ def filter_adult_hrs_incubation_data(df_intr_props, min_age, hrs_inc, max_age = 
     adult_df = pl_intr.filter_on_hrs_incubation(adult_df, hrs_inc, max_hrs_incubation)
     return adult_df
 
-# juv_df = filter_adult_hrs_incubation_data(df_intr_complete, min_age = 0, hrs_inc = 0, max_age = 10)
-# juv_df = juv_df[juv_df.hrs_incubation == 0]
-# juv_df = juv_df [pd.to_numeric(juv_df.patient_age, errors='coerce').notnull()]
+def QC_mini_min_holding(mini_df, min_baseline = -300):
+    '''
+    goes through the mini_df
+    if max val for all swps is < -300, excludes the fn
+    '''
+    mini_df = mini_df.reset_index(drop = True)
+
+    indx_exclude = []
+    for i, _ in enumerate(mini_df.min_vals_each_swp):
+        list_max = ast.literal_eval(mini_df.max_vals_each_swp[i])
+
+        if max(list_max) < min_baseline:
+            indx_exclude.append(i)
+
+    return mini_df.drop(index=indx_exclude).reset_index(drop=True)
 
 
-# dest_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/juv_patients/'
-# params = ['resting_potential', 'Rin', 'TH',
-#                 'membra_time_constant_tau', 'rheo_ramp_c', 'capacitance',
-#                 'max_depol', 'max_repol', 'Rs','AP_heigth', 'AP_halfwidth']
-# titles_dict = {'Rs': ['Series resistance', 'MΩ', [5,10,15,20,25,30]],
-#     'AP_halfwidth': ['AP halfwidth', 'ms', [0.5, 1, 1.5, 2, 2.5]],
-#     'Rin': ['Input resistance', 'MΩ', [0,100,200,300,400]],
-#     'resting_potential': ['RMP', 'mV',[-80, -70,-60,-50]],
-#     'max_spikes': ['Max spikes', 'count', [0,10,20,30,40,50]],
-#     'Rheobase': ['Rheobase', 'pA', [100,300,500,700,900]],
-#     'AP_heigth': ['AP amp', 'mV', [50,60,70,80,90,100]],    
-#     'TH': ['AP threshold', 'mV', [-50, -40, -30, -20, -10 ]],
-#     'max_depol': ['AP upstroke', 'mV/ms', [100,200,300,400,500]],
-#     'max_repol': ['AP downstroke', 'mV/ms', [-100, -80, -60, -40, -20]],
-#     'membra_time_constant_tau': ['tau', 'ms', [10, 20, 30, 40, 50]],
-#     'capacitance': ['Capacitance', 'pF', [100, 300, 500, 700]],
-#     'rheo_ramp_c' : ['Rheobase (ramp)', 'pA', [100,300,500,700,900]],
-#     'cap_adj': ['Capacitance', 'pF', [100, 300, 500, 700]],
-#     'sag': ['Sag ratio', 'sag ratio', [0.7, 0.8, 0.9, 1.0]]}
-
-# fig, ax = plt.subplots(3, 4, figsize = (30,12))
-
-# ax_x = [0,0,0,0,1,1,1,1,2,2,2]
-# ax_y = [0,1,2,3,0,1,2,3,0,1,2]
-
-# for i, param in enumerate(params):
-
-#     for age in juv_df.patient_age.unique():
-#         x = ax_x[i]
-#         y = ax_y[i]
-#         df_plot = juv_df[juv_df.patient_age == age]
-  
-#         median = np.nanmedian(df_plot[param])
-#         ax[x,y].scatter(df_plot.patient_age, df_plot[param], alpha = 0.75)
-#         ax[x,y].scatter(age, median, marker = 'D', s = 150, c = 'darkblue')
-  
-#         # ax[x,y].set_xticks(ticks = [0, 5, 10])
-#         ax[2,y].set_xlabel('Age (years)')
-#         ax[x,y].set_ylabel(titles_dict[param][0] + '(' +titles_dict[param][1] + ')')
-# ax[0,0].scatter(age, median, marker = 'D',
-#                         label = 'median ' + str(age), s = 150, c = 'darkblue')
-# fig.legend(loc = 'lower right', fontsize = 'small')
-
-# plt.subplots_adjust(hspace = 0.2, wspace = 0.8)
-# plt.show()
-# # fig.savefig(dest_dir + 'min_' + str(min(juv_df.patient_age)) + '_max_' + \
-# #             str(max(juv_df.patient_age)) + '_patients_summary.png')
-
-
-
-# fig, ax = plt.subplots(3, 4, figsize = (30,12))
-
-# ax_x = [0,0,0,0,1,1,1,1,2,2,2]
-# ax_y = [0,1,2,3,0,1,2,3,0,1,2]
-
-# for i, param in enumerate(params):
-
-    
-#     x = ax_x[i]
-#     y = ax_y[i]
-  
-#     median = np.nanmedian(juv_df[param])
-#     ax[x,y].scatter(juv_df.patient_age, juv_df[param], alpha = 0.6)
-    
-
-#     x_medians, medians = [], []
-#     for start in range(0,  75, 10):
-#         condition = (juv_df.patient_age >= start) & (juv_df.patient_age < start + 10)
-#         data_condition = juv_df[param][condition].tolist()
-#         if len(data_condition) < 1:
-#             # not adding nans
-#             continue
-#         x_medians.append(start + 5)
-#         medians.append(np.nanmedian(data_condition))
-    
-#     ax[x,y].plot(x_medians, medians, color = 'blue', marker = 'D' , \
-#                     markersize = 7, markeredgewidth = 4, alpha = 0.8)
-
-        
-#     # ax[x,y].set_xticks(ticks = [0, 5, 10])
-#     ax[2,y].set_xlabel('Age (years)')
-#     ax[x,y].set_ylabel(titles_dict[param][0] + '(' +titles_dict[param][1] + ')')
-
-# fig.legend(loc = 'lower right', fontsize = 'small')
-
-# plt.subplots_adjust(hspace = 0.2, wspace = 0.8)
-# plt.show()
-# fig.savefig(dest_dir + 'min_' + str(min(juv_df.patient_age)) + '_max_' + \
-#             str(max(juv_df.patient_age)) + '_patients_summary.png')
-
-
-
-# #############
-# param = 'TH'
-# df = df_repatch
-# if df.repatch.unique()[0] == 'yes':
-#     print('REPATCH')
-# elif df.repatch.unique()[0] == 'no':
-#     print('SLICE')
-# print('Ctrl D1')
-# print(np.mean(df[param][(df.day == 'D1') & (df.treatment == 'Ctrl')]))
-# print('Ctrl D2')
-# print(np.mean(df[param][(df.day == 'D2') & (df.treatment == 'Ctrl')]))
-# print('high K D1')
-# print(np.mean(df[param][(df.day == 'D1') & (df.treatment == 'high K')]))
-# print('high K D2')
-# print(np.mean(df[param][(df.day == 'D2') & (df.treatment == 'high K')]))
 
