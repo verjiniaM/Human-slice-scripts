@@ -191,7 +191,7 @@ def get_access_resistance(vctpfile, channels):
     ResRa_all, ResRi_all = [], []
     for ch in channels:
         key = 'Ch' + str(ch)
-        mean = np.mean(data_dict[key][0], axis = 1) 
+        mean = np.mean(data_dict[key][0], axis = 1)
         
         #detect_peaks(mean,mpd = 999, edge='both', valley=True) #mpd - peaks separated by min peak distance
         minpeak = np.min(mean)
@@ -582,9 +582,9 @@ def try_other_swps(num_swps, ramp_dict, key):
 #checking on which sweeps the dynamic range (max - min signal, disregarding minis) is smaller than a value
 def rec_stability (mini_filename, active_chans, max_drift, min_holding = -800):
     '''
-    # quality control step, deciding whether spontaneous or mini recording is going to be analyzed
-    # checking on which sweeps the dynamic range (max - min signal, disregarding minis) is 
-    # smaller than a value
+    quality control step, deciding whether spontaneous or mini recording is going to be analyzed
+    checking on which sweeps the dynamic range (max - min signal, disregarding events) is 
+    smaller than a value
     '''
     mini_dict = load_traces(mini_filename)
 

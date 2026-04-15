@@ -226,15 +226,17 @@ def dict_for_plotting():
     values[2] plot y ticks
     '''
     titles_dict = {'Rs': ['Series resistance', 'MΩ', np.linspace(5, 35, 5),[5,'',20,'',35]],
-    'AP_halfwidth': ['AP halfwidth', 'ms', np.linspace(0.5, 1.7, 5), [0.5, '', 1.1, '', 1.7]],
+    # 'AP_halfwidth': ['AP halfwidth', 'ms', np.linspace(0.5, 1.7, 5), [0.5, '', 1.1, '', 1.7]],
+    'AP_halfwidth': ['AP halfwidth', 'ms', np.linspace(0.5, 2.3, 5), [0.5, '', 1.4, '', 2.3]],
     'Rin': ['Input resistance', 'MΩ', [0, 75, 150, 225, 300],[0, '', 150, '', 300]],
     'resting_potential': ['RMP', 'mV',[-80, -70,-60, -50, -40], [-80, '',-60, '', -40]],
     'max_spikes': ['Maximum number of spikes', 'count', np.linspace(0, 70, 5), [0,'', 35, '', 70]],
     'Rheobase': ['Rheobase', 'pA', [100,300,500,700,900]],
     'AP_heigth': ['AP amplitude', 'mV', np.linspace(50, 100, 5),[50, '', 70, '', 100]],    
     'TH': ['AP threshold', 'mV', [-50, -40, -30, -20, -10 ],[-50, '', -30, '', -10 ]],
-    'max_depol': ['AP upstroke (min)', 'mV/ms', np.linspace(0, 600, 5),[0,'',300,'',600]],
-    'max_repol': ['AP downstroke (max)', 'mV/ms', np.linspace(-130, -40, 5), [-130, '', -85, '', -40]],
+    'max_depol': ['AP upstroke', '\n mV/ms', np.linspace(0, 600, 5),[0,'',300,'',600]],
+    # 'max_repol': ['AP downstroke', '\n mV/ms', np.linspace(-130, -40, 5), [-130, '', -85, '', -40]],
+    'max_repol': ['AP downstroke', '\n mV/ms', np.linspace(-130, -20, 5), [-130, '', -75, '', -20]],
     'membra_time_constant_tau': ['Membrane time constant', 'ms', np.linspace(10, 50, 5),[10, '', 30, '', 50]],
     # 'capacitance': ['Capacitance', 'pF', [100, 300, 500, 700]],
     'rheo_ramp_c' : ['Rheobase', 'pA', [100,300,500,700,900],[100,'',500,'',900]],
@@ -256,10 +258,19 @@ def dict_for_plotting_conn():
                 'Amp 3': ['3rd EPSP amplitude', 'mV', np.linspace(0, 4, 5), [0, '', 2, '', 4]],
                 'Amp 4': ['4th EPSP amplitude', 'mV', np.linspace(0, 4, 5), [0, '', 2, '', 4]],
                 'Lat1': ['1st EPSP latency', 'ms', np.linspace(0, 8, 5), [0, '', 4, '', 8]],
-                'amp': ['Norm. amplitude', '', np.linspace(0, 1, 5), [0, '', 0.5, '', 1]],
-                'lat': ['Norm. latency', '', np.linspace(1, 1.6, 5), [1, '', 1.3, '', 1.6]],
+                'amp': ['Norm. amplitude', '', np.linspace(0.5, 1.5, 5), [0.5, '', 1, '', 1.5]],
+                'lat': ['Norm. latency', '', np.linspace(1, 1.7, 5), [1, '', 1.35, '', 1.7]],
                 'con_percentage_fixed': ['Connection probability', 'percent (%)', np.linspace(0, 60, 5), [0, '', 30, '', 60]],
-                'hrs_after_OP': ['Time after tissue extraction', 'hrs', np.linspace(10, 50, 5), np.linspace(10, 50, 5)]}
+                'hrs_after_OP': ['Time after tissue extraction', 'hrs', np.linspace(10, 50, 5), np.linspace(10, 50, 5)],
+                'Vm': ['RMP', 'mV',[-80, -70,-60, -50, -40], [-80, '',-60, '', -40]],
+                'Rs_start': ['Series resistance', 'MΩ', np.linspace(5, 35, 5),[5,'',20,'',35]],
+                'Rs_end': ['Series resistance', 'MΩ', np.linspace(5, 35, 5),[5,'',20,'',35]],
+                'TH': ['AP threshold', 'mV', [-50, -40, -30, -20, -10 ],[-50, '', -30, '', -10 ]],
+                'Rheobse_ramp' : ['Rheobase', 'pA', [100,300,500,700,900],[100,'',500,'',900]],
+                'failure_rates': ['Event failure rate', '(%)', np.linspace(0, 100, 5), [0, '', 50, '', 100]],
+                'num_swps': ['Recorded sweeps', '(count)', np.linspace(0, 50, 5), [0, '', 25, '', 50]],
+                'num_swps_events': ['Sweeps with events', '(count)', np.linspace(0, 50, 5), [0, '', 25, '', 50]],
+                'Rs': ['Series resistance', 'MΩ', np.linspace(5, 50, 5),[5,'',25,'',50]]}
 
     return titles_dict
 
@@ -293,7 +304,7 @@ def dict_for_plotting_synaptic():
     values[1] y asix
     values[2] plot y ticks
     '''
-    titles_dict = {'amplitude mean': ['Mean amplitude', 'pA', [-50, -40, -30, -20, -10, 0]], 
+    titles_dict = {'amplitude mean': ['Mean amplitude', 'pA', [-50, -40, -30, -20, -10, 0]],
     'frequency (Hz)': ['Event frequency', 'Hz', [0,2,4,6,8,10]],
     'risetime mean': ['Mean risetime (10 to 90)', 'ms', [0.0002, 0.002, 0.01]],
     'decaytime mean': ['Mean half decay time', 'ms', [0.003, 0.004, 0.005, 0.006]],
@@ -1385,24 +1396,27 @@ def count_non_firing_cells_d2(repatched_IFF_df, save_dir, data_type):
     inj = [int(a[2:-15]) for a in repatched_IFF_df.columns[num_aps_indx]]
 
     df_counts = pd.DataFrame(columns = ['treatment', 'day', 'injection',
-                                        'count_non_firing_cells'])
+                                        'count_non_firing_cells',
+                                         'count_firing_cells'])
     for tr in repatched_IFF_df.treatment.unique():
         for day in repatched_IFF_df.day.unique():
             df_day = repatched_IFF_df[(repatched_IFF_df['day'] == day) &\
                                       (repatched_IFF_df['treatment'] == tr)]
-            counts = []
+            counts,counts_f = [], []
             for indx in num_aps_indx:
                 counts.append((df_day.iloc[:, indx] == 0).sum())
+                counts_f.append((df_day.iloc[:, indx] != 0).sum())
 
             df_temp = pd.DataFrame({'treatment': tr,
                                     'day': day, 
                                     'injection': inj, 
-                                    'count_non_firing_cells': counts})
+                                    'count_non_firing_cells': counts,
+                                    'count_firing_cells': counts_f})
             df_counts = pd.concat([df_counts.loc[:], df_temp]).reset_index(drop=True)
     # for indx2 in iff_indx:
     #     count_zeros_iff.append((repatched_IFF_df.iloc[:, indx2] == 0).sum())
-    df_counts.to_excel(f'{save_dir}{data_type}_non_firing_cells_count.xlsx')
-    df_counts.to_csv(f'{save_dir}{data_type}_non_firing_cells_count.csv')
+    df_counts.to_excel(f'{save_dir}{data_type}_non_firing_cells_count_V2.xlsx')
+    df_counts.to_csv(f'{save_dir}{data_type}_non_firing_cells_count_V2.csv')
     print(f'saved df non_firing_cell_counts at {save_dir}')
     return df_counts
 

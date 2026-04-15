@@ -6,18 +6,23 @@ axes.spines.top:    False
 axes.edgecolor:     black
 axes.grid:          False
 axes.axisbelow:     line 
-axes.titlesize:     medium   # font size of the axes title
 axes.prop_cycle: cycler('color', ['darkgreen']) # default plot color is green
 
 # LINES
-lines.linewidth : 1.9
-lines.markersize: 4.2
+lines.linewidth : 1 # was 1.9
+lines.markersize: 3 # was 4.2
 
 # FONTS
-font.size :         12
+font.size :         8.25
 font.family         : sans-serif
 font.sans-serif     : Arial
 svg.fonttype :        none
+axes.titlesize    : 8.25
+axes.labelsize    : 8.25
+xtick.labelsize   : 8.25
+ytick.labelsize   : 8.25
+legend.fontsize   : 8.25
+figure.titlesize  : 8.25
 
 # FIGURE
 figure.autolayout: True # if false everything very tight. False for firing; True for intrinsic
@@ -35,12 +40,12 @@ boxplot.showfliers:  False
 boxplot.showmeans:   False
 boxplot.notch:       True
 boxplot.patchartist: False
-boxplot.boxprops.linewidth:     1.6
-boxplot.boxprops.color:     black
-boxplot.capprops.linewidth:     1.6
-boxplot.capprops.color:     black
-boxplot.whiskerprops.linewidth: 1.6
-boxplot.whiskerprops.color:     black
-boxplot.medianprops.linewidth:    1.6
-boxplot.medianprops.color:     black
+boxplot.boxprops.linewidth:     1.3
+boxplot.boxprops.color:    4A0000
+boxplot.capprops.linewidth:     1.3
+boxplot.capprops.color:   4A0000
+boxplot.whiskerprops.linewidth: 1.3
+boxplot.whiskerprops.color:     4A0000
+boxplot.medianprops.linewidth:    1.3
+boxplot.medianprops.color:    4A0000
 

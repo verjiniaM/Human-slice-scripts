@@ -94,7 +94,7 @@ def postsynaptic_screen(con_screen_file, post_cell_chan, es):
     return post_sig, vmO
 
 #cuts out stimulation window for analysis
-def get_analysis_window(pre_sig, post_sig):
+def get_analysis_window(pre_sig, post_sig, artefact = False):
 
     mean_pre = np.mean(pre_sig, axis = 1)
 
@@ -109,9 +109,33 @@ def get_analysis_window(pre_sig, post_sig):
     pre_window = mean_pre[preAPs[0][0]-750:preAPs[0][num_APs-1]+750]
 
     mean_post = np.mean(post_sig, axis = 1)
-    post_window = mean_post[preAPs[0][0]-750:preAPs[0][num_APs-1]+750]    
+    post_window = mean_post[preAPs[0][0]-750:preAPs[0][num_APs-1]+750]
     preAPs_shifted = find_peaks(pre_window, height=j, distance=800) #shifts so that stim_sindow starts at 0
-    
+
+    if artefact:
+        artf_size = 1
+        ranges_remove = (np.r_[
+        preAPs[0][0]-artf_size:preAPs[0][0]+artf_size,
+        preAPs[0][1]-artf_size:preAPs[0][1]+artf_size,
+        preAPs[0][2]-artf_size:preAPs[0][2]+artf_size,
+        preAPs[0][3]-artf_size:preAPs[0][3]+artf_size])
+        indx_remove = np.in1d(np.arange(0,len(mean_pre)), ranges_remove)
+        mean_pre = mean_pre[~indx_remove]
+        preAPs = find_peaks(mean_pre, height=0, distance=800)
+        j = 0 #starting with min AP heigth 0
+        while len(preAPs[0]) < 4:
+            j = j-5
+            preAPs=find_peaks(mean_pre, height=j, distance=800)
+            if len(preAPs[0]) == 4:
+                print('found 4 APs')
+
+        num_APs = len(preAPs[0])
+        pre_window =  mean_pre[preAPs[0][0]-750:preAPs[0][num_APs-1]+750]
+
+        mean_post = np.mean(post_sig[~indx_remove], axis = 1)
+        post_window = mean_post[preAPs[0][0]-750:preAPs[0][num_APs-1]+750]
+        preAPs_shifted = find_peaks(pre_window, height=j, distance=800) #shifts so that 
+        
     return mean_pre, mean_post, pre_window, post_window, preAPs_shifted, preAPs
 
 #removes sweeps where  POSTsynaptic cell fires APs during stimulation window
@@ -132,7 +156,7 @@ def remove_sweeps_with_POSTsynAPs(pre_sig, post_sig, preAPs):
 #takes differential and uses this to find psp peaks
 def find_postsynaptic_peaks(post_window, preAPs_shifted):
     post_d1 = np.diff(post_window,1)
-    post_d1_peaks = find_peaks(post_d1 ,distance=800) 
+    post_d1_peaks = find_peaks(post_d1 ,distance=800)
 
     num_aps = len(preAPs_shifted[0])
     PSPs = np.ndarray([num_aps,2])
@@ -173,7 +197,7 @@ def get_onsets(preAPs_shifted, post_window, PSPs, bl):
         if fit_start[0][0] == fit_end[0][0]:
             onsets[i,0] = math.nan
             continue
-        x = range(155)
+        x = range(400)
         if fit_end[0][0] < fit_start[0][0]:
             onsets[i,0] = math.nan
             continue

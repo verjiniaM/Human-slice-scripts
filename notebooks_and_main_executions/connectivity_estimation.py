@@ -127,7 +127,7 @@ def create_unique_cell_IDs(df, data_type):
         pre_chan_ID.append(f'{patcher}_{op}_{slic}_{pre_cell}')
         if 'con' in data_type:
             post_cell = df[post_chan][i]
-            post_chan_ID.append(f'{patcher}_{op}_{slic}_{post_cell}')
+            post_chan_ID.append(f'')
             con_IDs.append(f'{patcher}_{op}_{slic}_{pre_cell}_{post_cell}')
     if 'con' in data_type:
         df.insert(len(df.columns), 'pre_cell_ID', pre_chan_ID)
@@ -658,6 +658,7 @@ def quick_dirty_plot_connectivity(df_connections, title_, save_dir = False):
             format='svg', bbox_inches='tight', dpi=300)
     plt.show()
 
+
 #%%
 
 # what's happening
@@ -823,17 +824,22 @@ for param in plot_hist_params:
     plt.title(param)
     plt.show()
 
-
 # df_con_repatch_collected_QC.to_excel('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/paper_figs_collected_checked/data/connectivity/repatched_connections_looser_QC.xlsx')
 
 #%%
 
 # adding connectivity plots if missing
+human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'
 
-op = 'OP240503'
-con_screen_indx = 33
-pre_cells = [8]
-post_cells = [2]
+plt.style.use('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/code/Human-slice-scripts/style_plot_paper.mplstyle')
+import importlib
+importlib.reload(con_param)
+importlib.reload( plotting_funcs)
+
+op = 'OP240215'
+con_screen_indx = 51 # 67
+pre_cells = [2,2,3,8,8]
+post_cells = [1,3,1,1,3]
 patcher = 'Verji'
 vc_file_indx = 0
 
@@ -847,20 +853,38 @@ for i, pre_cell in enumerate(pre_cells):
     pre_signal = con_param.presynaptic_screen_ALLOW_ALL(con_screen_file, pre_cell)
     post_signal, vm_post = con_param.postsynaptic_screen_ALLOW_ALL(con_screen_file, post_cell, [])
 
+    # # QC checked
+    # pre_sig, post_sig = pre_signal, post_signal
+    pre_signal, _, vm0 = con_param.presynaptic_screen(con_screen_file, pre_cell)
+    post_signal, vm_post = con_param.postsynaptic_screen(con_screen_file, post_cell, [])
+
     mean_pre, mean_post, pre_window, post_window, preAPs_shifted, preAPs = \
-        con_param.get_analysis_window(pre_signal, post_signal)
+        con_param.get_analysis_window(pre_signal, post_signal, artefact = True)
+    
+   # preAPs_shifted = (np.array([preAPs_shifted[0][0], 1748, 2746, 3745]), preAPs_shifted[1])
     pre_signal, post_signal = con_param.remove_sweeps_with_POSTsynAPs(pre_signal, post_signal, preAPs)
     post_peaks = con_param.find_postsynaptic_peaks(post_window, preAPs_shifted)
-    post_local_baseline = con_param.get_psp_baselines(post_window,preAPs_shifted)
+    
+    post_local_baseline = con_param.get_psp_baselines(post_window, preAPs_shifted)
+    
     onsets = con_param.get_onsets(preAPs_shifted, post_window, post_peaks, post_local_baseline)
+
+    # onsets = np.array([[onsets[0][0]], [onsets[1][0]+25],  [onsets[2][0]+15], [3776]])
     latency = con_param.latencies(onsets, preAPs_shifted)
     amps = con_param.get_amps(post_peaks, post_local_baseline)
 
     # plot from con_screen
     plotting_funcs.plot_connection_window(con_screen_file, pre_cell, post_cell, pre_window, \
-        post_window, preAPs_shifted, post_signal, onsets, preAPs, post_peaks, post_local_baseline)
+        post_window, preAPs_shifted, post_signal, onsets, preAPs, post_peaks, post_local_baseline, svg = True)
 
-
+# def get_psp_baselines(post_window,preAPs_shifted):
+#     num_aps = len(preAPs_shifted[0])
+#     bl = np.ndarray([num_aps,1])
+#     for h in range(num_aps):
+#         bl[h,0] = np.mean(post_window[preAPs_shifted[0][h]-20:\
+#                         preAPs_shifted[0][h]-5],axis=0)
+#     return bl
+# post_local_baseline = get_psp_baselines(post_window, preAPs_shifted)
 
 
 # FROM VC FILE

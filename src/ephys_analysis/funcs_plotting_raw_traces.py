@@ -388,7 +388,7 @@ def plot_connect(fn, active_channels, z1=0.5, z2=35.5,
     plt.close(fig)
 
 def  plot_connection_window(con_screen_file, preC, postC, pre_window, post_window, preAPs_shifted, postsig,\
-                           onsets, preAPs, PSPs, bl):
+                           onsets, preAPs, PSPs, bl, svg = False):
 
     sampl_rate, units, times = hcf.get_abf_info(con_screen_file, preC, np.shape(postsig)[1], np.shape(postsig)[0])
     end_fn = con_screen_file.rfind('/') + 1
@@ -415,7 +415,7 @@ def  plot_connection_window(con_screen_file, preC, postC, pre_window, post_windo
 
     for i in range(0,len(preAPs_shifted[0])):
         sample_rate = sampl_rate.item()
-        axarr[1].hlines(bl[i,0], (preAPs_shifted[0][i]-170)/sample_rate, (preAPs_shifted[0][i]-30)/sample_rate, 
+        axarr[1].hlines(bl[i,0], (preAPs_shifted[0][i]-170)/sample_rate, (preAPs_shifted[0][i]-30)/sample_rate,
         linestyles = 'solid', lw = 3, color='b', label = my_labels['l2'],zorder=10, alpha = 0.6)
         my_labels['l2'] = "_nolegend_"
 
@@ -435,6 +435,9 @@ def  plot_connection_window(con_screen_file, preC, postC, pre_window, post_windo
     fig.patch.set_facecolor('white')
 
     plt.savefig(dir_connect + '/pre_post_events_' + con_screen_file[end_fn:-4] + '_Ch' + str(preC) + '#Ch' + str(postC) + '.png')
+    if svg:
+        plt.savefig(f'{dir_connect}/pre_post_events_{con_screen_file[end_fn:-4]}_Ch{preC}#Ch{postC}.svg',
+                        format = 'svg', bbox_inches = 'tight', dpi = 300)
     plt.close()
 
     return fig, axarr

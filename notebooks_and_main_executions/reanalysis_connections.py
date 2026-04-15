@@ -8,7 +8,7 @@ import ephys_analysis.funcs_plotting_raw_traces as funcs_plotting_raw_traces
 import ephys_analysis.funcs_con_screen as con_param
 import PyQt5
 
-# useful when you want to add/ check connectivity for a given siurgery
+# useful when you want to add/ check connectivity for a given surgery
 # plots interactively each entered connectiity file and lets user inspect
 
 human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'

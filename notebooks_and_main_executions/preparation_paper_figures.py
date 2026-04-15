@@ -823,7 +823,7 @@ def get_intrinsic_dfs(_15mm = False):
 def get_spontan_df():
     '''
     collects all spontan dfs
-    cross compares with alreadhy QC checked intrinsic data
+    cross compares with already QC checked intrinsic data
     saves the results for statistical analysis
     '''
     # collecting and cross checking spontan / mini dataframes
@@ -1681,6 +1681,3 @@ def QC_mini_min_holding(mini_df, min_baseline = -300):
             indx_exclude.append(i)
 
     return mini_df.drop(index=indx_exclude).reset_index(drop=True)
-
-
-
