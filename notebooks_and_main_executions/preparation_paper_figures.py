@@ -462,6 +462,7 @@ def combine_columns(df):
 def get_match_cell_id(df):
     '''
     cell_ID = patcher_initial + OP_date + slice + channel
+    inserts column cell_IDs_match
     '''
     if 'cell_IDs_match' in df.columns:
         df = df.drop(columns = ['cell_IDs_match'])
@@ -904,7 +905,7 @@ def find_mini_xlsx_files(root_directory):
     
     # Method 1: Using glob with recursive search
     pattern = os.path.join(root_directory, '**', '*connections*.xlsx')
-    connected_files = glob.glob(pattern, recursive=True)
+    connected_files = glob(pattern, recursive=True)
     
     return connected_files
 
@@ -1632,8 +1633,163 @@ def get_meta_data_summary(meta_df):
     print(f'min age {meta_df.age.min()}')
     print(f'max age {meta_df.age.max()}')
 
-# if __name__ == "__main__":
-#     main()
+
+def get_intrinsic_df_con_paper(min_holding):
+    '''
+    collect the QC_checked dataframes
+    QC
+    Age: 12 to max (75?)
+    hours incubation > 16h
+    columns from lab book during recording
+    holding > -300
+
+    returns: adult_df_repatch, adult_df_slice with all info for plotting intrinsic properties
+    '''
+    adult_df = load_intr_data('all')
+
+    check_where_iff_needs_creating(adult_df)
+    df_qc_hold = get_lab_book_info(adult_df)
+    df_qc_hold = get_match_cell_id(df_qc_hold)
+    adult_df = get_match_cell_id(adult_df)
+
+    iffs = funcs_results.collect_IFF_dfs()
+    # remove ops not present in adult_df_qc
+    ops_remove = set(iffs.OP.unique()) - set(adult_df.OP.unique())
+    iffs = iffs[~iffs['OP'].isin(ops_remove)].reset_index(drop = True)
+    iffs = get_match_cell_id(iffs)
+
+    # find duplicates
+    # Filter the DataFrame to get the repeating values
+    fix_op = sorted(iffs.OP[iffs['cell_IDs_match'].duplicated(keep=False)].unique())
+    for op in fix_op:
+        print(op)
+
+    if len(adult_df.cell_IDs_match.unique()) < len(adult_df):
+        print('smth wrong with unique cell_IDs adult')
+
+    if len(df_qc_hold.cell_IDs_match.unique()) < len(df_qc_hold):
+        print('smth wrong with unique cell_IDs QC')
+
+    if len(iffs.cell_IDs_match.unique()) < len(iffs):
+        print('smth wrong with unique cell_IDs iff')
+
+    cells_not_in_qc=set(adult_df.cell_IDs_match.unique())-set(df_qc_hold.cell_IDs_match.unique())
+    cells_not_in_iffs =set(adult_df.cell_IDs_match.unique()) - set(iffs.cell_IDs_match.unique())
+    missing_cells = list(cells_not_in_qc) + list(cells_not_in_iffs)
+    print(f'missign cells [QC], [IFF] {len(missing_cells)}')
+    [print(i) for i in sorted(missing_cells)]
+
+    # remove the adult_df
+    adult_df = adult_df[~adult_df['cell_IDs_match'].isin(missing_cells)]
+    adult_df = adult_df.reset_index(drop=True)
+
+    # join QC and adult_df based on unique cell_ID
+    adult_df_qc = pd.merge(adult_df, df_qc_hold, on = 'cell_IDs_match', \
+                        how = 'left', suffixes = (None, '_y')).reset_index(drop=True)
+
+    adult_df_complete = pd.merge(adult_df_qc, iffs, on = 'cell_IDs_match', \
+                        how = 'left', suffixes = (None, '_y_iff')).reset_index(drop=True)
+
+    # if slices in new and old df identical --> remove the columns that contain '_y'
+    # remove repeating columns, without the cell_IDs_match_re_y
+    if False not in list((adult_df_qc.slice) == (adult_df_complete.slice_y)):
+        col_remove = list(adult_df_complete.columns[adult_df_complete.columns.str.contains('_y')])
+        col_remove.remove('cell_IDs_match_re_y')
+
+        adult_df_complete = adult_df_complete.drop(columns = col_remove)
+
+    # adult_df_complete['hold_start'] = adult_df_complete['hold_start'].astype(int)
+    adult_df_complete=adult_df_complete[adult_df_complete.hold_start>min_holding].reset_index(drop = True)
+    qc_check_wrong_day(adult_df_complete)
+    
+    adult_df_repatch = pl_intr.get_repatch_df(adult_df_complete)
+
+    # cells that are not in the repatch dataset
+    adult_df_slice_all = adult_df_complete[
+        ~adult_df_complete['cell_IDs_match'].isin(adult_df_repatch['cell_IDs_match'])
+    ].copy()
+
+    # cells recorded on both days -> slice dataset
+    adult_df_slice = data_recordings_on_both_days(adult_df_slice_all)
+
+    unused_df = adult_df_complete[
+        ~adult_df_complete['cell_IDs_match'].isin(adult_df_repatch['cell_IDs_match']) &
+        ~adult_df_complete['cell_IDs_match'].isin(adult_df_slice['cell_IDs_match'])
+    ].copy()
+
+    # label datasets
+    adult_df_repatch['dataset'] = 'repatch'
+    adult_df_slice['dataset'] = 'slice'
+    unused_df['dataset'] = 'inc_only'
+
+    # combine everything
+    adult_df_combined = pd.concat([
+        adult_df_repatch,
+        adult_df_slice,
+        unused_df
+    ], ignore_index=True)
+
+    print(f'adult_df_complete: {len(adult_df_complete)}')
+    print(f'adult_df_repatch: {len(adult_df_repatch)}')
+    print(f'adult_df_slice: {len(adult_df_slice)}')
+    print(f'adult_unused: {len(unused_df)}')
+    print(f'adult_df_complete: {len(adult_df_combined)}')
+
+    adult_df_combined.to_csv('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/'+ \
+                            '/connectivity_paper/data/con_analysis_clean_all/all_intr_props_all_treatments.csv')
+    return adult_df_combined
+
+def collect_con_screen_from_jsons():
+    '''
+    for every op in exp_dir, collects the data from the con_screen .json file
+    '''
+    human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'
+    exp_view = pd.read_excel(glob(human_dir + '*experiments_overview.xlsx')[0])
+
+    # ops to skip because no data was collected
+    ops_skip = ['OP230412', 'OP240124', 'OP240229', 'OP240318', 'OP240820', 'OP241203']
+
+    df_con_screen_all = pd.DataFrame()
+    ops_no_con_screen, op_no_pre_chans = [], []
+    for i, op in enumerate(exp_view.OP):
+        if op in ops_skip:
+            continue
+        patcher = exp_view.patcher[i]
+
+        work_dir, _, _, _ = sort.get_OP_metadata(human_dir, op, patcher, 'old')
+        try:
+            con_screen_json = sort.from_json(work_dir, op, '_con_screen_only.json')
+        except FileNotFoundError:
+            print(f'no con_screen file for {op}, {patcher}')
+            ops_no_con_screen.append(op)
+            continue
+
+        if 'pre_chans' in con_screen_json[0].keys():
+            data_rows = []
+            for i, pre_cells_list in enumerate(con_screen_json[0]['pre_chans']):
+                post_cells_list = con_screen_json[0]['post_chans'][i]
+                slice_name = con_screen_json[0]['slices'][i]
+                treatment = con_screen_json[0]['treatment'][i]
+
+                for j, pre_chan in enumerate(pre_cells_list):
+                    post_chan = post_cells_list[j]
+
+                    data_rows.append({
+                        'OP': op,
+                        'patcher': patcher, 
+                        'slice': slice_name,
+                        'treatment': treatment,
+                        'pre_chan': pre_chan,
+                        'post_chan': post_chan
+                    })
+            if len(df_con_screen_all) == 0:
+                df_con_screen_all = pd.DataFrame(data_rows)
+            else:
+                df_con_screen_all = pd.concat([df_con_screen_all.loc[:], pd.DataFrame(data_rows)]).reset_index(drop=True)
+        else:
+            op_no_pre_chans.append(op)
+    return df_con_screen_all,  ops_no_con_screen
+
 
 
 # %%

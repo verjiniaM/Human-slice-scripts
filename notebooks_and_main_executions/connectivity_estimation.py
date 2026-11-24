@@ -398,7 +398,9 @@ def add_VC_con_df(human_dir, patcher, op_add_data):
         con_data_VC.to_excel(work_dir + '/connection_analysis/' + op + '_connected_cell_properties_post_in_VC.xlsx', index=False) 
 
 def get_con_df_from_analyzed(human_dir, data_type):
-    # Find all .xlsx files with 'connected' in the name
+    '''
+    Find all .xlsx files with 'connected' in the name
+    '''
     if data_type == 'connected':
         all_connected = find_connected_xlsx_files(human_dir)
     elif data_type == 'connections':
@@ -417,10 +419,10 @@ def get_con_df_from_analyzed(human_dir, data_type):
         elif 'verji' in path:
             df_add.insert(0, 'patcher', 'Verji')
         else:
-            print(f'no pather found for {path[path.rfind(('OP')): path.rfind(('OP'))+8]}')
+            print(f'no patcher found for {path[path.rfind(('OP')): path.rfind(('OP'))+8]}')
         con_df_complete = pd.concat([con_df_complete.loc[:], df_add]).reset_index(drop=True)
 
-    con_df_complete = con_df_complete[con_df_complete.treatment != 'TTX'].reset_index(drop=True)
+    #con_df_complete = con_df_complete[con_df_complete.treatment != 'TTX'].reset_index(drop=True)
 
     # remove OPs where no data
     con_df_complete = con_df_complete[~con_df_complete.OP.isna()].reset_index(drop=True)
@@ -484,41 +486,45 @@ def keep_cells_with_intr_data_only(con_df, intr_df):
 
     return con_df.iloc[indx_keep].reset_index(drop=True)
 
-def estimate_connectivity_percentage(con_df, intr_df):
+def estimate_connectivity_percentage_intr(con_df, intr_df):
     '''
     returns a df with connectivity estimation for each slice, only QC-ed cells included
     '''
     ops, slices, days, trs, hrs, num_cells, possible_cons, found_cons = [], [], [], [], [], [], [], []
+    patchers = []
     count_one_cell_per_slice = 0
-    for _, op in enumerate(intr_df.OP.unique()):
-        intr_op_df = intr_df[intr_df.OP == op]
+    for patcher in ['Rosie', 'Verji']:
+        df_patcher = intr_df[intr_df.patcher == patcher]
+        for _, op in enumerate(intr_df.OP.unique()):
+            intr_op_df = df_patcher[df_patcher.OP == op]
 
-        for slic in intr_op_df.slice.unique():
-            df_slice = intr_op_df[intr_op_df.slice == slic]
+            for slic in intr_op_df.slice.unique():
+                df_slice = intr_op_df[intr_op_df.slice == slic]
 
-            if len(df_slice) == 1:
-                count_one_cell_per_slice += 1
-                continue
+                if len(df_slice) == 1:
+                    count_one_cell_per_slice += 1
+                    continue
 
-            ops.append(op)
-            slices.append(slic)
-            days.append(df_slice[df_slice.slice == slic].day.unique()[0])
-            trs.append(df_slice[df_slice.slice == slic].treatment.unique()[0])
-            hrs.append(df_slice[df_slice.slice == slic].hrs_after_OP.unique()[0])
-            num_cells.append(len(df_slice))
-            possible_cons.append(len(df_slice) * (len(df_slice) - 1))
-        
-            if op in con_df.OP.unique():
-                con_df_op = con_df[con_df.OP == op]
-                
-                if slic in con_df_op.slice.unique():
-                    found_cons.append(len(con_df_op[con_df_op.slice == slic]))
+                ops.append(op)
+                patchers.append(patcher)
+                slices.append(slic)
+                days.append(df_slice[df_slice.slice == slic].day.unique()[0])
+                trs.append(df_slice[df_slice.slice == slic].treatment.unique()[0])
+                hrs.append(df_slice[df_slice.slice == slic].hrs_after_OP.unique()[0])
+                num_cells.append(len(df_slice))
+                possible_cons.append(len(df_slice) * (len(df_slice) - 1))
+            
+                if op in con_df.OP.unique():
+                    con_df_op = con_df[con_df.OP == op]
+                    
+                    if slic in con_df_op.slice.unique():
+                        found_cons.append(len(con_df_op[con_df_op.slice == slic]))
+                    else:
+                        found_cons.append(0)
                 else:
                     found_cons.append(0)
-            else:
-                found_cons.append(0)
 
-    con_percentage = np.array(possible_cons) / np.array(found_cons)
+    con_percentage = np.array(found_cons) / np.array(possible_cons) *100
 
     #calcualte connectivity percentage, not dividing by 0
     con_percent_fixed = []
@@ -528,8 +534,9 @@ def estimate_connectivity_percentage(con_df, intr_df):
         else:
             con_percent_fixed.append(con_percent)
 
-    con_percentage_df = pd.DataFrame({'OP': ops, 'slices': slices, 'day': days,
-                                    'treatment': trs, 'hrs_after_OP': hrs,
+    con_percentage_df = pd.DataFrame({'OP': ops, 'slice': slices, 'day': days,
+                                      'patcher': patchers,
+                                     'treatment': trs, 'hrs_after_OP': hrs,
                                     'num_channels': num_cells,
                                     'num_possible_connections': possible_cons,
                                     'found_connections': found_cons,
@@ -540,9 +547,10 @@ def estimate_connectivity_percentage(con_df, intr_df):
 def get_connections_df_from_jsons(human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'):
     OP_dirs = glob.glob(human_dir + 'data_*/' + 'OP*')
     #OP_skip = ['OP210304', 'OP210319']
+    print(len(OP_dirs))
 
     OPs, slices, days, treatments, num_chans, possible_cons, num_connections  = [], [], [], [], [], [], []
-
+    patchers = []
     # collect all connections enterted in the excel labbook during recording
     for i, OP_dir in enumerate(OP_dirs):
         path_json = glob.glob(OP_dir + '/*_con_screen_only.json')
@@ -552,8 +560,18 @@ def get_connections_df_from_jsons(human_dir = '/Users/verjim/laptop_D_17.01.2022
             print(f'skipping {OP}')
             continue
 
+        if 'data_rosie' in path_json[0]:
+            patcher = 'Rosie'
+        elif 'data_verji' in path_json[0]:
+            patcher = 'Verji'
+        else:
+            print(f'no patcher for {path_json}')
+            patcher = np.nan
+
+
         con_dict = sort.open_json(path_json[0])[0]
         for j in range(len(con_dict['active_chans'])):
+            patchers.append(patcher)
             OPs.append(OP)
             slices.append(con_dict['slices'][j])
             if len(con_dict['slices'][j]) < 3:
@@ -572,17 +590,19 @@ def get_connections_df_from_jsons(human_dir = '/Users/verjim/laptop_D_17.01.2022
                 num_connections.append(len(con_dict['pre_chans'][j]))
                 # print('For' , OP, 'slice ' , con_dict['slices'][j] , 'on ' , day , 'treatment ' ,con_dict['treatment'][j], 'num chans' , str(len(con_dict['active_chans'][j])) , 'num possible connections', str(len(con_dict['active_chans'][j])*(len(con_dict['active_chans'][j])-1)) ,con_dict['treatment'][j] , str(len(con_dict['pre_chans'][j])) ,'connectios found')
 
-    df_connections = pd.DataFrame({ 'OP':OPs, 'slices':slices, 'day':days, 'treatment':treatments,
-        'num_channels':num_chans, 'num_possible_connections':possible_cons, 'found_connections':num_connections})
+    df_connections = pd.DataFrame({ 'OP':OPs, 'slice':slices, 'day':days, 'patcher': patchers, 'treatment':treatments,
+        'num_channels':num_chans, 'num_possible_connections': possible_cons, 'found_connections':num_connections})
     return df_connections
 
 def add_connectivity_percentage(df_connections):
+    df_connections = df_connections.copy()
+    con_percentage = df_connections.found_connections / df_connections.num_possible_connections
     df_connections.insert(len(df_connections.columns), 'con_percentage',
-                          df_connections.num_possible_connections / df_connections.found_connections)
+                         con_percentage)
 
     #calcualte connectivity percentage, not dividing by 0
     con_percent_fixed = []
-    for con_percent in df_connections['con_percentage']:
+    for con_percent in con_percentage:
         if math.isinf(con_percent):
             con_percent_fixed.append(0)
         else:
@@ -593,7 +613,10 @@ def add_connectivity_percentage(df_connections):
     return df_connections
 
 def cross_check_intr_con_df(intr_df, df_connections):
-    # remove ops where no intrinsic
+    '''
+    remove ops where no intrinsic
+    '''
+    
     ops_exclude = sorted(list(set(df_connections.OP) - set(intr_df.OP.unique())))
     df_connections = df_connections[~df_connections['OP'].isin(ops_exclude)].reset_index(drop = True)
     print(f'after removing ops not in intrinsic {len(df_connections)}')
@@ -609,10 +632,10 @@ def cross_check_intr_con_df(intr_df, df_connections):
     ops_0_connectivity = sorted(set(intr_df.OP.unique()) - set(df_connections.OP.unique()))
     print(f'ops with no connectivity data {ops_0_connectivity}')
 
-    combination_counts = intr_df.groupby(['OP', 'slice']).size().reset_index(name='count')
-    print(f"Combinations OP x slice {len(combination_counts)}")
+    combination_counts = intr_df.groupby(['OP', 'slice', 'patcher']).size().reset_index(name='count')
+    print(f"Combinations OP x slice x patcher {len(combination_counts)}")
 
-    df_con_percentage, num_alone_cell_in_slice = estimate_connectivity_percentage(df_connections_QC, intr_df)
+    df_con_percentage, num_alone_cell_in_slice = estimate_connectivity_percentage_intr(df_connections_QC, intr_df)
 
     if num_alone_cell_in_slice + len(df_con_percentage) != len(combination_counts):
         print('something somewhere went wrong')
@@ -628,9 +651,9 @@ def quick_dirty_plot_connectivity(df_connections, title_, save_dir = False):
     colors = ['pink', 'green', 'orange']
 
     mean_con = []
-
+    ticks_, labels = [], []
     for j, day in enumerate(['D1', 'D2']):
-        for i, tr in enumerate(['Ctrl', 'high K']):
+        for i, tr in enumerate(df_connections.treatment.unique()):
             # if day == 'D1':
             #     k_ = 1
             # else:
@@ -638,7 +661,7 @@ def quick_dirty_plot_connectivity(df_connections, title_, save_dir = False):
             k_ = j + 2*i
             df_plot = df_connections.loc[(df_connections.treatment == tr)\
                                          & (df_connections.day == day)]
-            avg = np.mean(df_plot.con_percentage_fixed)
+            avg = np.nanmean(df_plot.con_percentage_fixed)
             #print(median)
             x = np.linspace(k_ - 0.3, k_ + 0.3, len(df_plot))
             ax.scatter(x, df_plot.con_percentage_fixed, c = colors[i])
@@ -646,265 +669,304 @@ def quick_dirty_plot_connectivity(df_connections, title_, save_dir = False):
                 ax.scatter(k_, avg, marker = '_', s = 2000, c = colors[i])
             else:
                 ax.scatter(k_, avg, marker = '_', s = 2000, c = colors[i], label = tr)
-            ax.text(k_, 1.2*avg, str(round(avg,0)), size = 10)
-            ax.set_xticks(ticks = [1,2], labels = ['D1', 'D2'])
 
-        mean_all = np.mean(df_connections[df_connections.day == day].con_percentage_fixed)
-        mean_con.append(mean_all)
-        ax.scatter(k_, mean_all, marker = '_', s = 2000, c = 'k')
+            labels.append(f'{day}  {tr}')
+            ticks_.append(k_)
+            ax.text(k_, 1.2*avg, str(round(avg,2)), size = 10)
+        
+        ax.set_xticks(ticks = ticks_, labels = labels)
+        # mean_all = np.nanmean(df_connections[df_connections.day == day].con_percentage_fixed)
+        # mean_con.append(mean_all)
+        # ax.scatter(k_, mean_all, marker = '_', s = 2000, c = 'k')
     fig.suptitle(title_)
     if save_dir:
         plt.savefig(f'{save_dir}{title_}connectivity_percentage.svg',
             format='svg', bbox_inches='tight', dpi=300)
     plt.show()
 
+# for the conn_paper
+def get_all_connectivity_data(intr_all):
+    '''
+    collect all connectivity data
+    exclude the OPs that are not present in the intr_df et all
+    '''
+    human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'
+    df_connections = get_con_df_from_analyzed(human_dir, 'connections')
 
+    df_connected = get_con_df_from_analyzed(human_dir, 'connected')
+    con_IDs_add = list(set(df_connected.connection_ID) - set(df_connections.connection_ID))
+    df_connected_unique = df_connected[
+        df_connected['connection_ID'].isin(con_IDs_add)
+    ].copy()
+    # remove unnnecessary columns
+    df_connected_unique = df_connected_unique.drop(
+        columns=[
+            'comments',
+            'Unnamed: 0',
+            'Amp1',
+            'Amp2',
+            'Amp3',
+            'Amp4',
+            'Unnamed: 0.1'
+        ]
+    )
+
+    df_all_connections = pd.concat([df_connections, df_connected_unique])
+    df_all_connections = df_all_connections.drop_duplicates().reset_index(drop = True)
+    df_all_connections = df_all_connections.copy()
+    print(f'after removing duplicates {len(df_all_connections)}')
+
+    # remove ops where no intrinsic
+    ops_exclude = sorted(list(set(df_all_connections.OP) - set(intr_all.OP.unique())))
+    df_all_connections = df_all_connections[~df_all_connections['OP'].isin(ops_exclude)].reset_index(drop = True)
+    print(f'after removing ops not in intrinsic {len(df_all_connections)}')
+
+    return df_all_connections
 #%%
+if __name__ == '__main__':
+    # what's happening
+    # I've analyzed the connections twice
+    # most up to date data is in /OP**/connection_analysis
+    # i've checked and all needed data is analyzed
 
-# what's happening
-# I've analyzed the connections twice
-# most up to date data is in /OP**/connection_analysis
-# i've checked and all needed data is analyzed
-
-human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'
-data_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/paper_figs_collected_checked/data/'
-
-
-# add data where needed, OPs found in both
-# op_check = check_which_to_analyse()
-# op_add_data = sorted(list(set(adult_df_temp_complete.OP.tolist()) & set(op_check)))
-# patcher = 'Verji'
-# create_updated_con_screen_df(human_dir, patcher, op_add_data)
-
-# the connections ones, should be less and with a thorough quality check
-# df_connected = get_con_df_from_analyzed(human_dir, 'connected')
-df_connections = get_con_df_from_analyzed(human_dir, 'connections')
-print(f'all collected connectivity dfs {len(df_connections)}')
-
-# Remove all duplicate rows, keeping the first occurrence
-df_connections = df_connections.drop_duplicates().reset_index(drop = True)
-print(f'after removing duplicates {len(df_connections)}')
-
-# all QCed cells
-adult_df_temp_complete = pd.read_excel(data_dir + 'adult_16min_hrs_inc_temporal.xlsx')
-df_con_percentage_all, num_alone_cell_all = cross_check_intr_con_df(adult_df_temp_complete, df_connections)
-quick_dirty_plot_connectivity(df_con_percentage_all, 'all possible QC-ed')
+    human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'
+    data_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/paper_figs_collected_checked/data/'
 
 
-# Very quck cross check, with all cells and connections. Almost no QC
-# percentage connectivity estimation - no QC, just for comparison
-# df_con_jsons = get_connections_df_from_jsons()
-# df_con_jsons = add_connectivity_percentage(df_con_jsons)
-# df_con_jsons = df_con_jsons.drop_duplicates(keep='first').reset_index(drop=True)
-# ops_remove = sorted(set(df_con_jsons.OP.unique().tolist()) - set(adult_df_temp_complete.OP.unique()))
-# df_con_jsons = df_con_jsons[~df_con_jsons['OP'].isin(ops_remove)].reset_index(drop=True)
-# # plot
-# quick_dirty_plot_connectivity(df_con_jsons, 'from json')
+    # add data where needed, OPs found in both
+    # op_check = check_which_to_analyse()
+    # op_add_data = sorted(list(set(adult_df_temp_complete.OP.tolist()) & set(op_check)))
+    # patcher = 'Verji'
+    # create_updated_con_screen_df(human_dir, patcher, op_add_data)
+
+    # the connections ones, should be less and with a thorough quality check
+    # df_connected = get_con_df_from_analyzed(human_dir, 'connected')
+    df_connections = get_con_df_from_analyzed(human_dir, 'connections')
+    print(f'all collected connectivity dfs {len(df_connections)}')
+
+    # Remove all duplicate rows, keeping the first occurrence
+    df_connections = df_connections.drop_duplicates().reset_index(drop = True)
+    print(f'after removing duplicates {len(df_connections)}')
+
+    # all QCed cells
+    adult_df_temp_complete = pd.read_excel(data_dir + 'adult_16min_hrs_inc_temporal.xlsx')
+    df_con_percentage_all, num_alone_cell_all = cross_check_intr_con_df(adult_df_temp_complete, df_connections)
+    quick_dirty_plot_connectivity(df_con_percentage_all, 'all possible QC-ed')
 
 
-# single connections, amp and latency
-df_connections = get_match_cell_id_connectivity(df_connections)
-df_connections_QC = keep_cells_with_intr_data_only(df_connections, adult_df_temp_complete)
-df_connections_QC = df_connections_QC[df_connections_QC.treatment != 'fixed']
-df_connections_QC = df_connections_QC[(df_connections_QC['Vm pre'] < -45) & \
-                                      (df_connections_QC['Vm post'] < -45)]
-
-# save everything
-# save_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/paper_figs_collected_checked/data/'
-# df_connections_QC.to_excel(save_dir + 'all_QCed_connections.xlsx')
-# df_connections_QC.to_csv(save_dir + 'all_QCed_connections.csv')
-# df_con_percentage_all.to_excel(save_dir + 'connectivity_percent_estimation.xlsx')
-# df_con_percentage_all.to_csv(save_dir + 'connectivity_percent_estimation.csv')
+    # Very quck cross check, with all cells and connections. Almost no QC
+    # percentage connectivity estimation - no QC, just for comparison
+    # df_con_jsons = get_connections_df_from_jsons()
+    # df_con_jsons = add_connectivity_percentage(df_con_jsons)
+    # df_con_jsons = df_con_jsons.drop_duplicates(keep='first').reset_index(drop=True)
+    # ops_remove = sorted(set(df_con_jsons.OP.unique().tolist()) - set(adult_df_temp_complete.OP.unique()))
+    # df_con_jsons = df_con_jsons[~df_con_jsons['OP'].isin(ops_remove)].reset_index(drop=True)
+    # # plot
+    # quick_dirty_plot_connectivity(df_con_jsons, 'from json')
 
 
-# repatch
-df_repatch = pd.read_excel(data_dir + 'repatch_data_temporal.xlsx')
-df_con_percentage_repatch, num_alone_cell_repatch = cross_check_intr_con_df(df_repatch, df_connections)
-quick_dirty_plot_connectivity(df_con_percentage_repatch, 'repatch')
+    # single connections, amp and latency
+    df_connections = get_match_cell_id_connectivity(df_connections)
+    df_connections_QC = keep_cells_with_intr_data_only(df_connections, adult_df_temp_complete)
+    df_connections_QC = df_connections_QC[df_connections_QC.treatment != 'fixed']
+    df_connections_QC = df_connections_QC[(df_connections_QC['Vm pre'] < -45) & \
+                                        (df_connections_QC['Vm post'] < -45)]
 
-df_connections_QC_repatch = keep_cells_with_intr_data_only(df_connections_QC, df_repatch)
-df_connections_QC_repatch = df_connections_QC_repatch[df_connections_QC_repatch.treatment != 'fixed']
-
-# op_color_dict = pl_intr.get_op_color_dict(df_connections_QC_repatch)
-pl_intr.plot_connect_amplitude(df_connections_QC_repatch, 'repatch', op_color_dict, 'connection_ID', results_ = 'amp')
-pl_intr.plot_connect_amplitude(df_connections_QC_repatch, 'repatch_lat', op_color_dict, 'connection_ID', results_ = 'lat')
-
-
-
-
-#%%
-
-# COLLECT DISAPPEARING CONNECTIONS
-
-human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'
-
-df_con_screen_all,  ops_no_con_screen = collect_con_screen_from_jsons()
-adult_df_all = pd.read_excel('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human'+\
-                             '/paper_figs_collected_checked/data/adult_complete_0_hrs_incubation.xlsx')
-ops_worth_check = []
-for op in ops_no_con_screen:
-    if op in adult_df_all.OP.unique():
-        ops_worth_check.append(op)
-
-print(f'ops to check {ops_worth_check}')
-
-# find all repatched cells, no QC
-df_repatch_no_QC = load_intr_adult_repatch_no_QC()
-
-# remove TTX
-df_repatch_no_QC = df_repatch_no_QC[df_repatch_no_QC.treatment != 'TTX'].reset_index(drop = True)
-df_con_screen = df_con_screen_all[df_con_screen_all.treatment != 'TTX'].reset_index(drop = True)
-
-# remove OPs that are not in the collected repatched intrinsic data
-ops_drop = []
-for op in df_con_screen.OP.unique():
-    if op not in df_repatch_no_QC.OP.unique():
-        ops_drop.append(op)
-# adding 'OP230810' because only 4 hrs incubation
-ops_drop.append('OP230810')
-
-df_repatch_no_QC = df_repatch_no_QC[~df_repatch_no_QC['OP'].isin(ops_drop)].reset_index(drop = True)
-df_con_screen = df_con_screen[~df_con_screen['OP'].isin(ops_drop)].reset_index(drop = True)
-
-op_slice_not_in_repatch = for_manual_check_and_edit(df_con_screen, df_repatch_no_QC)
-print(f'missing op-slice combinations (in repatch intr; not in con_screen)\n{op_slice_not_in_repatch}')
-
-# creating unique IDs and checking how unique they are
-df_con_screen_json = create_unique_cell_IDs(df_con_screen, 'con_json')
-df_repatch_no_QC_intr = create_unique_cell_IDs(df_repatch_no_QC, 'intr')
-
-# collect repatched connections; maybe some excluded already
-df_connections = get_con_df_from_analyzed(human_dir, 'connections')
-df_con_repatch_collected_no_QC = df_connections[df_connections.repatch == 'yes'].reset_index(drop = True)
-df_con_repatch_collected_no_QC = create_unique_cell_IDs(df_con_repatch_collected_no_QC, 'con')
-
-# removing cells from json_collected that are not in the repatched intr
-indx_keep = []
-for i, pre_cell in enumerate(df_con_screen_json.pre_cell_ID):
-    post_cell = df_con_screen_json.post_cell_ID[i]
-    if pre_cell in df_repatch_no_QC_intr['cell_ID_match'].unique() and \
-         post_cell in df_repatch_no_QC_intr['cell_ID_match'].unique():
-        indx_keep.append(i)
-df_con_screen_json_repatched_pre_post = df_con_screen_json[df_con_screen_json.index.isin(indx_keep)]
-
-# looked at all 8 diff between repatched pre/post and collected cons repatch, no disappearing
-sorted(set(df_con_screen_json_repatched_pre_post.con_ID) - set(df_con_repatch_collected_no_QC.con_ID))
-
-# checking manually if all of those are indeed repatched connections
-# creating a list of con_IDs to remove from the df_con_repatch_collected_no_QC
-# after removing them --> the real df with repatched connections
-sorted(set(df_con_repatch_collected_no_QC.con_ID) - set(df_con_screen_json_repatched_pre_post.con_ID))
-
-# exclude connections that are in con_IDs_remove
-con_IDs_remove = get_con_IDs_remove_manually_checked()
-df_con_repatch_collected_QC = df_con_repatch_collected_no_QC[~df_con_repatch_collected_no_QC.con_ID.isin(con_IDs_remove)].reset_index(drop = True)
-
-if len(df_con_repatch_collected_QC[df_con_repatch_collected_QC.duplicated(keep=False)]) == 0:
-    print(f'all repatched cons are duplicated')
-
-df_con_repatch_collected_QC[(df_con_repatch_collected_QC.hrs_incubation > 0) & (df_con_repatch_collected_QC.hrs_incubation < 16)]
-
-# removing surgery with short incubation time
-df_con_repatch_collected_QC = df_con_repatch_collected_QC[df_con_repatch_collected_QC.OP != 'OP230810']
-
-# save and go over borderline cells again
-df_con_repatch_collected_QC[(df_con_repatch_collected_QC['Vm pre'] > -45) |
-                            (df_con_repatch_collected_QC['Vm post'] > -45) |
-                            (df_con_repatch_collected_QC['Lat1'] < 0)].sort_values(['OP', 'slice'])# .to_excel('/Users/verjim/Desktop/temp_check_cells.xlsx')
-
-connection_IDs_remove = get_connection_IDs_remove_manually_checked_2()
-df_con_repatch_collected_QC = df_con_repatch_collected_QC[~df_con_repatch_collected_QC.connection_ID.isin(connection_IDs_remove)].reset_index(drop = True)
-
-df_con_repatch_collected_QC[df_con_repatch_collected_QC['num excluded swps'] > 5]
-
-# now the results can be plotted
-plot_hist_params = ['hrs_incubation', 'Vm pre', 'Vm post', 'Amp 1', 'Lat1', 'num excluded swps']
-for param in plot_hist_params:
-    plt.hist(df_con_repatch_collected_QC[param].values)
-    plt.title(param)
-    plt.show()
-
-# df_con_repatch_collected_QC.to_excel('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/paper_figs_collected_checked/data/connectivity/repatched_connections_looser_QC.xlsx')
-
-#%%
-
-# adding connectivity plots if missing
-human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'
-
-plt.style.use('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/code/Human-slice-scripts/style_plot_paper.mplstyle')
-import importlib
-importlib.reload(con_param)
-importlib.reload( plotting_funcs)
-
-op = 'OP240215'
-con_screen_indx = 51 # 67
-pre_cells = [2,2,3,8,8]
-post_cells = [1,3,1,1,3]
-patcher = 'Verji'
-vc_file_indx = 0
-
-for i, pre_cell in enumerate(pre_cells):
-    post_cell = post_cells[i]
-    work_dir, filenames, indices_dict, slice_names = sort.get_OP_metadata(human_dir, op, patcher, 'old')
-
-    # for getting missing plot
-    con_screen_file = work_dir + filenames[con_screen_indx]
-
-    pre_signal = con_param.presynaptic_screen_ALLOW_ALL(con_screen_file, pre_cell)
-    post_signal, vm_post = con_param.postsynaptic_screen_ALLOW_ALL(con_screen_file, post_cell, [])
-
-    # # QC checked
-    # pre_sig, post_sig = pre_signal, post_signal
-    pre_signal, _, vm0 = con_param.presynaptic_screen(con_screen_file, pre_cell)
-    post_signal, vm_post = con_param.postsynaptic_screen(con_screen_file, post_cell, [])
-
-    mean_pre, mean_post, pre_window, post_window, preAPs_shifted, preAPs = \
-        con_param.get_analysis_window(pre_signal, post_signal, artefact = True)
-    
-   # preAPs_shifted = (np.array([preAPs_shifted[0][0], 1748, 2746, 3745]), preAPs_shifted[1])
-    pre_signal, post_signal = con_param.remove_sweeps_with_POSTsynAPs(pre_signal, post_signal, preAPs)
-    post_peaks = con_param.find_postsynaptic_peaks(post_window, preAPs_shifted)
-    
-    post_local_baseline = con_param.get_psp_baselines(post_window, preAPs_shifted)
-    
-    onsets = con_param.get_onsets(preAPs_shifted, post_window, post_peaks, post_local_baseline)
-
-    # onsets = np.array([[onsets[0][0]], [onsets[1][0]+25],  [onsets[2][0]+15], [3776]])
-    latency = con_param.latencies(onsets, preAPs_shifted)
-    amps = con_param.get_amps(post_peaks, post_local_baseline)
-
-    # plot from con_screen
-    plotting_funcs.plot_connection_window(con_screen_file, pre_cell, post_cell, pre_window, \
-        post_window, preAPs_shifted, post_signal, onsets, preAPs, post_peaks, post_local_baseline, svg = True)
-
-# def get_psp_baselines(post_window,preAPs_shifted):
-#     num_aps = len(preAPs_shifted[0])
-#     bl = np.ndarray([num_aps,1])
-#     for h in range(num_aps):
-#         bl[h,0] = np.mean(post_window[preAPs_shifted[0][h]-20:\
-#                         preAPs_shifted[0][h]-5],axis=0)
-#     return bl
-# post_local_baseline = get_psp_baselines(post_window, preAPs_shifted)
+    # save everything
+    # save_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/paper_figs_collected_checked/data/'
+    # df_connections_QC.to_excel(save_dir + 'all_QCed_connections.xlsx')
+    # df_connections_QC.to_csv(save_dir + 'all_QCed_connections.csv')
+    # df_con_percentage_all.to_excel(save_dir + 'connectivity_percent_estimation.xlsx')
+    # df_con_percentage_all.to_csv(save_dir + 'connectivity_percent_estimation.csv')
 
 
-# FROM VC FILE
-con_screen_file_IC = work_dir + filenames[vc_file_indx]
+    # repatch
+    df_repatch = pd.read_excel(data_dir + 'repatch_data_temporal.xlsx')
+    df_con_percentage_repatch, num_alone_cell_repatch = cross_check_intr_con_df(df_repatch, df_connections)
+    quick_dirty_plot_connectivity(df_con_percentage_repatch, 'repatch')
 
-pre_sig, es, vm_pre = con_param.presynaptic_screen_IC(con_screen_file_IC, pre_cell)
-post_sig, holding_post = con_param.postsynaptic_screen_VC (con_screen_file_IC, post_cell, es)
-if (np.array(holding_post)).size == 0:
-    print('QC not passed!!')
-    exclude = 'all'
-    es2 = []
+    df_connections_QC_repatch = keep_cells_with_intr_data_only(df_connections_QC, df_repatch)
+    df_connections_QC_repatch = df_connections_QC_repatch[df_connections_QC_repatch.treatment != 'fixed']
+
+    # op_color_dict = pl_intr.get_op_color_dict(df_connections_QC_repatch)
+    pl_intr.plot_connect_amplitude(df_connections_QC_repatch, 'repatch', op_color_dict, 'connection_ID', results_ = 'amp')
+    pl_intr.plot_connect_amplitude(df_connections_QC_repatch, 'repatch_lat', op_color_dict, 'connection_ID', results_ = 'lat')
+
+
+
+
+    #%%
+
+    # COLLECT DISAPPEARING CONNECTIONS
+    human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'
+
+    df_con_screen_all,  ops_no_con_screen = collect_con_screen_from_jsons()
+    adult_df_all = pd.read_excel('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human'+\
+                                '/paper_figs_collected_checked/data/adult_complete_0_hrs_incubation.xlsx')
+    ops_worth_check = []
+    for op in ops_no_con_screen:
+        if op in adult_df_all.OP.unique():
+            ops_worth_check.append(op)
+
+    print(f'ops to check {ops_worth_check}')
+
+    # find all repatched cells, no QC
+    df_repatch_no_QC = load_intr_adult_repatch_no_QC()
+
+    # remove TTX
+    df_repatch_no_QC = df_repatch_no_QC[df_repatch_no_QC.treatment != 'TTX'].reset_index(drop = True)
+    df_con_screen = df_con_screen_all[df_con_screen_all.treatment != 'TTX'].reset_index(drop = True)
+
+    # remove OPs that are not in the collected repatched intrinsic data
+    ops_drop = []
+    for op in df_con_screen.OP.unique():
+        if op not in df_repatch_no_QC.OP.unique():
+            ops_drop.append(op)
+    # adding 'OP230810' because only 4 hrs incubation
+    ops_drop.append('OP230810')
+
+    df_repatch_no_QC = df_repatch_no_QC[~df_repatch_no_QC['OP'].isin(ops_drop)].reset_index(drop = True)
+    df_con_screen = df_con_screen[~df_con_screen['OP'].isin(ops_drop)].reset_index(drop = True)
+
+    op_slice_not_in_repatch = for_manual_check_and_edit(df_con_screen, df_repatch_no_QC)
+    print(f'missing op-slice combinations (in repatch intr; not in con_screen)\n{op_slice_not_in_repatch}')
+
+    # creating unique IDs and checking how unique they are
+    df_con_screen_json = create_unique_cell_IDs(df_con_screen, 'con_json')
+    df_repatch_no_QC_intr = create_unique_cell_IDs(df_repatch_no_QC, 'intr')
+
+    # collect repatched connections; maybe some excluded already
+    df_connections = get_con_df_from_analyzed(human_dir, 'connections')
+    df_con_repatch_collected_no_QC = df_connections[df_connections.repatch == 'yes'].reset_index(drop = True)
+    df_con_repatch_collected_no_QC = create_unique_cell_IDs(df_con_repatch_collected_no_QC, 'con')
+
+    # removing cells from json_collected that are not in the repatched intr
+    indx_keep = []
+    for i, pre_cell in enumerate(df_con_screen_json.pre_cell_ID):
+        post_cell = df_con_screen_json.post_cell_ID[i]
+        if pre_cell in df_repatch_no_QC_intr['cell_ID_match'].unique() and \
+            post_cell in df_repatch_no_QC_intr['cell_ID_match'].unique():
+            indx_keep.append(i)
+    df_con_screen_json_repatched_pre_post = df_con_screen_json[df_con_screen_json.index.isin(indx_keep)]
+
+    # looked at all 8 diff between repatched pre/post and collected cons repatch, no disappearing
+    sorted(set(df_con_screen_json_repatched_pre_post.con_ID) - set(df_con_repatch_collected_no_QC.con_ID))
+
+    # checking manually if all of those are indeed repatched connections
+    # creating a list of con_IDs to remove from the df_con_repatch_collected_no_QC
+    # after removing them --> the real df with repatched connections
+    sorted(set(df_con_repatch_collected_no_QC.con_ID) - set(df_con_screen_json_repatched_pre_post.con_ID))
+
+    # exclude connections that are in con_IDs_remove
+    con_IDs_remove = get_con_IDs_remove_manually_checked()
+    df_con_repatch_collected_QC = df_con_repatch_collected_no_QC[~df_con_repatch_collected_no_QC.con_ID.isin(con_IDs_remove)].reset_index(drop = True)
+
+    if len(df_con_repatch_collected_QC[df_con_repatch_collected_QC.duplicated(keep=False)]) == 0:
+        print(f'all repatched cons are duplicated')
+
+    df_con_repatch_collected_QC[(df_con_repatch_collected_QC.hrs_incubation > 0) & (df_con_repatch_collected_QC.hrs_incubation < 16)]
+
+    # removing surgery with short incubation time
+    df_con_repatch_collected_QC = df_con_repatch_collected_QC[df_con_repatch_collected_QC.OP != 'OP230810']
+
+    # save and go over borderline cells again
+    df_con_repatch_collected_QC[(df_con_repatch_collected_QC['Vm pre'] > -45) |
+                                (df_con_repatch_collected_QC['Vm post'] > -45) |
+                                (df_con_repatch_collected_QC['Lat1'] < 0)].sort_values(['OP', 'slice'])# .to_excel('/Users/verjim/Desktop/temp_check_cells.xlsx')
+
+    connection_IDs_remove = get_connection_IDs_remove_manually_checked_2()
+    df_con_repatch_collected_QC = df_con_repatch_collected_QC[~df_con_repatch_collected_QC.connection_ID.isin(connection_IDs_remove)].reset_index(drop = True)
+
+    df_con_repatch_collected_QC[df_con_repatch_collected_QC['num excluded swps'] > 5]
+
+    # now the results can be plotted
+    plot_hist_params = ['hrs_incubation', 'Vm pre', 'Vm post', 'Amp 1', 'Lat1', 'num excluded swps']
+    for param in plot_hist_params:
+        plt.hist(df_con_repatch_collected_QC[param].values)
+        plt.title(param)
+        plt.show()
+
+    # df_con_repatch_collected_QC.to_excel('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/paper_figs_collected_checked/data/connectivity/repatched_connections_looser_QC.xlsx')
+
+    #%%
+
+    # adding connectivity plots if missing
+    human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'
+
+    plt.style.use('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/code/Human-slice-scripts/style_plot_paper.mplstyle')
+    import importlib
+    importlib.reload(con_param)
+    importlib.reload( plotting_funcs)
+
+    op = 'OP240215'
+    con_screen_indx = 51 # 67
+    pre_cells = [2,2,3,8,8]
+    post_cells = [1,3,1,1,3]
+    patcher = 'Verji'
+    vc_file_indx = 0
+
+    for i, pre_cell in enumerate(pre_cells):
+        post_cell = post_cells[i]
+        work_dir, filenames, indices_dict, slice_names = sort.get_OP_metadata(human_dir, op, patcher, 'old')
+
+        # for getting missing plot
+        con_screen_file = work_dir + filenames[con_screen_indx]
+
+        pre_signal = con_param.presynaptic_screen_ALLOW_ALL(con_screen_file, pre_cell)
+        post_signal, vm_post = con_param.postsynaptic_screen_ALLOW_ALL(con_screen_file, post_cell, [])
+
+        # # QC checked
+        # pre_sig, post_sig = pre_signal, post_signal
+        pre_signal, _, vm0 = con_param.presynaptic_screen(con_screen_file, pre_cell)
+        post_signal, vm_post = con_param.postsynaptic_screen(con_screen_file, post_cell, [])
+
+        mean_pre, mean_post, pre_window, post_window, preAPs_shifted, preAPs = \
+            con_param.get_analysis_window(pre_signal, post_signal, artefact = True)
+        
+    # preAPs_shifted = (np.array([preAPs_shifted[0][0], 1748, 2746, 3745]), preAPs_shifted[1])
+        pre_signal, post_signal = con_param.remove_sweeps_with_POSTsynAPs(pre_signal, post_signal, preAPs)
+        post_peaks = con_param.find_postsynaptic_peaks(post_window, preAPs_shifted)
+        
+        post_local_baseline = con_param.get_psp_baselines(post_window, preAPs_shifted)
+        
+        onsets = con_param.get_onsets(preAPs_shifted, post_window, post_peaks, post_local_baseline)
+
+        # onsets = np.array([[onsets[0][0]], [onsets[1][0]+25],  [onsets[2][0]+15], [3776]])
+        latency = con_param.latencies(onsets, preAPs_shifted)
+        amps = con_param.get_amps(post_peaks, post_local_baseline)
+
+        # plot from con_screen
+        plotting_funcs.plot_connection_window(con_screen_file, pre_cell, post_cell, pre_window, \
+            post_window, preAPs_shifted, post_signal, onsets, preAPs, post_peaks, post_local_baseline, svg = True)
+
+    # def get_psp_baselines(post_window,preAPs_shifted):
+    #     num_aps = len(preAPs_shifted[0])
+    #     bl = np.ndarray([num_aps,1])
+    #     for h in range(num_aps):
+    #         bl[h,0] = np.mean(post_window[preAPs_shifted[0][h]-20:\
+    #                         preAPs_shifted[0][h]-5],axis=0)
+    #     return bl
+    # post_local_baseline = get_psp_baselines(post_window, preAPs_shifted)
+
+
+    # FROM VC FILE
+    con_screen_file_IC = work_dir + filenames[vc_file_indx]
+
+    pre_sig, es, vm_pre = con_param.presynaptic_screen_IC(con_screen_file_IC, pre_cell)
     post_sig, holding_post = con_param.postsynaptic_screen_VC (con_screen_file_IC, post_cell, es)
-    
-mean_pre, mean_post, pre_window, post_window, preAPs_shifted, preAPs = con_param.get_analysis_window_VC(pre_sig, post_sig)
-post_peaks = con_param.find_postsynaptic_peaks_VC(post_window, preAPs_shifted)
-bl = con_param.get_psp_baselines(post_window,preAPs_shifted)
-onsets = con_param.get_onsets_VC(preAPs_shifted, post_window, post_peaks, bl)
-latency = con_param.latencies(onsets, preAPs_shifted)
-amps = con_param.get_amps_VC(post_peaks, bl)
+    if (np.array(holding_post)).size == 0:
+        print('QC not passed!!')
+        exclude = 'all'
+        es2 = []
+        post_sig, holding_post = con_param.postsynaptic_screen_VC (con_screen_file_IC, post_cell, es)
+        
+    mean_pre, mean_post, pre_window, post_window, preAPs_shifted, preAPs = con_param.get_analysis_window_VC(pre_sig, post_sig)
+    post_peaks = con_param.find_postsynaptic_peaks_VC(post_window, preAPs_shifted)
+    bl = con_param.get_psp_baselines(post_window,preAPs_shifted)
+    onsets = con_param.get_onsets_VC(preAPs_shifted, post_window, post_peaks, bl)
+    latency = con_param.latencies(onsets, preAPs_shifted)
+    amps = con_param.get_amps_VC(post_peaks, bl)
 
-plotting_funcs.plot_connection_window_VC(con_screen_file_IC, pre_cell, post_cell, pre_window, \
-        post_window, preAPs_shifted, post_sig, onsets, preAPs, post_peaks, bl)
-plotting_funcs.plot_post_cell_VC(con_screen_file_IC, pre_cell, post_cell)
+    plotting_funcs.plot_connection_window_VC(con_screen_file_IC, pre_cell, post_cell, pre_window, \
+            post_window, preAPs_shifted, post_sig, onsets, preAPs, post_peaks, bl)
+    plotting_funcs.plot_post_cell_VC(con_screen_file_IC, pre_cell, post_cell)

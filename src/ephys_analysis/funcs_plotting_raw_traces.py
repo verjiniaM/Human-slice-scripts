@@ -388,7 +388,7 @@ def plot_connect(fn, active_channels, z1=0.5, z2=35.5,
     plt.close(fig)
 
 def  plot_connection_window(con_screen_file, preC, postC, pre_window, post_window, preAPs_shifted, postsig,\
-                           onsets, preAPs, PSPs, bl, svg = False):
+                           onsets, preAPs, PSPs, bl, svg = False, save_dir=False):
 
     sampl_rate, units, times = hcf.get_abf_info(con_screen_file, preC, np.shape(postsig)[1], np.shape(postsig)[0])
     end_fn = con_screen_file.rfind('/') + 1
@@ -434,15 +434,19 @@ def  plot_connection_window(con_screen_file, preC, postC, pre_window, post_windo
     plt.figlegend(loc = 'center right',  bbox_to_anchor=(1.05, 1))
     fig.patch.set_facecolor('white')
 
-    plt.savefig(dir_connect + '/pre_post_events_' + con_screen_file[end_fn:-4] + '_Ch' + str(preC) + '#Ch' + str(postC) + '.png')
-    if svg:
-        plt.savefig(f'{dir_connect}/pre_post_events_{con_screen_file[end_fn:-4]}_Ch{preC}#Ch{postC}.svg',
-                        format = 'svg', bbox_inches = 'tight', dpi = 300)
+    if save_dir:
+        plt.savefig(f'{save_dir}pre_post_events_{con_screen_file[end_fn:-4]}_Ch\
+                    {str(preC)}#Ch{str(postC)}.png')
+    else:
+        plt.savefig(dir_connect + 'pre_post_events_' + con_screen_file[end_fn:-4] + '_Ch' + str(preC) + '#Ch' + str(postC) + '.png')
+        if svg:
+            plt.savefig(f'{dir_connect}pre_post_events_{con_screen_file[end_fn:-4]}_Ch{preC}#Ch{postC}.svg',
+                            format = 'svg', bbox_inches = 'tight', dpi = 300)
     plt.close()
 
     return fig, axarr
 
-def plot_post_cell(con_screen_file, pre_cell_chan, post_cell_chan):
+def plot_post_cell(con_screen_file, pre_cell_chan, post_cell_chan, save_dir=False):
     end_fn = con_screen_file.rfind('/') + 1
     dir_connect = sort.make_dir_if_not_existing(con_screen_file[:end_fn] + 'plots/',  'connectivity_plots')
 
@@ -476,8 +480,12 @@ def plot_post_cell(con_screen_file, pre_cell_chan, post_cell_chan):
     plt.xlabel('ms')
     plt.ylabel('mV')
     fig.patch.set_facecolor('white')
-    plt.savefig(dir_connect + '/post_swps_mean_' + con_screen_file[end_fn:-4] + '_' + 
-    'Ch' + str(pre_cell_chan) + '_to_' + 'Ch' + str(post_cell_chan) + '.png')
+    if save_dir:
+        plt.savefig(f'{save_dir}post_swps_mean_{con_screen_file[end_fn:-4]}_Ch{str(pre_cell_chan)}\
+                    _to_Ch{str(post_cell_chan)}.png')
+    else:
+        plt.savefig(dir_connect + 'post_swps_mean_' + con_screen_file[end_fn:-4] + '_' + 
+            'Ch' + str(pre_cell_chan) + '_to_' + 'Ch' + str(post_cell_chan) + '.png')
     plt.close()
 
 
@@ -806,11 +814,12 @@ def plt_trace_select_swps_cut_parts(fn, chan, swps_keep = 'all', start_point_cut
     swp_len = int(trace.sweepLengthSec * trace.sampleRate)
     data_wide = data_long.reshape(trace.sweepCount, swp_len) # each sweep is a row
     
-    if len(swps_keep) == trace.sweepCount:
-        data_plot = hcf.reshape_data(data_wide, 'all', start_point_cut, end_point_cut)
+    if isinstance(swps_keep, str):
+        if swps_keep == 'all':
+            data_plot = hcf.reshape_data(data_wide, 'all', start_point_cut, end_point_cut) 
     else:
         data_plot = hcf.reshape_data(data_wide, swps_keep, start_point_cut, end_point_cut)
-    
+
     fig, ax = plt.subplots(1,1, figsize = (7, 4))
     x = np.linspace(0, len(data_plot), len(data_plot))/trace.sampleRate
     ax.plot(x, data_plot)
@@ -826,3 +835,44 @@ def plt_trace_select_swps_cut_parts(fn, chan, swps_keep = 'all', start_point_cut
     fig.suptitle(chan_name + ' from ' + fn[fn.rfind('/') + 1:] + ' nice sweeps')
     fig.legend(loc='lower left', bbox_to_anchor=(-0.1, -0.1), fontsize = 13)
     plt.show()
+
+
+def add_click_coordinates(fig):
+    def onclick(event):
+        if event.inaxes is None or event.button != 3:
+            return
+
+        ax = event.inaxes
+        x, y = event.xdata, event.ydata
+
+        ax.plot(x, y, 'o', markersize=4)
+        ax.annotate(f'x={x:.0f}, y={y:.2f}', (x, y), xytext=(5, 5),
+                    textcoords='offset points')
+
+        print(f'x = {x:.0f}, y = {y:.2f}')
+        fig.canvas.draw_idle()
+
+    fig.canvas.mpl_connect('button_press_event', onclick)
+
+
+## Connectivity plotting functions
+def plot_con_screen_click(fn, active_chans):
+
+    con_screen_data = hcf.load_traces(fn)
+
+    fig,ax = plt.subplots(len(active_chans),1, sharex = True, figsize=(10,20))
+    fig.patch.set_facecolor('white')
+
+    for i, signal in enumerate(active_chans):
+        ch_name = 'Ch' + str(signal)
+        ch_data = con_screen_data[ch_name][0]
+        avg_signal = np.mean(ch_data, axis = 1)
+
+        ax[i].plot(avg_signal)
+        ax[i].set_ylabel(ch_name)
+    
+    fig.suptitle(f'{fn[fn.rfind('/') + 1:-4]}chan{active_chans}')
+    #plt.savefig(save_folder + fn[fn.rfind('/') + 1:-4] )
+    add_click_coordinates(fig)
+    plt.show()
+

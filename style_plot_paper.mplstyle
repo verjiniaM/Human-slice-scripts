@@ -16,13 +16,13 @@ lines.markersize: 3 # was 4.2
 font.size :         8.25
 font.family         : sans-serif
 font.sans-serif     : Arial
-svg.fonttype :        none
 axes.titlesize    : 8.25
 axes.labelsize    : 8.25
 xtick.labelsize   : 8.25
 ytick.labelsize   : 8.25
 legend.fontsize   : 8.25
 figure.titlesize  : 8.25
+svg.fonttype: none
 
 # FIGURE
 figure.autolayout: True # if false everything very tight. False for firing; True for intrinsic

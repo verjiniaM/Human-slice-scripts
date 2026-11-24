@@ -75,11 +75,11 @@ data_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/'+\
 # AIS_fig5(df_AIS, destination_dir)
 
 # # incubation only
-# df_slice_short_inc = pd.read_excel(data_dir + '10.07.25_slice_incubation_only_no_move.xlsx')
-# df_slice_short_inc = df_slice_short_inc[df_slice_short_inc['hrs_after_OP'] < 35]
-# df_slice_short_inc = df_slice_short_inc[df_slice_short_inc['hrs_incubation'] > 15.9]
-# df_slice_short_inc.reset_index(drop = True, inplace = True)
-# df_slice_short_inc = df_slice_short_inc.loc[[i for i, sl in enumerate(df_slice_short_inc.slice) if len(sl) <= 2], :]
+df_slice_short_inc = pd.read_excel(data_dir + '10.07.25_slice_incubation_only_no_move.xlsx')
+df_slice_short_inc = df_slice_short_inc[df_slice_short_inc['hrs_after_OP'] < 35]
+df_slice_short_inc = df_slice_short_inc[df_slice_short_inc['hrs_incubation'] > 15.9]
+df_slice_short_inc.reset_index(drop = True, inplace = True)
+df_slice_short_inc = df_slice_short_inc.loc[[i for i, sl in enumerate(df_slice_short_inc.slice) if len(sl) <= 2], :]
 
 # paper_plot.plot_op_slice_cell_histogram(df_slice_short_inc, 'incubation', destination_dir)
 # paper_plot.intr_params_inc_only(df_slice_short_inc, destination_dir + 'inc_ap_2')
@@ -88,10 +88,10 @@ data_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/'+\
 # inc_non_fire = pd.read_excel('/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/paper_figs_collected_checked/figures/trying_out/.xlsx')
 # paper_plot.plot_non_firing_across_inj_count(inc_non_fire,  'prop', 'inc_only', destination_dir )
 
-
-
-# paper_plot.firing_props_inc_only_V2(df_slice_short_inc, 'CI', destination_dir + 'CI')
-# paper_plot.firing_props_inc_only_V2(df_slice_short_inc, 'SE', destination_dir)
+import importlib
+importlib.reload(paper_plot)
+paper_plot.firing_props_inc_only_V2(df_slice_short_inc, 'CI', destination_dir + 'CI_')
+# paper_plot.firing_props_inc_only_V2(df_slice_short_inc, 'SE', destination_dir + 'new_')
 
 # cell_IDs_inc = {'Ctrl': '25220S3c3',
 #             'high K': '25220S2c3'}
@@ -217,6 +217,12 @@ df_CTR = df_CTR.dropna(subset=['hrs_after_OP', 'Lat1'])
 paper_plot.plot_corr_single('hrs_after_OP', 'Amp 1', df_CTR, 'all', 'Ctrl', save_dir)
 paper_plot.plot_corr_single('hrs_after_OP', 'Lat1', df_CTR, 'all', 'Ctrl', save_dir + 'lat')
 
+## FOR PAPER
+paper_plot.plot_distribution_1st_amp_lat_only(df_connections_QC , 'slice', save_dir)
+paper_plot.plot_distribution_1st_amp_lat_only(df_connections_QC_lat , 'slice', save_dir + 'Lat_')
+
+
+
 paper_plot.plot_norm_con_params(df_connections_QC, 'amp', 'slice', save_dir+'_')
 paper_plot.plot_norm_con_params(df_connections_QC, 'lat', 'slice', save_dir + '_')
 # paper_plot.plot_amp_lat_cumulative(df_connections_QC, 'slice', save_dir)
@@ -230,8 +236,14 @@ df_connections_QC_lat = df_connections_QC.dropna(subset=latency_cols)
 df_connections_QC_lat = df_connections_QC_lat[(df_connections_QC_lat[latency_cols] >= 0).all(axis=1)].reset_index(drop=True)
 paper_plot.plot_connect_params(df_connections_QC_lat, 'slice', 'lat', save_dir+'l')
 
+import importlib
+importlib.reload(paper_plot)
+
+paper_plot.plot_connection_ratio_bar(df_con_percentage_all, 'slice', save_dir + 'for_defense')
+
+
 # connection ratios
-# paper_plot.plot_connection_ratio(df_con_percentage_all, 'slice', save_dir + 'NEW')
+paper_plot.plot_connection_ratio(df_con_percentage_all, 'slice', save_dir + 'NEW')
 # paper_plot.plot_connection_ratio2(df_con_percentage_no_0, 'slice', save_dir + 'no 0 cons')
 
 # create supplementary figures
@@ -367,7 +379,13 @@ paper_plot.QC_plot_single_cell_param_repatched_cons(df_repatch_cons_plus_intr, s
 importlib.reload(paper_plot)
 paper_plot.QC_plot_Rs_vs_EPSP_amp(df_repatch_cons_plus_intr, save_dir_special+ '/')
 
-#### PLOT FAILURE RATES
+## PLOT FAILURE RATES SLICE
+data_dir_ = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/paper_figs_collected_checked/data/connectivity/'
+df_slice_newest = pd.read_excel(f'{data_dir_}/all_slice_cons_with_failure_rates.xlsx')
+paper_plot.plot_failure_rates_slice(df_slice_newest, save_dir + '/ALL_slice_')
+
+
+#### PLOT FAILURE RATES repatch
 df_repatch_newest_ = pd.read_excel(f'{data_dir}repatched_connections_looser_QC_MARCH_2026.xlsx')
 df_repatch_newest = df_repatch_newest_[~df_repatch_newest_['comment'].str.contains('appearing|disappearing', case=False, na=False)].reset_index(drop = True)
 
@@ -398,3 +416,22 @@ raw_plot.plot_trace(op_dir + '24926037.abf', 2, 3, save_dir)
 
 # plot pH // osmol
 paper_plot.plot_ph_osmol(save_dir)
+
+
+####
+# PLOT HIGH K AP fired trace
+from ephys_analysis.funcs_sorting import get_OP_metadata
+
+importlib.reload(paper_plot)
+OP = 'OP221116'
+human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'
+work_dir, filenames, indices_dict, slice_names = get_OP_metadata(human_dir, OP, 'Verji', 'old')
+
+
+save_trace_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/'+\
+        'paper_figs_collected_checked/figures/trying_out/'
+paper_plot.plt_washin_trace(work_dir + filenames[31], 5, [6], 0, 400_000, 
+                            save_dir = save_trace_dir, ticks = True)
+
+paper_plot.plt_washin_trace(work_dir + filenames[31], 5, [6], 377_450, 377_750,
+                            save_dir = save_trace_dir + 'AP_')

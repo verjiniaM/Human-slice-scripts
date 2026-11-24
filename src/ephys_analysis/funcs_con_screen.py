@@ -29,7 +29,7 @@ def presynaptic_screen(con_screen_file, pre_cell_chan):
         max_val = np.max(pre_sig[:,i])
         if (vm1 > -45) or vm1-(vm1 * -0.1) > vm2 or vm2 >vm1 + (vm1 * -0.1):
             #es.append(i)
-            print("Excluding swp # " + str(i) + '; drift more than 0.1*RMP start to end or RMP > -50') 
+            print("Excluding swp # " + str(i) + '; drift more than 0.1*RMP start to end or RMP > -50')
         elif vmO - (vmO * -0.1) > vm1 or vm1 > vmO + (vmO * -0.1):
             es.append(i)
             print("Excluding swp # " + str(i) + '; drift more than 0.1* RMP')
@@ -82,7 +82,7 @@ def postsynaptic_screen(con_screen_file, post_cell_chan, es):
     #cells (above -50mV) or a drift in Vm of more than 10% from start to end of sweep
         vm1 = np.mean(post_sig[:,i][0:4000]) #baseline
         vm2 = np.mean(post_sig[:,i][197999:199999])
-        post_amp = np.max(post_sig[:,i]) - np.min(post_sig[:,i])  
+        post_amp = np.max(post_sig[:,i]) - np.min(post_sig[:,i])
         if (vm1 > -45) or vm1 - (vm1 * -0.1) > vm2 or vm2 > vm1 + (vm1 * -0.1):
             es2.append(i)
         elif vm1 < -80:
@@ -134,7 +134,7 @@ def get_analysis_window(pre_sig, post_sig, artefact = False):
 
         mean_post = np.mean(post_sig[~indx_remove], axis = 1)
         post_window = mean_post[preAPs[0][0]-750:preAPs[0][num_APs-1]+750]
-        preAPs_shifted = find_peaks(pre_window, height=j, distance=800) #shifts so that 
+        preAPs_shifted = find_peaks(pre_window, height=j, distance=800) #shifts so that
         
     return mean_pre, mean_post, pre_window, post_window, preAPs_shifted, preAPs
 

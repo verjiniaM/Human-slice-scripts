@@ -37,7 +37,9 @@ def figure_colors():
                     'NI':'darkgrey', 
                     'pre': 'darkgrey',
                     'post HiK': "#3a9837",
-                    'post CTR': "#d383cf"},
+                    'post CTR': "#d383cf",
+                    'TTXD1': 'darkgrey',
+                    'TTXD2': "#0e62ff"},
                     'cell_ID_new':
                     {'CTRD1': 'darkgrey',
                     'CTRD2': '#ff7f00', 
@@ -1074,32 +1076,45 @@ def firing_props_inc_only_V2(iff_df, error_type, dest_dir,
 
                     counts_firing[treatment] = counts
 
-                    ax.plot(range(1, len(inj)+1), avgs, color = colors[treatment])
 
                     if error_type == 'CI':
                         sum_data_tr = df_summary[(df_summary['var_firing'] == dv) & \
                                         (df_summary['treatment'] == treatment) & \
                                         (df_summary['inj_current'] == inj_val)]
-                                       
+
                         start_summary = len(inj) - len(sum_data_tr) + 1
+        
                         ax.scatter(range(1, len(inj)+1), avgs, color = colors[treatment])
                         ax.fill_between(range(start_summary, len(inj)+1), sum_data_tr['CI_L'],
                                             sum_data_tr['CI_U'], color = colors[treatment],alpha = 0.3)
-                        
-                        if dv == 'num_aps':
-                            ax.set_yticks(ticks = np.linspace(0, 30, 5))
-                        else:
-                            ax.set_yticks(ticks = np.linspace(0, 60, 5))
-                    else:
-                        if dv == 'num_aps':
-                            ax.set_yticks(ticks = np.linspace(0, 30, 5))
-                        else:
-                            ax.set_yticks(ticks = np.linspace(0, 600, 5))
-                        ax.fill_between(range(1, len(inj)+1), np.array(avgs) + np.array(sems), \
-                            np.array(avgs) - np.array(sems), color = colors[treatment], alpha = 0.3)
-                        ax.plot(range(1, len(inj)+1), avgs, label = treatment, color = colors[treatment])
 
-                        counts_firing[treatment] = counts
+                ax.plot(range(1, len(inj)+1), avgs, color = colors[treatment])
+                ax.scatter(range(1, len(inj)+1), avgs, color = colors[treatment])
+
+                if error_type == 'CI':
+                    sum_data_tr = df_summary[(df_summary['var_firing'] == dv) & \
+                                    (df_summary['treatment'] == treatment)]
+
+                    start_summary = len(inj) - len(sum_data_tr) + 1
+      
+                    ax.scatter(range(1, len(inj)+1), avgs, color = colors[treatment])
+                    ax.fill_between(range(start_summary, len(inj)+1), sum_data_tr['CI_L'],
+                                        sum_data_tr['CI_U'], color = colors[treatment],alpha = 0.3)
+                    
+                    if dv == 'num_aps':
+                        ax.set_yticks(ticks = np.linspace(0, 30, 5))
+                    else:
+                        ax.set_yticks(ticks = np.linspace(0, 60, 5))
+                else:
+                    if dv == 'num_aps':
+                        ax.set_yticks(ticks = np.linspace(0, 30, 5))
+                    else:
+                        ax.set_yticks(ticks = np.linspace(0, 600, 5))
+                    ax.fill_between(range(1, len(inj)+1), np.array(avgs) + np.array(sems), \
+                        np.array(avgs) - np.array(sems), color = colors[treatment], alpha = 0.3)
+                    ax.plot(range(1, len(inj)+1), avgs, label = treatment, color = colors[treatment])
+
+                    counts_firing[treatment] = counts
 
         ticks_ = np.arange(1, 14, 2)
         labels_ = [inj[a] for a in np.arange(0,  13, 2)]
@@ -1596,7 +1611,7 @@ def plot_corrs_firing(x, df_list, dir_read_corrs, save_dir_figs, params_list = [
 
 # FUNCTIONS PLOT CONNECT
 
-def plot_connectivity_percentage(df_connections, data_type, save_dir = False):
+def plot_connectivity_percentage(df_connections, data_type, save_dir=False):
 
     w_cm = 6
     h_cm = 6
@@ -1626,7 +1641,7 @@ def plot_connectivity_percentage(df_connections, data_type, save_dir = False):
             format='svg', bbox_inches='tight', dpi=300)
     plt.show()
 
-def plot_connect_trace_repatched_cell(save_dir = []):
+def plot_connect_trace_repatched_cell(save_dir=[]):
     """
     Plot connection screens for D1 and D2 side by side in a single figure.
     """
@@ -1686,7 +1701,7 @@ def plot_connect_trace_repatched_cell(save_dir = []):
     plt.savefig(f'{save_dir}/con_screen_{OP}Ch{pre_ch}_Ch{post_ch}.svg',
             format='svg', bbox_inches='tight', dpi=300)
 
-def plot_corr_single(x, y, df, data_type = 'all', tr = 'Ctrl', save_dir = False):
+def plot_corr_single(x, y, df, data_type='all', tr ='Ctrl', save_dir=False):
     '''
     
     '''
@@ -1723,7 +1738,7 @@ def plot_corr_single(x, y, df, data_type = 'all', tr = 'Ctrl', save_dir = False)
         plt.savefig(f'{save_dir}{data_type}{x}{y}corr_plots.svg',
                     format='svg', bbox_inches='tight', dpi=300)
 
-def plot_norm_con_params(df, DV, data_type, save_dir = False):
+def plot_norm_con_params(df, DV, data_type, save_dir=False):
     '''
     DV - 'amp' or 'lat'
     data_type = 'slice' for all; cell_ID_new for repatch (colors)
@@ -1758,7 +1773,7 @@ def plot_norm_con_params(df, DV, data_type, save_dir = False):
             normalized_means = []
             normalized_errors = []
             
-            for amp_col in cols:
+            for f, amp_col in enumerate(cols):
                 
                 # Normalize to Amp 1
                 normalized_values = df_plot[amp_col] / df_plot[param_1]
@@ -1769,6 +1784,10 @@ def plot_norm_con_params(df, DV, data_type, save_dir = False):
                 
                 normalized_means.append(mean_norm)
                 normalized_errors.append(se_norm)
+
+                x_temp = np.linspace(1+f-0.3, 1+f+0.3, len(normalized_values))
+                # ax.scatter(x_temp, normalized_values, alpha = 0.3)
+
             
             # Plot line with error bars
             color_key = f'{tr}{day}' if f'{tr}{day}' in colors else tr
@@ -1798,10 +1817,10 @@ def plot_norm_con_params(df, DV, data_type, save_dir = False):
 
     plt.show()
 
-def plot_connect_params(df, data_type, DV = 'amp',save_dir = False):
+def plot_connect_params(df, data_type, DV='amp',save_dir=False):
 
-    h_cm = 4
-    w_cm = 18
+    h_cm = 4.5
+    w_cm = 20
     titles_dict = pl_intr.dict_for_plotting_conn()
 
     if DV == 'amp':
@@ -1811,16 +1830,21 @@ def plot_connect_params(df, data_type, DV = 'amp',save_dir = False):
         cols = ['Lat1']# , 'Lat2'] # , 'Lat3', 'Lat4']
         param_1 = 'Lat1'
 
+    if 'TTX' in df.treatment.unique():
+        treatments = ['Ctrl', 'high K', 'TTX']
+    else:
+        treatments = ['Ctrl', 'high K']
+
     colors = figure_colors()[data_type]
 
     fig, ax = plt.subplots(1, 4, figsize = (w_cm /2.54,h_cm/2.54), sharey = True)
     ax = ax.flatten()
     for a, param in enumerate(cols):
-        
+        ticks_ = []
         label_ = []
         num_cels = {}
         
-        for i, tr in enumerate(sorted(df.treatment.unique())):
+        for i, tr in enumerate(treatments):
             x_plot =[]
             for j, day in enumerate(sorted(df.day.unique())):
                 k = j + 2.5*i
@@ -1831,22 +1855,24 @@ def plot_connect_params(df, data_type, DV = 'amp',save_dir = False):
                 
                 x = np.linspace(0.65+k, 1.35+k, len(df_plot))
                 x_plot.append(x)
-                ax[a].scatter(x, df_plot[param], alpha = 0.3,
+                ax[a].scatter(x, df_plot[param], alpha = 0.6,
                             color = colors[tr + day], zorder = 5)
-                ax[a].scatter(x, df_plot[param], alpha = 0.75,
+                ax[a].scatter(x, df_plot[param], alpha = 0.7,
                             edgecolor = colors[tr + day],
-                            facecolors = 'none')
+                            facecolors = 'none', linewidths=1.2)
+                ticks_.append(1+k)
+                label_.append(day[-1] + tr)
                 if 'cell' not in data_type:
                     ax[a].boxplot(df_plot[param], positions = [k + 1], zorder = 10, widths = 0.5)
 
-                    label_.append(day + tr)
                     num_cels[tr + ' ' + day] = len(df_plot)
                     #data_boxplot.append(df_plot[amp)
                 else:
                     avg = np.mean(df_plot[param])
                     ax[a].text(0.75 + k, (1.05*avg), str(round(avg,2)),
                                     size = 11, zorder = 11)
-                    ax[a].scatter(1 + k, avg, color = 'k', marker = '_', s = 300, zorder = 10)
+                    ax[a].scatter(1 + k, avg, color = '#430704',
+                                  marker = '_', s = 300, zorder = 10)
 
             if k in [1,3.5,5] and 'cell' in data_type:
                 for c, cell in enumerate(df_plot['connection_ID']):
@@ -1859,11 +1885,11 @@ def plot_connect_params(df, data_type, DV = 'amp',save_dir = False):
                                linewidth = 2, zorder = 0)
 
         
-        ax[a].set_xticks(ticks = [1,2,3.5,4.5], labels = ['pre', 'post', 'pre', 'post'])
-
+        ax[a].set_xticks(ticks = ticks_, labels = label_)
+        
         ax[0].set_ylabel(titles_dict[cols[0]][0] + ' (' + titles_dict[cols[0]][1] + ')')
         ax[0].set_yticks(ticks = titles_dict[cols[0]][2], labels = titles_dict[cols[0]][3])
-        #ax[0].set_yticks(ticks = np.linspace(0, 4, 5), labels = [0, '', 2, '', 4])
+        # ax[0].set_yticks(ticks = np.linspace(0, 5.4, 5), labels = [0, '', 2.7, '', 5.4])
             
     if save_dir:
         plt.savefig(f'{save_dir}con_all_{DV}_{data_type}.svg',
@@ -2849,8 +2875,6 @@ def QC_plot_single_cell_param_repatched_cons(df, dest_dir, params = ['Rin']):
         format = 'svg', bbox_inches = 'tight', dpi = 300)
     plt.close(fig2)
 
-import importlib
-importlib.reload(pl_intr)
 
 def QC_plot_Rs_vs_EPSP_amp(df, dest_dir):
     '''
@@ -2886,10 +2910,10 @@ def QC_plot_Rs_vs_EPSP_amp(df, dest_dir):
             axs[a].scatter(x, y, edgecolor = colors[tr + 'D2'], alpha = 0.75, facecolors = 'none')
 
             axs[a].set_xticks(ticks = np.linspace(-1, 1, 5))
-            axs[a].set_xlabel(f'$\Delta$ 1st EPSP amplitude \n (D1 - D2)')
+            axs[a].set_xlabel(rf'$\Delta$ 1st EPSP amplitude \n (D1 - D2)')
 
             axs[a].set_yticks(ticks = np.linspace(-35, 35, 5), labels = [-35, '', 0, '', 35])
-            axs[a].set_ylabel(f'$\Delta$ Series resistance \n (D1 - D2)')
+            axs[a].set_ylabel(rf'$\Delta$ Series resistance \n (D1 - D2)')
 
         axs[0].set_title('Presynaptic cell')
         axs[1].set_title('Postsynaptic cell')
@@ -3335,7 +3359,7 @@ def plot_distribution_1st_amp_lat_only(df, data_type, dest_dir = False):
                 
                 # Plot bars
                 ax[a].bar(x_pos, counts, width=bar_width, alpha=0.8, color=colors[tr + day], label=f'{tr} {day}')
-        
+                
         # Plot disappearing connections (dotted lines) if 'cell' in data_type
         if 'cell' in data_type and param == 'Amp 1':
             for idx, row in df_special_dis.iterrows():
@@ -3498,13 +3522,11 @@ def plot_ph_osmol(save_dir = False):
                     format = 'svg', bbox_inches = 'tight', dpi = 300)
     plt.show()
 
-
-import importlib
-importlib.reload(pl_intr)
 def plot_failure_rates_repatch(df, save_dir, w_cm = 16, h_cm = 5):
     '''
     plots the failure rates accross the repatch dataset
     '''
+    df = df.copy()
     if 'num_swps' not in df.columns:
         return print('reduqred columns not in dataframe')
 
@@ -3554,8 +3576,11 @@ def plot_failure_rates_repatch(df, save_dir, w_cm = 16, h_cm = 5):
                     avg = np.mean(df_plot[param])
                     ax[a].text(0.75 + k, (1.05*avg), str(round(avg,2)),
                                     size = 11, zorder = 11)
-                    ax[a].scatter(1 + k, avg, color = 'k', marker = '_', s = 300, zorder = 10)
+                    ax[a].scatter(1 + k, avg, color = '#430704',
+                                  marker = '_', s = 300, zorder = 10)
 
+                    print(f'{param} avg for {tr} {day} {np.mean(df_plot[param])}')
+                    print(f' n = {len(df_plot[param])}')
             if k in [1,3.5,5] and 'cell' in data_type:
                 for c, cell in enumerate(df_plot['connection_ID']):
                     if k == 1 and len(df_plot['connection_ID'])-1 == c:
@@ -3576,5 +3601,128 @@ def plot_failure_rates_repatch(df, save_dir, w_cm = 16, h_cm = 5):
                     format='svg', bbox_inches='tight', dpi=300)
     plt.show(fig)
 
+def plot_failure_rates_slice(df, dest_dir, w_cm = 16, h_cm = 5):
+    '''
+    plots the failure rates accross the repatch dataset
+    '''
+    if 'num_swps' not in df.columns:
+        return print('required columns not in dataframe')
+    df = df.copy()
+    failure_rates = 100*(df.num_swps - df.num_swps_events) / df.num_swps
+    df.insert(0, 'failure_rates', failure_rates)
 
+    cols = ['failure_rates', 'num_swps', 'num_swps_events']
 
+    data_type = 'slice'
+
+    ax_elements = {'failure_rates' : (0,0),
+                   'num_swps': (0,1),
+                   'num_swps_events': (0,2)}
+    df = df.sort_values(['treatment', 'day'])
+    if 'TTX' in sorted(df.treatment.unique()):
+        treatments = ['Ctrl', 'high K', 'TTX']
+    else:
+        treatments = ['Ctrl', 'high K']
+
+    titles_dict = pl_intr.dict_for_plotting_conn()
+    colors = figure_colors()[data_type]
+
+    fig, ax = plt.subplots(1, 3, figsize = (w_cm /2.54, h_cm/2.54))
+    ax = ax.flatten()
+    for a, param in enumerate(cols):
+        
+        label_ = []
+        num_cels = {}
+        ks, labels_ = [], []
+        for i, tr in enumerate(treatments):
+            x_plot =[]
+            for j, day in enumerate(sorted(df.day.unique())):
+                k = j + 2.5*i
+                df_plot = df[(df['treatment'] == tr) &\
+                              (df['day'] == day)]
+                                
+                x = np.linspace(0.65+k, 1.35+k, len(df_plot))
+                x_plot.append(x)
+                ax[a].scatter(x, df_plot[param], alpha = 0.3,
+                            color = colors[tr + day], zorder = 5,
+                            s = 20)
+                ax[a].scatter(x, df_plot[param], alpha = 0.75,
+                            edgecolor = colors[tr + day],
+                            facecolors = 'none', s = 20)
+                if 'cell' not in data_type:
+                    ax[a].boxplot(df_plot[param], positions = [k + 1], zorder = 10, widths = 0.5)
+
+                    label_.append(day + tr)
+                    num_cels[tr + ' ' + day] = len(df_plot)
+                else:
+                    avg = np.mean(df_plot[param])
+                    ax[a].text(0.75 + k, (1.05*avg), str(round(avg,2)),
+                                    size = 11, zorder = 11)
+                    ax[a].scatter(1 + k, avg, color = 'k', marker = '_', s = 300, zorder = 10)
+
+                print(f'{param} avg for {tr} {day} {np.mean(df_plot[param])}')
+                print(f' n = {len(df_plot[param])}')
+                ks.append(k+1)
+                labels_.append(f'{day} {tr}')
+            ax[a].set_xticks(ticks = ks, labels = labels_)
+
+            ax[a].set_ylabel(f'{titles_dict[param][0]}{titles_dict[param][1]}')
+            ax[a].set_yticks(ticks = titles_dict[param][2], labels = titles_dict[param][3])
+
+    date = str(datetime.date.today())
+    if dest_dir:
+        plt.savefig(dest_dir + date + '_plot_all_SLICE_MEAN_sup_V2.svg', \
+        format = 'svg', bbox_inches = 'tight', dpi = 1000)
+    plt.show(fig)
+
+def plt_washin_trace(fn, chan, swps_keep = 'all', start_point_cut = False, \
+                     end_point_cut = False, save_dir = False, ticks = False):
+    ''' 
+    arguemnts : fn - filename, chan - channel number from 1 to 8
+    visualization of recordings with selection of channels and parts to cut
+    accepts int for channel
+    start_point_cut, end_point_cut - int, what aprt to cut from the trace
+    '''
+    trace = pyabf.ABF(fn)
+    # fixing the naming
+    if '_Ipatch' in trace.adcNames:
+            trace.adcNames[trace.adcNames.index('_Ipatch')] = 'Ch1'
+    if 'IN0' in trace.adcNames:
+        trace.adcNames[trace.adcNames.index('IN0')] = 'Ch1'
+    
+    # channels are always consequtive nums in pyabf
+    chan_name = 'Ch' + str(chan)
+    if len(trace.channelList) < 8:
+        chan = trace.channelList[trace.adcNames.index(chan_name)]
+    else:
+        chan = chan - 1
+
+    data_long = trace.data[chan]
+    swp_len = int(trace.sweepLengthSec * trace.sampleRate)
+    data_wide = data_long.reshape(trace.sweepCount, swp_len) # each sweep is a row
+    
+    if isinstance(swps_keep, str):
+        if swps_keep == 'all':
+            data_plot = hcf.reshape_data(data_wide, 'all', start_point_cut, end_point_cut) 
+    else:
+        data_plot = hcf.reshape_data(data_wide, swps_keep, start_point_cut, end_point_cut)
+
+    fig, ax = plt.subplots(1,1, figsize = (6/2.54, 6/2.54))
+    x = np.linspace(0, len(data_plot), len(data_plot))/trace.sampleRate
+    ax.plot(x, data_plot)
+    for i in range(1, len(swps_keep)):
+        vline = i * trace.sweepLengthSec
+        if i == 1:
+            ax.axvline(x = vline, color='red', linestyle='--', linewidth=1, label = 'sweep end')
+        else:
+            ax.axvline(x = vline, color='red', linestyle='--', linewidth=1)
+
+    if ticks:
+        ax.set_yticks(np.linspace(-60, 50, 5), labels = [-60, '', -5, '', 50])
+        ax.set_xlabel('Time (sec)')
+        ax.set_ylabel('Membrane potential \n (mV)')
+
+    if save_dir:
+        plt.savefig(f'{save_dir}_wash_in_ap_trace.svg',
+                    format='svg', bbox_inches='tight', dpi=300)
+    plt.show(fig)

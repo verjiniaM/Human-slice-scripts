@@ -14,7 +14,7 @@ age = 41
 human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/data/human/'
 results_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/data/'
 
-exp_view = pd.read_excel(glob.glob(human_dir + '*experiments_overview.xlsx')[0]) 
+exp_view = pd.read_excel(glob.glob(human_dir + '*experiments_overview.xlsx')[0])
 exp_view_new = sort.update_op_list(human_dir, exp_view)
 sort.add_cortex_out_time(human_dir, exp_view_new)
 

@@ -16,7 +16,7 @@ results_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_lab/results/human/data/
 
 exp_view = pd.read_excel(glob.glob(human_dir + '*experiments_overview.xlsx')[0]) 
 
-OP = 'OP230420'
+OP = 'OP240926'
 patcher = 'Verji'
 
 work_dir, filenames, indices_dict, slice_names = sort.get_OP_metadata(human_dir, OP, patcher, 'old')

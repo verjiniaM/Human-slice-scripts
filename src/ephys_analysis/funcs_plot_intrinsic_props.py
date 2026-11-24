@@ -231,7 +231,7 @@ def dict_for_plotting():
     'Rin': ['Input resistance', 'MΩ', [0, 75, 150, 225, 300],[0, '', 150, '', 300]],
     'resting_potential': ['RMP', 'mV',[-80, -70,-60, -50, -40], [-80, '',-60, '', -40]],
     'max_spikes': ['Maximum number of spikes', 'count', np.linspace(0, 70, 5), [0,'', 35, '', 70]],
-    'Rheobase': ['Rheobase', 'pA', [100,300,500,700,900]],
+    'Rheobase': ['Rheobase', 'pA', np.linspace(110, 900, 5), [100, '', 500, '', 900]],
     'AP_heigth': ['AP amplitude', 'mV', np.linspace(50, 100, 5),[50, '', 70, '', 100]],    
     'TH': ['AP threshold', 'mV', [-50, -40, -30, -20, -10 ],[-50, '', -30, '', -10 ]],
     'max_depol': ['AP upstroke', '\n mV/ms', np.linspace(0, 600, 5),[0,'',300,'',600]],
@@ -242,8 +242,43 @@ def dict_for_plotting():
     'rheo_ramp_c' : ['Rheobase', 'pA', [100,300,500,700,900],[100,'',500,'',900]],
     'cap_adj': ['Capacitance', 'pF', np.linspace(100, 700, 5),[100, '', 400,'', 700]],
     'sag': ['Sag ratio', '', [0.50, 0.65, 0.80,  0.95, 1.10], [0.50, '', 0.80,  '', 1.10]],
-    'hrs_after_OP': ['Time after tissue extraction', 'hrs', np.linspace(10, 50, 5), np.linspace(10, 50, 5)]}
+    'hrs_after_OP': ['Time after tissue extraction', 'hrs', np.linspace(10, 50, 5), np.linspace(10, 50, 5)],
+    'Cm_estimate': ['Capacitance(estimate)', 'pF', np.linspace(0, 1, 5), [0, '', 0.5, '', 1]],
+    'AP_ahp': ['AP afterhyperpolarization', 'mV', np.linspace(0, 35, 5), [0, '', 17.5, '', 35]],
+    'AP_adp': ['AP afterdepolarization slope', 'mV/ms',np.linspace(-2, 4, 5), [-2, '', 1, '', 4]],
+    'isi_adaptation': ['ISI adaptation', '', np.linspace(0, 40, 5), [0, '', 20, '', 40]],
+    'AP_f_i_slope': ['F/I slope', '', np.linspace(-0.2, 2.6, 5), [-0.2, '', 1.2, '', 2.6]]}
     # 'tau_adj': ['Membrane time constant', 'ms', [10, 20, 30, 40, 50]]}
+    return titles_dict
+
+
+def dict_for_plotting_FM():
+    '''
+    key is the param as in the data table column
+    values[0] plot title
+    values[1] y asix
+    values[2] plot y ticks
+    '''
+    titles_dict = {'AP_HW': ['AP halfwidth', 'ms', np.linspace(0.5, 2.3, 5), [0.5, '', 1.4, '', 2.3]],
+    'Rin': ['Input resistance', 'MΩ', [0, 75, 150, 225, 300],[0, '', 150, '', 300]],
+    # 'RMP': ['RMP', 'mV',[-80, -70,-60, -50, -40], [-80, '',-60, '', -40]],
+    'resting_potential': ['RMP', 'mV', np.linspace(-90, -60, 5), [-90, '', -75, '', -60]],
+    'rheobase': ['Rheobase', 'pA', np.linspace(110, 900, 5), [100, '', 500, '', 900]],
+    'rheo_ramp_c': ['Rheobase ramp', 'pA', np.linspace(110, 900, 5), [100, '', 500, '', 900]],
+    'rheobase_combined': ['Rheobase combi', 'pA', np.linspace(110, 900, 5), [100, '', 500, '', 900]],
+    'AP_amp': ['AP amplitude', 'mV', np.linspace(50, 100, 5),[50, '', 70, '', 100]],    
+    'AP_TH': ['AP threshold', 'mV', [-50, -40, -30, -20, -10 ],[-50, '', -30, '', -10 ]],
+    'AP_up': ['AP upstroke', '\n mV/ms', np.linspace(0, 600, 5),[0,'',300,'',600]],
+    'AP_down': ['AP downstroke', '\n mV/ms', np.linspace(30, 200, 5), [30, '', 115, '', 200]],
+    'tau': ['Membrane time constant', 'ms', np.linspace(10, 50, 5),[10, '', 30, '', 50]],
+    'tau_fixed': ['Membrane time constant', 'ms', np.linspace(10, 50, 5),[10, '', 30, '', 50]],
+    'sag': ['Sag ratio', '', np.linspace(1, 1.5, 5) , [0.1, '', 1.25,  '', 1.5]],
+    'AHP': ['AP afterhyperpolarization', 'mV', np.linspace(0, 35, 5), [0, '', 17.5, '', 35]],
+    'AP_AHP_slope': ['AP afterdepolarization slope', 'mV/ms',np.linspace(-0.6, 4, 5), [-0.6, '', 1.7, '', 4]],
+    'ISI_adaptation': ['ISI adaptation', '', np.linspace(0, 40, 5), [0, '', 20, '', 40]],
+    'F_I_slope': ['F/I slope', '', np.linspace(-0.1, 0.3, 5), [-0.1, '', 0.1, '', 0.3]],
+    'FF_700pA': ['Firing frequency at 700 pA', 'Hz', np.linspace(0, 60, 5),  [0, '', 30, '', 60]],
+    'hrs_after_OP': ['Time after tissue extraction', 'hrs', np.linspace(10, 50, 5), np.linspace(10, 50, 5)]}
     return titles_dict
 
 def dict_for_plotting_conn():
@@ -257,7 +292,7 @@ def dict_for_plotting_conn():
                 'Amp 2': ['2nd EPSP amplitude', 'mV', np.linspace(0, 4, 5), [0, '', 2, '', 4]],
                 'Amp 3': ['3rd EPSP amplitude', 'mV', np.linspace(0, 4, 5), [0, '', 2, '', 4]],
                 'Amp 4': ['4th EPSP amplitude', 'mV', np.linspace(0, 4, 5), [0, '', 2, '', 4]],
-                'Lat1': ['1st EPSP latency', 'ms', np.linspace(0, 8, 5), [0, '', 4, '', 8]],
+                'Lat1': ['1st EPSP latency', 'ms', np.linspace(0, 4, 5), [0, '', 2, '', 4]],
                 'amp': ['Norm. amplitude', '', np.linspace(0.5, 1.5, 5), [0.5, '', 1, '', 1.5]],
                 'lat': ['Norm. latency', '', np.linspace(1, 1.7, 5), [1, '', 1.35, '', 1.7]],
                 'con_percentage_fixed': ['Connection probability', 'percent (%)', np.linspace(0, 60, 5), [0, '', 30, '', 60]],

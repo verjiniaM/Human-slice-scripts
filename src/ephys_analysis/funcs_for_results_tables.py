@@ -703,7 +703,7 @@ def collect_intrinsic_df(human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmitz_
     saves a datafram with today's data in /results/human/data/summary_data_tables/intrinsic_properties/
     '''
 
-    exp_view = pd.read_excel(glob.glob(human_dir + '*experiments_overview.xlsx')[0]) 
+    exp_view = pd.read_excel(glob.glob(human_dir + '*experiments_overview.xlsx')[0])
 
     area_dict, high_k_dict = {}, {}
     for OP in exp_view['OP'].unique():
@@ -800,6 +800,7 @@ def collect_connections_df(human_dir = '/Users/verjim/laptop_D_17.01.2022/Schmit
         all_cons_IC.to_excel(writer, sheet_name='Connectivity_IC')
         all_cons_VC.to_excel(writer, sheet_name='Connectivity_VC')
 
+    print(f'saving connect_df in {file_name}')
     return all_cons_IC, all_cons_VC
 
 ### Functions for fixing initial firing frequency tables

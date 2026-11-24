@@ -56,7 +56,6 @@ def get_new_cell_IDs_fn(fn, slic, active_channels, patcher):
         cell_IDs.append(cellID)
     return cell_IDs
 
-
 def get_connection_ID (filename_con_screen, slic, pre_chan, post_chan):
     end_fn = filename_con_screen.rfind('/') + 1
     con_ID = filename_con_screen[end_fn:-7] + slic + 'c' + str(pre_chan) + '#' + str(post_chan)
@@ -96,6 +95,7 @@ def get_inj_current_steps(fn):
     loads the characterization fn
     returns the steps currents used
     assuming the same steps were given to all channels
+    out: list
     '''
     char = pyabf.ABF(fn)
 
@@ -285,19 +285,43 @@ def get_max_spikes(charact_data, channels):
         ch1 = charact_data[key][0]
         max_spikes = 0
         for j in range(len(ch1[0])): #loop through all swps
-            pks = detect_peaks(ch1[:,j], mph=2, mpd=5) # detects the peaks for each timepoint? 
+            pks = detect_peaks(ch1[:,j], mph=2, mpd=5) # detects the peaks for each timepoint?
             if len(pks)> max_spikes:
                 max_spikes = len(pks) #find the max number of spikes (peaks)
         max_spikes_all.append(max_spikes)
     return max_spikes_all
 
-def get_ap_param(charact_data, channels, inj, max_spikes):
+def get_isi_adaptation(charact_data, channels):
+    '''
+    returns a list of max number of spikes for each channel
+    '''
+    isi_all = []
+    for ch in channels:
+        key = 'Ch' + str(ch)
+        ch1 = charact_data[key][0]
+        isi_times = []
+        count = 0
+        for swp in range(len(ch1[0])): #loop through all swps
+            pks = detect_peaks(ch1[:,swp], mph=2, mpd=5) # detects the peaks for each timepoint?
+            if len(pks) >= 3:
+                count=+1
+                isi_1 = pks[1] - pks[0]
+                isi_2 = pks[2] - pks[1]
+                isi_times.append(isi_2/isi_1)
+            if count == 5:
+                break
+        isi_all.append(np.mean(isi_times))
+    return isi_all
+
+def get_ap_param(charact_data, channels, inj, max_spikes, AHP_only = True):
     '''
     returns a nd.array with inj, peak loc, sweep num
     spike_counts for each inj
     array with all peak locations [inj, peak, sweep num]
+    assumes sampling rate of 20 kHz
     '''
-    params = [Rheobase_all, AP_all, THloc_all, TH_all, APheight_all, max_depol_all, max_repol_all] = [[], [], [], [], [], [], []]
+    params = [Rheobase_all, AP_all, THloc_all, TH_all, APheight_all, max_depol_all, max_repol_all,\
+               AHP_all, ADP_slope_all] = [[], [], [], [], [], [], [], [], []]
     for a, ch in enumerate(channels):
         key = 'Ch' + str(ch)
         ch1 = charact_data[key][0]
@@ -309,7 +333,9 @@ def get_ap_param(charact_data, channels, inj, max_spikes):
             max_depol = math.nan
             max_repol = math.nan
             APheight = math.nan
-            ch_params = [Rheobase, AP, THloc, TH, APheight, max_depol, max_repol]
+            AHP = math.nan
+            ADP_slope = math.nan
+            ch_params = [Rheobase, AP, THloc, TH, APheight, max_depol, max_repol, AHP, ADP_slope]
 
             for i, param in enumerate(params):
                 param.append(ch_params[i])
@@ -317,7 +343,7 @@ def get_ap_param(charact_data, channels, inj, max_spikes):
         peaks = np.empty([len(inj), max_spikes[a], 3])
         peaks.fill(np.nan)
         for i in range(len(ch1[0])): #for all swps
-            pks = detect_peaks(ch1[:,i], mph=20,mpd=50) 
+            pks = detect_peaks(ch1[:,i], mph=20,mpd=50)
             peaks[i,0:len(pks), 0] = inj[i] #injected current
             peaks[i,0:len(pks), 1] = pks #
             peaks[i,0:len(pks), 2] = ch1[pks,i] #sweep number
@@ -327,7 +353,7 @@ def get_ap_param(charact_data, channels, inj, max_spikes):
             spike_counts[i,0] = j
             spike_counts[i,1] = (np.sum(np.isfinite(peaks[i,:,:])))/3
         
-        spikes = np.where(np.isfinite(peaks)) 
+        spikes = np.where(np.isfinite(peaks))
         if spikes[0].size == 0:
             AP = []
             Rheobase = math.nan
@@ -335,15 +361,17 @@ def get_ap_param(charact_data, channels, inj, max_spikes):
             max_depol = math.nan
             max_repol = math.nan
             APheight = math.nan
-            ch_params = [Rheobase, AP, THloc, TH, APheight, max_depol, max_repol]
+            AHP = math.nan
+            ADP_slope = math.nan
+            ch_params = [Rheobase, AP, THloc, TH, APheight, max_depol, max_repol, AHP, ADP_slope]
 
             for i, param in enumerate(params):
                 param.append(ch_params[i])
             continue
 
         first_spike = spikes[0][0]
-        Rheobase = inj[first_spike]  
-        
+        Rheobase = inj[first_spike]
+
         if np.max(spike_counts[:,1]) == 1:
             print('MAX number of AP = 1 for ' + key)
             first_spiking_sweep = np.where(spike_counts[:,1]==1)[0][0]
@@ -355,6 +383,8 @@ def get_ap_param(charact_data, channels, inj, max_spikes):
         else:
             ap = 1
 
+        # for isi adaptation add count for the 1st five sweeps with > 3 APs
+        # if less --> average all that have >3 aps
         peak_loc = np.where(ch1[:,first_spiking_sweep] == peaks[first_spiking_sweep, ap ,2])[0][0]
         AP = ch1[:, first_spiking_sweep][peak_loc - 200:peak_loc+200]
         d1_AP = np.diff(AP)*20
@@ -373,10 +403,14 @@ def get_ap_param(charact_data, channels, inj, max_spikes):
             #     if THlocs[0].size != 0:
             #         THloc = THlocs[0][0]
             #         TH = AP[THloc-1]
-            #         APheight = peaks[first_spiking_sweep, ap ,2]-TH 
+            #         APheight = peaks[first_spiking_sweep, ap ,2]-TH
             max_depol = np.max(d1_AP[:200]) #how quickly is the voltage change occuring
             max_repol = np.min(d1_AP[-200:])
-            ch_params = [Rheobase, AP, THloc, TH, APheight, max_depol, max_repol]
+            min_ = np.min(AP[THloc:THloc+200])
+            AHP = TH - min_
+            AHP_loc = np.where(AP == min_)[0][0]
+            ADP_slope = np.mean(d1_AP[AHP_loc:AHP_loc + 21]) # mean slope 1 ms after AHP
+            ch_params = [Rheobase, AP, THloc, TH, APheight, max_depol, max_repol, AHP, ADP_slope]
 
             for i, param in enumerate(params):
                 param.append(ch_params[i])
@@ -386,11 +420,15 @@ def get_ap_param(charact_data, channels, inj, max_spikes):
             max_depol = math.nan
             max_repol = math.nan
             APheight = math.nan
-            ch_params = [Rheobase, AP, THloc, TH, APheight, max_depol, max_repol]
+            AHP = math.nan
+            ADP_slope = math.nan
+            ch_params = [Rheobase, AP, THloc, TH, APheight, max_depol, max_repol, AHP, ADP_slope]
             for i, param in enumerate(params):
                 param.append(ch_params[i])
+    if AHP_only:
+        return AHP_all, ADP_slope_all
 
-    return Rheobase_all, AP_all, THloc_all, TH_all, APheight_all, max_depol_all, max_repol_all 
+    return Rheobase_all, AP_all, THloc_all, TH_all, APheight_all, max_depol_all, max_repol_all, AHP_all, ADP_slope_all
 
 def get_AP_HW(channels, AP_all, APheight_all, TH_all):
     '''
@@ -415,7 +453,7 @@ def get_AP_HW(channels, AP_all, APheight_all, TH_all):
         y = AP_all[i][rise_start:rise_end]
          
         model_rise = np.polyfit(x, y, 1)
-        hw1 = (half_amp - model_rise[1])/model_rise[0] 
+        hw1 = (half_amp - model_rise[1])/model_rise[0]
 
         fall_start = np.where(AP_all[i] > t30)[0][-1]
         fall_end = np.where(AP_all[i] > t70)[0][-1]
@@ -452,13 +490,16 @@ def all_chracterization_params(filename, channels, inj):
         print('fail to read inj from fn')
         inj = inj2
 
-    tau_all, capacitance_all, mc_all, V65_all, RMPs_char = get_hyperpolar_param(charact_dict, channels, inj, onset, offset)
+    tau_all, capacitance_all, _, _, _ = get_hyperpolar_param(charact_dict, channels, inj, onset, offset)
     max_spikes_all = get_max_spikes(charact_dict, channels)
-    Rheobase_all, AP_all, THloc_all, TH_all, APheight_all, max_depol_all, max_repol_all = get_ap_param(charact_dict, channels, inj, max_spikes_all)
+    Rheobase_all, AP_all, _, TH_all, APheight_all, max_depol_all, max_repol_all,  AHP_all, ADP_slope_all\
+        = get_ap_param(charact_dict, channels, inj, max_spikes_all, False)
     AP_HWs = get_AP_HW(channels, AP_all, APheight_all, TH_all)
 
-    keys = ['max_spikes', 'Rheobase', 'AP_heigth', 'TH', 'max_depol', 'max_repol', 'membra_time_constant_tau', 'capacitance', 'AP_halfwidth']
-    vals = [max_spikes_all, Rheobase_all, APheight_all, TH_all, max_depol_all, max_repol_all, tau_all, capacitance_all, AP_HWs]
+    keys = ['max_spikes', 'Rheobase', 'AP_heigth', 'TH', 'max_depol', 'max_repol', 'membra_time_constant_tau',\
+             'capacitance', 'AP_halfwidth', 'AHP_all', 'ADP_slope_all']
+    vals = [max_spikes_all, Rheobase_all, APheight_all, TH_all, max_depol_all, max_repol_all, tau_all, \
+            capacitance_all, AP_HWs, AHP_all, ADP_slope_all]
     params_dict = {}
     for i, param in enumerate(vals):
         key = keys[i]
@@ -701,7 +742,8 @@ def reshape_data(data_, swps_keep = 'all', start_point_cut = False, end_point_cu
     if start_point_cut or end_point_cut:
         if not end_point_cut:
             end_point_cut = swp_len
-        data_plot = np.delete(data_wide, list(range(start_point_cut, end_point_cut)), 1)
+        data_plot = np.delete(data_wide, list(range(end_point_cut, swp_len-1)), 1)
+        data_plot = np.delete(data_plot, list(range(0, start_point_cut)), 1)
     else:
         data_plot = data_wide
 
